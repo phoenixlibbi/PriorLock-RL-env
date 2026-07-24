@@ -1,0 +1,20 @@
+# local notes
+
+
+
+
+TRIAL-BUILD-PLAN.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
