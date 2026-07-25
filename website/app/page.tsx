@@ -5,6 +5,7 @@ import HowItWorks from "./components/HowItWorks";
 import Scores from "./components/Scores";
 import Domains from "./components/Domains";
 import Leaderboard from "./components/Leaderboard";
+import Contribute from "./components/Contribute";
 import Quickstart from "./components/Quickstart";
 import Footer from "./components/Footer";
 
@@ -22,6 +23,8 @@ export default function Home() {
       <Domains />
       <div className="divider" />
       <Leaderboard />
+      <div className="divider" />
+      <Contribute />
       <div className="divider" />
       <Quickstart />
       <Footer />

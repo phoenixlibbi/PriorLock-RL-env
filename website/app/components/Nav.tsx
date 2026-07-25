@@ -3,6 +3,7 @@ export default function Nav() {
     { id: "how-it-works", label: "How it works" },
     { id: "domains", label: "Domains" },
     { id: "leaderboard", label: "Leaderboard" },
+    { id: "contribute", label: "Contribute" },
     { id: "quickstart", label: "Quickstart" },
   ];
 

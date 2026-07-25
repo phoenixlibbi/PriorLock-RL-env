@@ -81,6 +81,41 @@ def cmd_stage0(args, root: str):
     return result.returncode
 
 
+def cmd_new_domain(args, root: str):
+    """Scaffold a new domain skeleton."""
+    from priorlock.scaffold import scaffold_domain
+    name = args.name
+    if not name.endswith("-domain"):
+        name = f"{name}-domain"
+
+    output_dir = root
+    base, created, ctx = scaffold_domain(name, output_dir)
+
+    print(f"\nCreated domain: {name}")
+    print(f"Location: {base}\n")
+    for p in created:
+        print(f"  ✓ {p}")
+
+    lib = ctx["lib"]
+    task = ctx["task"]
+    print(f"""
+Next steps (fill in the TODOs):
+  1. Edit  deviation_spec.yaml         — define your 2+ silent deviations
+  2. Edit  src/{lib}/__init__.py        — implement v2.0 with deviations
+  3. Edit  src/{lib}_familiar/__init__.py — implement v1.x familiar semantics
+  4. Edit  tasks/{task}/environment/repo/docs/CHANGELOG.md  — document deviations
+  5. Edit  tasks/{task}/environment/repo/docs/api_reference.md
+  6. Edit  tasks/{task}/environment/repo/data/             — add your input data
+  7. Edit  tasks/{task}/tests/grade.py  — implement scoring logic
+  8. Edit  tasks/{task}/tests/expected.json — add gold expected values
+  9. Edit  tasks/{task}/solution/solve.sh  — write gold solution
+ 10. Edit  scripts/stage0.py           — fill GOLD_CODE, FAMILIAR_CODE, grade logic
+ 11. Run setup:  bash {name}/scripts/setup.sh
+ 12. Run gates:  priorlock stage0 {name}
+    """)
+    return 0
+
+
 def cmd_version(args, root: str):
     from priorlock import __version__
     print(f"priorlock {__version__}")
@@ -114,6 +149,10 @@ def main():
     p_s0.add_argument("path", nargs="?", default=None,
                        help="Domain dir or task dir (default: auto-discover)")
 
+    # new-domain
+    p_nd = sub.add_parser("new-domain", help="Scaffold a new domain skeleton")
+    p_nd.add_argument("name", help="Domain name, e.g. mylib or mylib-domain")
+
     args = parser.parse_args()
 
     if args.version or args.command is None and not args.version:
@@ -125,6 +164,7 @@ def main():
     dispatch = {
         "info": cmd_info,
         "stage0": cmd_stage0,
+        "new-domain": cmd_new_domain,
     }
     fn = dispatch.get(args.command)
     if fn is None:

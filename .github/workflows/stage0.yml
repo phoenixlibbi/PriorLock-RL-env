@@ -1,0 +1,57 @@
+name: Stage-0 Gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  discover:
+    name: Discover domains
+    runs-on: ubuntu-latest
+    outputs:
+      domains: ${{ steps.find.outputs.domains }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find domains with stage0.py
+        id: find
+        run: |
+          # Find all directories that have scripts/stage0.py
+          domains=$(find . -name "stage0.py" -path "*/scripts/stage0.py" \
+            | sed 's|/scripts/stage0.py||' | sed 's|^\./||' | sort \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "domains=$domains" >> $GITHUB_OUTPUT
+          echo "Found domains: $domains"
+
+  stage0:
+    name: Stage-0 · ${{ matrix.domain }}
+    needs: discover
+    runs-on: ubuntu-latest
+    if: ${{ needs.discover.outputs.domains != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        domain: ${{ fromJson(needs.discover.outputs.domains) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install PriorLock
+        run: pip install -e ".[dev]"
+
+      - name: Run Stage-0 for ${{ matrix.domain }}
+        run: priorlock stage0 ${{ matrix.domain }}
+
+      - name: Upload gate results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage0-${{ matrix.domain }}
+          path: ${{ matrix.domain }}/trials/
+          if-no-files-found: ignore
