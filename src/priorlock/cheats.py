@@ -528,6 +528,12 @@ def run_suite(host_task, probe_ids: list[str] | None = None,
 
     host = Path(host_task).resolve()
     ids = probe_ids or [p.id for p in ALL_PROBES]
+
+    # The battery runs entirely on throwaway copies, but a cheat class exists
+    # precisely to escape its sandbox — so do not take that on trust. Snapshot
+    # the host's manifest and restore it if anything moved.
+    host_manifest = host / "priorlock.toml"
+    manifest_before = host_manifest.read_text() if host_manifest.is_file() else None
     pooled = SoundnessReceipt(task_id=f"{host.name} × {len(ids)} archetypes")
 
     if verbose:
@@ -559,6 +565,17 @@ def run_suite(host_task, probe_ids: list[str] | None = None,
                           f"{fa} false accepts, worst={r.worst_score}")
         finally:
             shutil.rmtree(work.parent, ignore_errors=True)
+
+    # restore the host if a cheat escaped its sandbox
+    if manifest_before is not None and not host_manifest.is_file():
+        host_manifest.write_text(manifest_before, encoding="utf-8")
+        pooled.results.append(CheatResult(
+            "sandbox_escape", "sandbox-escape",
+            "A cheat removed the host task's manifest — restored.",
+            score=1.0, executed=True, flags=["host_manifest_restored"],
+        ))
+    elif manifest_before is None and host_manifest.is_file():
+        host_manifest.unlink()
 
     if verbose:
         print_receipt(pooled)

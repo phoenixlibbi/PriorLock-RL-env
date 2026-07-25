@@ -117,11 +117,16 @@ class _Sandbox:
 
     def run_grader(self) -> dict:
         grader = self.tests / "probe_grade.py"
+        # cwd MUST be the sandbox. Cheat solutions deliberately write to
+        # relative paths ("probe_details.json", "../tests/probe_grade.py") to
+        # test grader tampering; without a contained cwd those land in whatever
+        # directory the harness happened to be invoked from — i.e. the user's
+        # repo. Observed: probe_details.json appearing at the repo root.
         proc = subprocess.run(
             [sys.executable, str(grader),
              "--submission", str(self.submission),
              "--tests-dir", str(self.tests)],
-            capture_output=True, text=True, timeout=180,
+            capture_output=True, text=True, timeout=180, cwd=str(self.tmp),
         )
         if not proc.stdout.strip():
             return {"gap_score": 0.0, "probes": [],
