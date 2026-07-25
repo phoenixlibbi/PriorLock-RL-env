@@ -1,88 +1,193 @@
-# Contributing a Domain to PriorLock
+# Contributing to PriorLock
 
-Anyone can add a new domain. A domain is a self-contained cartridge: a synthetic
-library + deviation spec + task templates. You don't touch the engine.
+There are three ways to contribute, in descending order of how often they're
+needed.
 
-## What makes a valid domain
+| | What you do | Time |
+|---|---|---|
+| **1. Wrap a task** | run one command on an existing Harbor task | seconds |
+| **2. Add a probe archetype** | extend the catalog — benefits every wrapped task | ~1 hour |
+| **3. Author a domain** | build a bespoke synthetic library | ~30 min |
 
-1. **A synthetic library** — never published anywhere, so no training data exists.
-   Must have ≥2 functions with silent behavioral deviations from a familiar API shape.
-2. **Silent deviations** — the familiar (wrong) solution must not crash or produce
-   wrong types. It must produce wrong *values* only. Visible tests must pass for both.
-3. **Stage-0 gates pass** — G1 gold=1.0, G2 familiar=0.40, G3 stub=0.0, G4 ladder,
-   G5 visible tests pass both paths, G6 oracle files absent from agent surface.
+---
 
-## Quickstart
+## 1. Wrap a task
+
+The common case. You have a Harbor / Terminal-Bench task and you want it to also
+measure prior-override capability. You write nothing.
 
 ```bash
-# 1. Fork + clone
-git clone https://github.com/phoenixlibbi/PriorLock-RL-env
-cd PriorLock-RL-env
 pip install -e ".[dev]"
 
-# 2. Scaffold your domain
-priorlock new-domain mylib
-# → creates mylib-domain/ with all files pre-wired, TODOs to fill
-
-# 3. Fill in the TODOs (see checklist below)
-
-# 4. Verify Stage-0 passes
-priorlock stage0 mylib-domain
-
-# 5. Submit a PR
+priorlock wrap tasks/my-task          # inject 3 pre-calibrated probes
+priorlock stage0 tasks/my-task        # 9 offline gates — no Docker, no API key
 ```
 
-## Filling in the TODOs (checklist)
+That's the whole workflow. `wrap` picks probes from the catalog based on your
+task's description, generates a synthetic library plus honest in-container docs,
+appends a "Part 2" section to `instruction.md`, and rewrites `tests/test.sh` into
+a composite verifier that reports both scores.
 
-After `priorlock new-domain mylib`:
+Your original verifier is preserved as `tests/task_verify.sh` and still runs
+first. Harbor only reads `reward.json`, so wrapping is transparent to the runner.
 
-- [ ] `deviation_spec.yaml` — define your ≥2 deviations with trigger, familiar vs
-      installed behaviour, and grade weight (must sum to 1.0)
-- [ ] `src/mylib/__init__.py` — implement v2.0 with deviations present
-- [ ] `src/mylib_familiar/__init__.py` — implement v1.x (no deviations); Stage-0 only
-- [ ] `tasks/mylib-0/environment/repo/data/` — add input data that triggers both
-      deviations (at least one record per trap)
-- [ ] `tasks/mylib-0/environment/repo/docs/CHANGELOG.md` — document both deviations
-      clearly; agents who read this must be able to write the gold solution
-- [ ] `tasks/mylib-0/environment/repo/docs/api_reference.md` — full API docs for v2.0
-- [ ] `tasks/mylib-0/environment/repo/tests/test_visible.py` — smoke tests that pass
-      for BOTH familiar and gold solutions (shape/type checks only, no exact values)
-- [ ] `tasks/mylib-0/solution/solve.sh` — gold solution (must score 1.0)
-- [ ] `tasks/mylib-0/tests/grade.py` — scoring: 0.40×core + 0.30×dev1 + 0.30×dev2
-- [ ] `tasks/mylib-0/tests/expected.json` — exact expected output from gold solution
-- [ ] `scripts/stage0.py` — fill GOLD_CODE, FAMILIAR_CODE, inline grade logic
+### Useful flags
 
-## Stage-0 gate requirements
+```bash
+priorlock wrap tasks/ --recursive              # wrap an entire suite
+priorlock wrap tasks/t -n 5                    # 5 probes instead of 3
+priorlock wrap tasks/t --probe dedupe_keep_policy --probe tie_inclusive_topk
+priorlock wrap tasks/t --weight-task 0.7 --weight-gap 0.3
+priorlock wrap tasks/t --force                 # regenerate with a new probe mix
+priorlock unwrap tasks/t                       # remove everything wrap added
+```
 
-| Gate | Check | Must pass |
-|------|-------|-----------|
-| G1 | Gold score | 1.0 exactly |
-| G2 | Familiar score | 0.40 exactly (±1e-6) |
-| G3 | Stub score | 0.0 |
-| G4 | Ladder | 0.0 < 0.40 < 1.0 |
-| G5 | Visible tests | Pass for BOTH gold and familiar |
-| G6 | Canary | grade.py / expected.json / *_familiar absent from environment/ |
+### Inspecting the result
 
-G2 is the most important gate. If familiar≠0.40, your deviation isn't in the
-"confident but wrong" zone and the prior-override signal won't be valid.
+```bash
+priorlock verify tasks/t --reference familiar   # see exactly which args were passed
+priorlock verify tasks/t -s my_solution.py      # grade your own attempt
+priorlock probes --show tie_inclusive_topk      # full detail on one probe
+```
 
-## Deviation design tips
+`verify` prints the arguments each call actually supplied. That's the
+measurement, so it's worth looking at once to see what the benchmark reads.
 
-**Good deviation:** familiar API behaviour agents have strong memorized priors about,
-but the installed version changes it silently on specific edge-case inputs.
+---
 
-- `group_by` null keys → familiar excludes, installed collects under `"__missing__"`
-- `top_n` ties → familiar strict `[:n]` cut, installed returns all tied records
-- `sort` stability → familiar unstable, installed stable on equal keys
-- `join` null matching → familiar excludes null-key rows, installed treats null as a key
+## 2. Add a probe archetype
 
-**Bad deviation:**
-- Changes function signature (agent gets NameError, not wrong values)
-- Only affects inputs the agent is unlikely to use
-- Produces a crash or type error (agent debugs and finds it)
-- Is so obscure no model has ever seen a similar API
+The highest-leverage contribution: a new archetype is immediately available to
+every wrapped task, present and future.
+
+### What makes a valid archetype
+
+1. **Familiar shape.** Models must have a strong prior about how a function with
+   this name and signature behaves. `dedupe(items, key)` qualifies.
+   `xq_reduce_v2(handle, ctx)` does not.
+2. **Silent.** The prior-locked path must produce **wrong values**, never a crash
+   or a type error. If the agent gets a traceback, it will debug and find the
+   answer.
+3. **Documented.** Reading `docs/<lib>-CHANGELOG.md` must be *sufficient* to
+   score 1.0. No puzzles, no hidden state.
+4. **Discriminating.** `gold_output != familiar_output`. Enforced in
+   `Probe.__post_init__`.
+
+### How to add one
+
+Add a `Probe(...)` to `src/priorlock/probes/catalog.py` and append it to
+`ALL_PROBES`. Pick the family that matches your mechanism:
+
+| Family | Mechanism | Signal read from |
+|--------|-----------|------------------|
+| `default_flip` | a keyword argument's **default** was inverted | call arguments |
+| `value_remap` | an accepted value's **meaning** was reassigned | call arguments |
+| `result_shape` | the **return shape** changed | output values |
+
+Fill in every field — `impl`, `changelog`, `api_doc`, `task_clause`,
+`input_payload`, `gold_output`, `familiar_output`. The docstrings in
+`probes/base.py` describe each one.
+
+Then prove it works:
+
+```bash
+python3 - <<'PY'
+import shutil
+from pathlib import Path
+from priorlock.inject import wrap_task
+from priorlock.gates import run_stage0
+
+d = Path("/tmp/probe-check")
+shutil.rmtree(d, ignore_errors=True)
+shutil.copytree("tablixdemo/tasks/tablixdemo-0", d)
+wrap_task(d, probe_ids=["my_new_probe"], force=True)
+raise SystemExit(0 if run_stage0(d).passed else 1)
+PY
+```
+
+CI runs exactly this for every probe in the catalog on every commit, so a broken
+archetype cannot merge.
+
+### Design notes that save time
+
+**Good:**
+
+- `keep`, `order`, `mode`, `nulls`, `remainder` — argument names models assume
+  they know the defaults of
+- edge-case triggers: null keys, ties, empty input, boundary indices, trailing
+  separators
+- a `task_clause` that states **what** is required and never **how**
+
+**Bad:**
+
+- changing a signature → `TypeError`, the agent debugs and wins
+- a deviation only reachable on input the agent is unlikely to construct
+- a `task_clause` that hints at the deviation ("remember that ties are included")
+- anything requiring network access or a real published package
+
+---
+
+## 3. Author a domain
+
+Only when you need something the catalog can't express — a domain-specific API
+shape, a multi-step deviation, a non-Python target.
+
+```bash
+priorlock new-domain mylib     # scaffolds mylib-domain/ with all files pre-wired
+priorlock stage0 mylib-domain  # runs the domain's own scripts/stage0.py
+```
+
+Checklist after scaffolding:
+
+- [ ] `deviation_spec.yaml` — your 2+ silent deviations, weights summing to 1.0
+- [ ] `src/mylib/__init__.py` — v2.0 with deviations present
+- [ ] `src/mylib_familiar/__init__.py` — v1.x, Stage-0 only, never shipped
+- [ ] `tasks/mylib-0/environment/repo/data/` — input triggering every deviation
+- [ ] `.../docs/CHANGELOG.md` — document every deviation; reading it must suffice
+- [ ] `.../docs/api_reference.md` — full v2.0 API
+- [ ] `.../tests/test_visible.py` — shape/type only, no exact values
+- [ ] `.../solution/solve.sh` — gold solution, must score 1.0
+- [ ] `.../tests/grade.py` — component weights summing to 1.0
+- [ ] `.../tests/expected.json` — exact gold output
+- [ ] `scripts/stage0.py` — `GOLD_CODE`, `FAMILIAR_CODE`, inline grade logic
+
+The authored path requires you to hand-derive the 0.40 familiar baseline through
+your grader's component weights. This is the step the probe catalog exists to
+eliminate — if you find yourself fighting it, check whether an archetype
+(contribution type 2) would serve you better.
+
+**Consider contributing the archetype instead.** A domain helps one task; an
+archetype helps every task anyone ever wraps.
+
+---
 
 ## CI
 
-Every PR that touches a domain directory automatically runs Stage-0 for that
-domain via GitHub Actions. The PR cannot be merged unless all 6 gates pass.
+Every PR runs, via `.github/workflows/stage0.yml`:
+
+1. **Catalog gates** — all 13 archetypes wrapped individually and put through all
+   9 gates
+2. **Wrapped-task gates** — every `priorlock.toml` in the repo, gated
+3. **Authored-domain gates** — every `scripts/stage0.py`, run as before
+
+A PR cannot merge unless everything passes.
+
+## Gate reference
+
+| Gate | Check | Requirement |
+|------|-------|-------------|
+| G1 | gold score | exactly 1.0 |
+| G2 | familiar score | exactly 0.40 |
+| G3 | stub score | exactly 0.0 |
+| G4 | ladder | 0.0 < 0.40 < 1.0, strictly |
+| G5 | visible tests | pass for BOTH gold and familiar |
+| G6 | canary | no verifier asset reachable from `environment/` |
+| G7 | bypass | hand-rolling scores 0.0, not 0.40 |
+| G8 | tamper | editing the library is flagged and changes no score |
+| G9 | discrimination | every probe separates gold from familiar |
+
+G7 and G8 are the anti-reward-hacking gates. G7 makes bypassing the library
+strictly worse than using it naively; G8 makes editing it pointless because the
+verifier grades against its own pristine copy.
+
+Full detail: [`priorlock/docs/04-PROBE-SPEC.md`](priorlock/docs/04-PROBE-SPEC.md).

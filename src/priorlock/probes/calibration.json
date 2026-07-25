@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "note": "Empirical familiar-rates per probe per model family. 'discrimination' is the fraction of runs where a probe produced a non-ambiguous verdict (override or prior_locked). 'familiar_rate' is the fraction of those that were prior_locked. The 0.40 baseline itself is structural and does not depend on these numbers — calibration only tells you how INFORMATIVE a probe is for a given model. Populate with: priorlock calibrate ingest <trials-dir> --model <name>",
+  "models": {},
+  "probes": {}
+}

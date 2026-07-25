@@ -37,4 +37,4 @@ Issues = "https://github.com/phoenixlibbi/PriorLock-RL-env/issues"
 where = ["src"]
 
 [tool.setuptools.package-data]
-priorlock = ["domains/**/*"]
+priorlock = ["domains/**/*", "probes/calibration.json"]

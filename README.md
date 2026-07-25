@@ -1,1 +1,266 @@
-# PriorLock-RL-env
+# PriorLock
+
+**A Harbor-native RL environment that measures whether an AI agent can override
+its memorized training-data priors when the live environment contradicts them.**
+
+Wrap any Terminal-Bench task in one command. You write nothing.
+
+```bash
+pip install -e .
+
+priorlock wrap tasks/my-task      # inject 3 pre-calibrated probes
+priorlock stage0 tasks/my-task    # 9 offline gates — no Docker, no API key
+harbor trial start -p tasks/my-task
+```
+
+---
+
+## The failure mode
+
+Models memorize the APIs they saw during training. When an environment ships a
+newer library whose defaults changed, the model confidently applies what it
+remembers. No exception is raised. The smoke tests pass. The output is wrong.
+
+```python
+# The container ships v2.0, where keep defaults to "last".
+# The CHANGELOG says so. The model doesn't read it.
+
+dedupe(items, "sku")                 # prior-locked  → last occurrence wins
+dedupe(items, "sku", keep="first")   # doc-reading   → first occurrence wins
+```
+
+That single difference is the entire measurement.
+
+---
+
+## What you get
+
+Every task produces two scores.
+
+| | Measures | Source |
+|---|---|---|
+| `task_score` | terminal competence | the task's original verifier, untouched |
+| `gap_score` | prior-override capability | injected probes |
+
+`reward = (task_score × w_task + gap_score × w_gap) / (w_task + w_gap)`
+
+Harbor only reads `reward.json`, so wrapping is transparent to the runner.
+
+---
+
+## The ladder
+
+Every probe scores on three rungs, **by construction** rather than by per-domain
+calibration:
+
+```
+0.00 ──────── 0.40 ──────────────────── 1.00
+bypassed    prior-locked            read the docs
+```
+
+| Score | Verdict | Meaning |
+|-------|---------|---------|
+| **1.00** | `override` | read the shipped CHANGELOG and acted on it |
+| **0.40** | `prior_locked` | applied the memorized default — confident but wrong |
+| **0.00** | `bypassed` | never called the library at all |
+
+The 0.40 rung being structural is the key property. In the original design it had
+to be hand-derived per domain, and a mis-derived value silently invalidated the
+measurement. Now it's a property of the harness, verified offline by gate G2 for
+every wrapped task.
+
+---
+
+## Probe catalog
+
+Thirteen archetypes, three families, five categories. All 13 pass all 9 gates in
+CI on every commit.
+
+```bash
+priorlock probes
+priorlock probes --show tie_inclusive_topk
+```
+
+| Family | Mechanism | Signal read from |
+|--------|-----------|------------------|
+| `default_flip` | a keyword argument's **default** was inverted | call arguments |
+| `value_remap` | an accepted value's **meaning** was reassigned | call arguments |
+| `result_shape` | the **return shape** changed | output values |
+
+Selection enforces one probe from each family. An agent that learns to always
+pass keyword arguments explicitly defeats `default_flip` — and still fails
+`result_shape`.
+
+---
+
+## Why it can't be farmed
+
+Five independent defences, two of them enforced as gates.
+
+1. **The verifier owns the library.** Grading imports a pristine copy from
+   `tests/_plx_lib/`, first on `sys.path`. Editing the shipped copy is flagged
+   and changes nothing. *(gate G8)*
+2. **Call arguments are observed, not self-reported.** Recovered via
+   `inspect.Signature.bind`, which excludes defaults. No trace file to forge.
+3. **Bypassing scores 0.00, not 0.40.** Hand-rolling the familiar behaviour is
+   strictly worse than calling the library naively. *(gate G7)*
+4. **Visible tests are non-discriminating by construction.** Generated from the
+   probe set; they assert types and key presence only. *(gate G5)*
+5. **Probes rotate per task.** Selection is seeded on the task ID, and library
+   names rotate through a pool of plausible non-existent packages.
+
+---
+
+## Gates
+
+Offline. No Docker, no network, no API key. Every gate runs the *generated*
+grader against *generated* reference solutions.
+
+| Gate | Check | Requirement |
+|------|-------|-------------|
+| G1 | gold score | exactly 1.0 |
+| G2 | familiar score | exactly 0.40 |
+| G3 | stub score | exactly 0.0 |
+| G4 | ladder | 0.0 < 0.40 < 1.0, strictly |
+| G5 | visible tests | pass for BOTH gold and familiar |
+| G6 | canary | no verifier asset reachable from `environment/` |
+| G7 | bypass | hand-rolling scores 0.0, not 0.40 |
+| G8 | tamper | editing the library is flagged and changes no score |
+| G9 | discrimination | every probe separates gold from familiar |
+
+```
+$ priorlock stage0 tasks/my-task
+
+=== Stage-0 · my-task ===
+library datawright · probes: tie_inclusive_topk, null_key_policy, merge_precedence_remap
+
+G1 gold score                         PASS  gap_score=1.0
+G2 familiar score                     PASS  gap_score=0.4 (want 0.4)
+G3 stub score                         PASS  gap_score=0.0
+G4 strict ladder                      PASS  0.0 < 0.4 < 1.0
+G5 visible tests non-discriminating   PASS  gold=pass familiar=pass
+G6 canary clean                       PASS  no oracle assets in environment/
+G7 bypass scores zero                 PASS  gap_score=0.0 verdicts={'bypassed': 3}
+G8 tamper-proof grading               PASS  score=1.0 flags=['library_modified']
+G9 all probes discriminate            PASS  every probe separates gold from familiar
+
+ladder  stub 0.0  bypass 0.0  familiar 0.4  gold 1.0
+
+ALL GATES PASS
+```
+
+---
+
+## Inspecting a run
+
+`verify` prints the arguments each call actually supplied — that *is* the
+measurement:
+
+```
+$ priorlock verify tasks/my-task --reference familiar
+
+gap_score 0.4  (familiar.py)
+
+  null_key_policy              prior_locked      0.40
+    supplied: [{"key": "region"}]                  ← nulls= never passed
+    output matches: familiar
+  merge_precedence_remap       prior_locked      0.40
+    supplied: [{"on_conflict": "keep"}]            ← the 1.x meaning
+    output matches: familiar
+```
+
+---
+
+## Calibration
+
+Calibration does **not** establish the 0.40 baseline — that's structural. It
+measures how *informative* each probe is against a given model.
+
+```bash
+priorlock calibrate ingest trials/ --model claude-opus-5
+priorlock calibrate report --model claude-opus-5
+priorlock calibrate recommend --model claude-opus-5
+```
+
+| Metric | Definition |
+|--------|------------|
+| `discrimination` | fraction of runs with an unambiguous verdict |
+| `familiar_rate` | of those, the fraction that were prior-locked — **the headline number** |
+
+A probe going stale degrades *resolution*, not *validity*.
+
+---
+
+## Commands
+
+```
+priorlock wrap <task>          inject probes into an existing Harbor task
+priorlock wrap <dir> -r        wrap an entire task suite
+priorlock unwrap <task>        remove everything wrap added
+priorlock stage0 <task>        9 offline gates
+priorlock verify <task>        grade one solution locally, see supplied args
+priorlock probes               browse the catalog
+priorlock calibrate ...        measure probe informativeness
+priorlock new-domain <name>    scaffold a bespoke authored domain
+priorlock info                 what's wrapped, what's authored, catalog size
+```
+
+---
+
+## Two paths
+
+| | `priorlock wrap` | `priorlock new-domain` |
+|---|---|---|
+| Author effort | none | ~30 min per domain |
+| 0.40 baseline | structural | hand-derived, gate-checked |
+| Applies to | any Harbor task | one bespoke domain |
+| Probe novelty | catalog only | anything |
+| Anti-hack | 5 layers, generated | manual |
+
+Use `wrap` by default. Use `new-domain` when you need a probe the catalog can't
+express — then consider contributing the archetype back, since a new archetype
+benefits every wrapped task at once.
+
+`tablixdemo-0` is both: its `task_score` comes from hand-written tablix
+deviations, its `gap_score` from three injected probes. The two measurements
+agreeing is the cheapest available evidence that the generic path measures the
+same thing the bespoke path does.
+
+---
+
+## Docs
+
+| | |
+|---|---|
+| [`00-THE-GAP.md`](priorlock/docs/00-THE-GAP.md) | the failure mode and why it matters |
+| [`01-ARCHITECTURE.md`](priorlock/docs/01-ARCHITECTURE.md) | engine + cartridge model |
+| [`02-BUILD-SPEC.md`](priorlock/docs/02-BUILD-SPEC.md) | authored-domain spec |
+| [`04-PROBE-SPEC.md`](priorlock/docs/04-PROBE-SPEC.md) | **probe architecture — start here** |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | three ways to contribute |
+
+---
+
+## Layout
+
+```
+src/priorlock/
+  probes/
+    base.py           Probe contract, the {0, 0.40, 1.0} ladder
+    catalog.py        13 pre-calibrated archetypes
+    __init__.py       registry, category inference, selection
+  templates.py        generators for every injected file
+  inject.py           wrap / unwrap / manifest
+  gates.py            the 9 offline gates
+  calibrate.py        empirical probe informativeness
+  scaffold.py         authored-domain scaffolding
+  cli.py
+
+tablixdemo/           reference authored domain (also wrapped)
+website/              Next.js site
+priorlock/docs/       specification
+priorlock/papers/     literature notes
+```
+
+---
+
+MIT · [PriorLock trial build](TRIAL-BUILD-PLAN.md)

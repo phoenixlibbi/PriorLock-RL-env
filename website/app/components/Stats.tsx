@@ -1,8 +1,8 @@
 const stats = [
-  { value: "0.40", label: "Prior-locked baseline score" },
-  { value: "1.0", label: "Gold (prior-aware) score" },
-  { value: "2", label: "Silent deviations per domain" },
-  { value: "6", label: "Stage-0 offline gates" },
+  { value: "0.40", label: "Prior-locked baseline — structural, not calibrated" },
+  { value: "13", label: "Pre-calibrated probe archetypes" },
+  { value: "9", label: "Stage-0 offline gates" },
+  { value: "0", label: "Lines a task author has to write" },
 ];
 
 export default function Stats() {

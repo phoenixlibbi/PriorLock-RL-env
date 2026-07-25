@@ -1,23 +1,33 @@
 const steps = [
   {
     num: "01",
-    title: "Synthetic library installed",
-    body: "The agent's container has a library (e.g. tablix v1.4) with silent behavioral deviations from the version the agent likely memorized during training.",
+    title: "Wrap any Harbor task",
+    body: "One command injects a synthetic library, in-container docs, a sub-task, and a grader into an existing Terminal-Bench task. The author writes nothing.",
   },
   {
     num: "02",
-    title: "Docs are in-container",
-    body: "A CHANGELOG.md and api_reference.md inside the repo document the exact deviations. The agent can read them — it just has to choose to.",
+    title: "Docs are authoritative",
+    body: "A generated CHANGELOG documents every behavioural change plainly. Reading it is always sufficient to score 1.0. There is no puzzle — the only way to fail is to not look.",
   },
   {
     num: "03",
     title: "Visible tests don't discriminate",
-    body: "The visible smoke tests pass for both the familiar (memorized) solution and the correct solution. Agents cannot use test results to detect the trap.",
+    body: "Smoke tests assert container types and key presence only. Both the prior-locked and doc-reading solutions pass them, so agents can't use test results to detect anything.",
   },
   {
     num: "04",
-    title: "Hidden verifier scores the gap",
-    body: "After the session ends, Harbor runs the hidden grader against exact expected values. Prior-locked agents score 0.40. Prior-aware agents score 1.0.",
+    title: "The verifier reads call arguments",
+    body: "Grading re-executes the submission against a pristine, verifier-owned copy of the library and recovers the arguments actually supplied. Not output-diffing — direct observation.",
+  },
+  {
+    num: "05",
+    title: "Two scores come out",
+    body: "task_score from the task's original verifier, untouched. gap_score from the probes. Harbor only reads reward.json, so wrapping is transparent to the runner.",
+  },
+  {
+    num: "06",
+    title: "Nine gates prove it offline",
+    body: "Before any model runs, the harness verifies gold=1.0, familiar=0.40, stub=0.0, bypass=0.0, tamper-detection, and per-probe discrimination. No Docker, no API key.",
   },
 ];
 
@@ -29,11 +39,12 @@ export default function HowItWorks() {
         How it <span>works</span>
       </h2>
       <p className="section-lead">
-        PriorLock isolates a single failure mode: agents that trust memorized knowledge over
-        in-environment documentation.
+        PriorLock isolates a single failure mode: agents that trust memorized knowledge
+        over in-environment documentation. It rides along on top of whatever the task
+        already measured.
       </p>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {steps.map((s) => (
           <div key={s.num} className="card flex h-full flex-col p-6">
             <p

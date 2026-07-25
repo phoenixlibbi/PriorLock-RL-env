@@ -1,3 +1,5 @@
+import CodeBlock from "./CodeBlock";
+
 export default function Hero() {
   return (
     <section className="relative px-6 sm:px-8 pt-20 sm:pt-28 pb-16 sm:pb-20">
@@ -20,12 +22,28 @@ export default function Hero() {
         </h1>
 
         <p
-          className="rise rise-delay-2 mb-10 max-w-xl text-base sm:text-lg leading-relaxed"
+          className="rise rise-delay-2 mb-7 max-w-xl text-base sm:text-lg leading-relaxed"
           style={{ color: "var(--muted)" }}
         >
           A benchmark that measures whether AI agents can override stale memorized
           knowledge when confronted with ground truth inside the environment.
         </p>
+
+        <div
+          className="rise rise-delay-2 mb-9 w-full max-w-lg rounded-[var(--radius)] border px-5 py-4 text-left"
+          style={{ background: "var(--bg2)", borderColor: "var(--border)" }}
+        >
+          <p
+            className="mb-2 font-mono text-[10px] font-bold uppercase tracking-widest"
+            style={{ color: "var(--muted)" }}
+          >
+            Wrap any Harbor task · you write nothing
+          </p>
+          <CodeBlock
+            code="priorlock wrap tasks/my-task"
+            preClassName="!border-0 !bg-transparent !px-0 !py-0 !text-sm !text-[var(--green)]"
+          />
+        </div>
 
         <div className="rise rise-delay-3 flex flex-wrap justify-center gap-3">
           <a href="#quickstart" className="btn btn-primary">
