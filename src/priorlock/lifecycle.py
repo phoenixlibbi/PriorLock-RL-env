@@ -279,6 +279,13 @@ def find_baseline(trials_dir: str | Path, task_id: str | None = None,
         name = (data.get("agent_info") or {}).get("name", "")
         if agent and name != agent:
             continue
+
+        # A pre-wrap run cannot have produced a composite summary, because the
+        # composite verifier did not exist yet. Post-wrap runs therefore carry
+        # verifier/priorlock_summary.json — and pinning one of those as "the
+        # baseline" silently compares a composite score against a task score.
+        if (trial / "verifier" / "priorlock_summary.json").is_file():
+            continue
         if task_id and data.get("task_name") not in (task_id, None):
             continue
 
@@ -379,7 +386,8 @@ def doctor(task_dir: str | Path, trials_dir: str | Path,
     root = Path(trials_dir)
     newest = ""
     if root.is_dir():
-        for summary in sorted(root.rglob("verifier/priorlock_summary.json")):
+        candidates = []
+        for summary in root.rglob("verifier/priorlock_summary.json"):
             trial = summary.parent.parent
             result = trial / "result.json"
             finished = ""
@@ -388,19 +396,25 @@ def doctor(task_dir: str | Path, trials_dir: str | Path,
                     finished = json.loads(result.read_text()).get("finished_at", "") or ""
                 except json.JSONDecodeError:
                     pass
-            if finished < newest:
-                continue
+            # fall back to mtime so a trial with an unreadable result.json still
+            # orders correctly instead of sorting as the empty string
+            key = finished or f"~{summary.stat().st_mtime:.0f}"
+            candidates.append((key, summary))
+
+        if candidates:
+            newest, summary = max(candidates, key=lambda kv: kv[0])
             try:
                 data = json.loads(summary.read_text())
             except json.JSONDecodeError:
-                continue
-            newest = finished
+                data = {}
             comps = data.get("components", {})
             observed = float(comps.get("task_score", 0.0))
             gap = float(comps.get("gap_score", 0.0))
             probes = data.get("probes", [])
             if data.get("flags"):
                 notes.append("verifier flags: " + ", ".join(data["flags"]))
+            if len(candidates) > 1:
+                notes.append(f"compared the newest of {len(candidates)} post-wrap runs")
 
     if observed is None:
         notes.append("no post-wrap run found — run "
