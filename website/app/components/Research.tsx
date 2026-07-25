@@ -165,7 +165,7 @@ export default function Research() {
             step: "05",
             title: "Stage-0 validates the domain",
             detail:
-              "Before any live agent run, 6 offline gates verify the domain is well-formed: G1 gold=1.0, G2 familiar=0.40, G3 stub=0.0, G4 strict ladder, G5 visible tests pass both paths, G6 oracle files absent from agent surface.",
+              "Before any live agent run, 12 offline gates verify the task is well-formed: G1 gold=1.0, G2 familiar=0.40, G3 stub=0.0, G4 strict ladder, G5 visible tests pass both paths, G6 oracle files absent from the agent surface, G7 bypass=0.0, G8 tamper-proof, G9 every probe discriminates, G10 host verifier preserved, G11 shipped oracle scores 1.0, G12 canary never reaches the agent.",
           },
         ].map((r, i, arr) => (
           <div

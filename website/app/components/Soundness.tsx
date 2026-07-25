@@ -20,6 +20,20 @@ const receipt = [
   { k: "worst surviving", v: "0.0", note: "against a 0.40 baseline" },
 ];
 
+const vectors = [
+  ["cat", "18 candidate oracle paths"],
+  ["find", "8 needles + the _plx_* glob, whole filesystem"],
+  ["import", "the verifier modules by name"],
+  ["sys.path", "what the interpreter would resolve"],
+  ["pip list", "the generated library as an installed dist"],
+  ["walk", "filesystem walks from 6 bases"],
+  ["env", "full os.environ, canary-grepped"],
+  ["git", "log and show — history outlives a deleted file"],
+  ["ps", "oracle process names in the process table"],
+  ["canary", "grep the reachable filesystem for the planted string"],
+  ["network", "egress attempts to 3 hosts — A7 as a fact"],
+];
+
 export default function Soundness() {
   return (
     <section id="soundness" className="section">
@@ -166,6 +180,100 @@ priorlock cheats <task> --suite -o receipt.json`}
           />
         </div>
       </div>
+
+      {/* runtime isolation */}
+      <p className="section-label mt-16">Isolation, not assertion</p>
+      <h2 className="section-title">
+        The runtime <span>leak probe</span>
+      </h2>
+      <p className="section-lead">
+        A static check is not isolation. Grepping <code>environment/</code> answers a
+        question about the repo; it says nothing about the container an agent actually
+        gets. So the container gets asked directly.
+      </p>
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-2">
+        <div className="card p-6">
+          <p className="mb-4 text-sm font-semibold tracking-tight">
+            Every entrypoint an agent has
+          </p>
+          <table className="lb-table w-full">
+            <thead>
+              <tr>
+                <th>Vector</th>
+                <th>What it tries</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vectors.map(([v, what]) => (
+                <tr key={v}>
+                  <td className="font-mono text-xs">{v}</td>
+                  <td style={{ color: "var(--muted)" }}>{what}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div
+            className="rounded-[var(--radius)] border p-5"
+            style={{ background: "rgba(91,156,255,0.07)", borderColor: "rgba(91,156,255,0.22)" }}
+          >
+            <p
+              className="mb-2 font-mono text-xs font-bold uppercase tracking-widest"
+              style={{ color: "var(--accent)" }}
+            >
+              A random canary, not a filename
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+              <code>wrap</code> plants <code>PLXCANARY-&lt;24 hex&gt;</code> into the
+              grader and reference solutions — verifier-side files only. Asking
+              &ldquo;is there a file called <code>gold.py</code>?&rdquo; cannot catch a
+              copy under a different name or a fragment pasted into a layer. A random
+              string can. Gate <strong>G12</strong> enforces it offline on every wrap;
+              the probe greps the live container for the same string.
+            </p>
+          </div>
+
+          <div
+            className="rounded-[var(--radius)] border p-5"
+            style={{ background: "rgba(230,180,74,0.07)", borderColor: "rgba(230,180,74,0.24)" }}
+          >
+            <p
+              className="mb-2 font-mono text-xs font-bold uppercase tracking-widest"
+              style={{ color: "var(--yellow)" }}
+            >
+              A probe that never fires proves nothing
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+              Run against a deliberately leaky container, it flagged four vectors a
+              clean one did not — <code>find probe_grade.py</code>,{" "}
+              <code>find gold.py</code>, <code>find _plx_*</code> and the filesystem
+              walk. The negative result is only worth reading because the positive one
+              was checked first.
+            </p>
+          </div>
+
+          <CodeBlock
+            className="mt-auto"
+            code={`priorlock leakprobe <task>
+harbor run -p <task>__leakprobe -a oracle`}
+          />
+        </div>
+      </div>
+
+      <p className="mb-12 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+        The probe ships as a sibling Harbor task with an <code>environment/</code>{" "}
+        copied from the original — same image, same mounts, same network posture.
+        Probing a purpose-built image would prove nothing about the one agents run in.
+        <strong style={{ color: "var(--text)" }}>
+          {" "}
+          The deployed-container trace is the one artefact still outstanding
+        </strong>{" "}
+        — one command, no API key. Until it exists this reads as construction plus
+        sandbox rehearsal, and is not claimed as more than that.
+      </p>
 
       {/* verified end to end */}
       <p className="section-label mt-16">Verified end to end</p>

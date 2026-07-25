@@ -1,7 +1,7 @@
 const stats = [
   { value: "0.40", label: "Prior-locked baseline — structural, not calibrated" },
   { value: "0/104", label: "False accepts · Wilson95 upper 0.036" },
-  { value: "11", label: "Stage-0 offline gates" },
+  { value: "12", label: "Stage-0 offline gates" },
   { value: "0", label: "Lines a task author has to write" },
 ];
 

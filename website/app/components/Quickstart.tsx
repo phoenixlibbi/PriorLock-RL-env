@@ -26,7 +26,7 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
   },
   {
     n: 3,
-    label: "Run the nine offline gates (no Docker, no API key)",
+    label: "Run the twelve offline gates (no Docker, no API key)",
     code: `priorlock stage0 tasks/my-task
 
 # G1 gold score              PASS  1.0
