@@ -8,7 +8,9 @@ it, and **convert** it. Keeping those steps separate is what lets you tell a
 broken task apart from a broken probe.
 
 ```bash
-pip install -e .
+# install the CLI (package only — no need to clone the monorepo)
+pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+priorlock info
 
 # 1-3  build + validate as a normal Harbor task (oracle should score 1.0)
 harbor run -p tasks/my-task -a oracle
@@ -27,6 +29,7 @@ harbor run -p tasks/my-task -a oracle
 priorlock doctor tasks/my-task
 ```
 
+Contributors who need the full tree: `git clone` then `pip install -e ".[dev]"`.
 Full walkthrough: [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md)
 
 ---

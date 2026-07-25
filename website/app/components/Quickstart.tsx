@@ -4,11 +4,13 @@ const steps = [
   {
     n: 1,
     label: "Install the package",
-    code: `git clone https://github.com/phoenixlibbi/PriorLock-RL-env
-cd PriorLock-RL-env
-pip install -e .
+    code: `pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
 
-priorlock info      # what's wrapped, what's authored, catalog size`,
+priorlock info      # what's wrapped, what's authored, catalog size
+
+# contributors only — full tree for local development:
+# git clone https://github.com/phoenixlibbi/PriorLock-RL-env
+# cd PriorLock-RL-env && pip install -e ".[dev]"`,
   },
   {
     n: 2,

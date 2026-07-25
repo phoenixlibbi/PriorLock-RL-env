@@ -17,6 +17,12 @@ The common case. You have a Harbor / Terminal-Bench task and you want it to also
 measure prior-override capability. You write nothing.
 
 ```bash
+# users: install the package only
+pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+
+# contributors: clone, then editable install
+git clone https://github.com/phoenixlibbi/PriorLock-RL-env
+cd PriorLock-RL-env
 pip install -e ".[dev]"
 
 priorlock wrap tasks/my-task          # inject 3 pre-calibrated probes

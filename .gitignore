@@ -7,7 +7,6 @@
 harbortasks/
 jobs/
 .github/
-pyproject.toml
 
 # local notes
 
