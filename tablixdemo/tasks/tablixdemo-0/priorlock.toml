@@ -9,6 +9,7 @@ library_sha256 = "98759068345a5a3ff1a9986cb0adbcb5b8441d864f1399c4f8a78603f0bd91
 solution = "probe_solution.py"
 input = "data/probe_input.json"
 workdir = "/app/repo"
+container_repo = "/app/repo"
 original_verifier = "task_verify.sh"
 original_verifier_sha256 = "91939ab6fa68f770dec110d286da23a154d497a9afbbad6be744a085b52f8d11"
 familiar_baseline = 0.40
@@ -56,12 +57,3 @@ weight = 1.0
 summary = "merge(on_conflict=\"keep\") now means keep the NEWER value, not the existing one."
 familiar_behaviour = "\"keep\" preserves the existing value in base"
 installed_behaviour = "\"keep\" is an alias for keep_right \u2014 the patch value wins"
-
-[baseline]
-# Oracle reward recorded BEFORE wrapping. `priorlock doctor` compares
-# the post-wrap task_score against this to prove wrapping did no harm.
-reward = 1.0
-agent = "oracle"
-trial = "tablixdemo-0__fupYgQQ"
-task_checksum = "706db01c3396978d487ed366c1076585772c617cda47ba3c19baa6e1d35e9507"
-captured_at = "2026-07-25T00:00:30.554570Z"

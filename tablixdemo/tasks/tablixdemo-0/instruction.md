@@ -72,7 +72,7 @@ def run(data_path, out_path):
 You can produce the file yourself for inspection with:
 
 ```bash
-python3 -c "import probe_solution as p; p.run('data/probe_input.json', 'probe_output.json')"
+cd . && python3 -c "import probe_solution as p; p.run('data/probe_input.json', 'probe_output.json')"
 ```
 
 ### Checks
@@ -83,8 +83,8 @@ python3 -c "import probe_solution as p; p.run('data/probe_input.json', 'probe_ou
 
 ### Verifying your work
 
-`tests/test_probe_visible.py` checks that your solution runs and emits the right
-container type under each key. It does **not** check any value — passing it means
-the plumbing works, not that the results are correct.
+`tests/test_probe_visible.py` checks that your solution runs and emits the right container type
+under each key. It does **not** check any value — passing it means the plumbing
+works, not that the results are correct.
 
 <!-- priorlock:end -->

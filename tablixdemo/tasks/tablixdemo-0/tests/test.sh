@@ -3,9 +3,12 @@
 #
 #   Phase 1  native task reward   (delegated to the task's original verifier)
 #   Phase 2  prior-override reward (probe grader)
-#   Phase 3  composite -> /logs/verifier/reward.json
+#   Phase 3  composite -> /logs/verifier/reward.{txt,json}
 #
-# Harbor only ever reads reward.json, so wrapping is transparent to the runner.
+# Harbor accepts either reward.txt (the `harbor tasks init` default, an integer
+# or float on one line) or reward.json ({"reward": <float>}). The original
+# verifier is left completely alone — whichever it writes, we read; and we
+# re-emit BOTH so the wrapped task works with any runner configuration.
 set -uo pipefail
 mkdir -p /logs/verifier
 
@@ -13,17 +16,35 @@ TASK_SCORE=0.0
 
 # ── Phase 1 ──────────────────────────────────────────────────────────────────
 if [ -f /tests/task_verify.sh ]; then
+  # clear any stale reward so we only read what THIS run produced
+  rm -f /logs/verifier/reward.txt /logs/verifier/reward.json
+
   bash /tests/task_verify.sh > /logs/verifier/task_stdout.log 2>&1
-  if [ -f /logs/verifier/reward.json ]; then
-    TASK_SCORE=$(python3 -c "
-import json,sys
-try:
-    print(json.load(open('/logs/verifier/reward.json')).get('reward', 0.0))
-except Exception:
-    print(0.0)
-")
-    cp /logs/verifier/reward.json /logs/verifier/task_reward.json
-  fi
+
+  TASK_SCORE=$(python3 - <<'PY'
+import json, pathlib
+
+def read():
+    j = pathlib.Path("/logs/verifier/reward.json")
+    if j.is_file():
+        try:
+            return float(json.loads(j.read_text()).get("reward", 0.0))
+        except Exception:
+            pass
+    t = pathlib.Path("/logs/verifier/reward.txt")
+    if t.is_file():
+        try:
+            return float(t.read_text().strip() or 0.0)
+        except Exception:
+            pass
+    return 0.0
+
+print(read())
+PY
+)
+  for f in reward.txt reward.json; do
+    [ -f "/logs/verifier/$f" ] && cp "/logs/verifier/$f" "/logs/verifier/task_$f"
+  done
 fi
 
 # ── Phase 2 ──────────────────────────────────────────────────────────────────
@@ -63,7 +84,9 @@ summary = {
     "flags": probe.get("flags", []),
 }
 
+# emit BOTH conventions so the wrapped task works with any runner config
 json.dump({"reward": reward}, open("/logs/verifier/reward.json", "w"))
+open("/logs/verifier/reward.txt", "w").write(str(reward) + "\n")
 json.dump(summary, open("/logs/verifier/priorlock_summary.json", "w"), indent=2)
 
 print("reward        ", reward)
