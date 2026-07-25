@@ -267,13 +267,35 @@ harbor run -p <task>__leakprobe -a oracle`}
         The probe ships as a sibling Harbor task with an <code>environment/</code>{" "}
         copied from the original — same image, same mounts, same network posture.
         Probing a purpose-built image would prove nothing about the one agents run in.
-        <strong style={{ color: "var(--text)" }}>
-          {" "}
-          The deployed-container trace is the one artefact still outstanding
-        </strong>{" "}
-        — one command, no API key. Until it exists this reads as construction plus
-        sandbox rehearsal, and is not claimed as more than that.
+        The trace below is from the deployed container, not a rehearsal.
       </p>
+
+      <div className="card mb-12 p-6">
+        <CodeBlock
+          code={`leak probe: 49 attempts
+  positive control: PASS — the agent's own library imports, so absences are meaningful
+  oracle reachable from the agent: 0
+  runner surface (judged by content, not existence):
+    ok   /solution      contains only runner artefacts: probe.py, solve.sh
+    ok   /logs          contains only runner artefacts: agent, verifier
+    ok   /logs/verifier contains only runner artefacts: (empty)
+    ok   /logs/agent    contains only runner artefacts: oracle.txt
+  canary not on the agent surface
+  network egress reachable: pypi.org:443, github.com:443, 1.1.1.1:53
+    NOTE: the host task declares allow_internet = true — inherited
+    posture, measured and reported, not a containment breach.
+
+ISOLATION PROVEN AT RUNTIME                              reward 1.0`}
+        />
+        <p className="mt-4 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+          <strong>The positive control is the line that matters.</strong> Every other
+          result here is an absence, and an absence is only evidence if the instrument
+          was working. On the first live run the control <em>failed</em> — the probe
+          executes from <code>/tmp</code>, so the repo was off <code>sys.path</code> and
+          all seven <code>ModuleNotFoundError</code>s meant nothing. A failed control now
+          forces <code>INCONCLUSIVE</code>, which scores 0.0 exactly like a leak.
+        </p>
+      </div>
 
       {/* verified end to end */}
       <p className="section-label mt-16">Verified end to end</p>

@@ -188,6 +188,53 @@ ALL GATES PASS
 
 ---
 
+## Isolation — proven at runtime
+
+A static file-layout check is not isolation. our build rules cites a build
+where it passed while the agent could `cat` the oracle on the live box. So the
+container gets asked directly.
+
+```bash
+priorlock leakprobe <task>                      # generates <task>__leakprobe
+harbor run -p <task>__leakprobe -a oracle       # no API key needed
+```
+
+```
+leak probe: 49 attempts
+  positive control: PASS — the agent's own library imports, so absences are meaningful
+  oracle reachable from the agent: 0
+  runner surface (judged by content, not existence):
+    ok   /solution      contains only runner artefacts: probe.py, solve.sh
+    ok   /logs/verifier contains only runner artefacts: (empty)
+  canary not on the agent surface
+  network egress reachable: pypi.org:443, github.com:443, 1.1.1.1:53
+    NOTE: the host task declares allow_internet = true — inherited posture,
+    measured and reported, not a containment breach.
+
+ISOLATION PROVEN AT RUNTIME
+```
+
+12 vectors: `cat`, `find`, `import`, `sys.path`, `pip list`, `walk`, `env`,
+`git`, `ps`, `canary`, runner surface, network egress.
+
+Three properties make the trace worth reading:
+
+1. **It is the image under test.** The probe task's `environment/` is copied
+   from the host task and asserted **byte-identical by sha256 at build time**.
+   Nothing may be added to it — an earlier version wrote the probe in, which
+   would have produced a green trace about a different image.
+2. **The instrument is verified.** The `import` vector carries a positive
+   control: the agent's *own* library must import. A failed control forces
+   `INCONCLUSIVE`, **which scores 0.0 exactly like a leak** — a probe that can't
+   show it is capable of seeing is not allowed to return a pass.
+3. **Content, not existence.** `/solution` and `/logs` exist on any Harbor run.
+   The check asks whether host-task oracle assets are sitting in them.
+
+Receipts: [`leakprobe-trace.json`](implementation-progress/receipts/leakprobe-trace.json)
+· [`leakprobe-verdict.txt`](implementation-progress/receipts/leakprobe-verdict.txt)
+
+---
+
 ## Soundness — the receipt
 
 The build rules makes this mandatory, not optional: ≥7 named cheat classes,
