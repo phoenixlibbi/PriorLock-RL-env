@@ -14,8 +14,22 @@ priorlock info      # what's wrapped, what's authored, catalog size
   },
   {
     n: 2,
+    label: "Run the oracle first — prove the Harbor task is sound",
+    code: `# Before wrapping: ordinary Harbor task must score 1.0
+harbor run -p tasks/my-task -a oracle
+
+# Expect: Mean 1.000 · Errors 0 · reward = 1.0
+# If this fails, fix the task — don't wrap a broken baseline.
+
+# After wrapping (and for leakprobe): same check
+# harbor run -p tasks/my-task -a oracle
+# harbor run -p tasks/my-task__leakprobe -a oracle`,
+  },
+  {
+    n: 3,
     label: "Wrap any Harbor task — this is the whole authoring step",
-    code: `priorlock wrap tasks/my-task
+    code: `priorlock preflight tasks/my-task
+priorlock wrap tasks/my-task --baseline-from jobs/
 
 # ✓ my-task wrapped
 #   library  datawright
@@ -27,7 +41,7 @@ priorlock info      # what's wrapped, what's authored, catalog size
 priorlock wrap tasks/ --recursive     # or an entire suite`,
   },
   {
-    n: 3,
+    n: 4,
     label: "Run the twelve offline gates (no Docker, no API key)",
     code: `priorlock stage0 tasks/my-task
 
@@ -43,7 +57,7 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
 # ALL GATES PASS`,
   },
   {
-    n: 4,
+    n: 5,
     label: "Attack it — 8 cheat classes, pooled FAR receipt",
     code: `priorlock cheats tasks/my-task --suite
 
@@ -55,7 +69,7 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
 # SOUND`,
   },
   {
-    n: 5,
+    n: 6,
     label: "Inspect what the benchmark actually reads",
     code: `priorlock verify tasks/my-task --reference familiar
 
@@ -65,7 +79,7 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
 #     output matches: familiar`,
   },
   {
-    n: 6,
+    n: 7,
     label: "Run an agent (Harbor + Docker + API key)",
     code: `export ANTHROPIC_API_KEY=sk-...
 harbor run -p tasks/my-task \\
@@ -75,7 +89,7 @@ harbor run -p tasks/my-task \\
 # priorlock_summary.json   task_score + gap_score + per-probe verdicts`,
   },
   {
-    n: 7,
+    n: 8,
     label: "Measure how informative each probe is for that model",
     code: `priorlock calibrate ingest trials/ --model claude-sonnet-5
 priorlock calibrate report --model claude-sonnet-5
@@ -92,8 +106,7 @@ export default function Quickstart() {
       <p className="section-label">Setup</p>
       <h2 className="section-title">Quickstart</h2>
       <p className="section-lead">
-        Requires Python ≥3.10. Steps 1–4 need nothing else — no Docker, no network, no
-        API key. Step 5 adds{" "}
+        Requires Python ≥3.10. Step 1 is local-only. Step 2 needs{" "}
         <a
           href="https://harborframework.com"
           target="_blank"
@@ -102,7 +115,8 @@ export default function Quickstart() {
         >
           Harbor
         </a>{" "}
-        with Docker.
+        + Docker (oracle smoke — expect reward 1.0). Steps 3–6 need no API key.
+        Step 7 adds a live model.
       </p>
 
       <div className="flex flex-col gap-5">
