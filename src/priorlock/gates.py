@@ -16,6 +16,7 @@ G6 canary     no verifier asset is reachable from the agent surface
 G7 bypass     hand-rolling the familiar answer scores 0.0, not 0.40
 G8 tamper     editing the shipped library is flagged and changes no score
 G9 discrim    every individual probe separates gold from familiar
+G10 host      the task's original verifier survived migration intact
 ============  ==========================================================
 
 G7 and G8 are the anti-reward-hacking gates and are the reason a wrapped task
@@ -25,6 +26,7 @@ against its own pristine copy.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -261,6 +263,12 @@ def run_stage0(task_dir: str | Path, verbose: bool = True) -> Stage0Report:
         {"dead": dead},
     ))
 
+    # ── G10 — the host task survived migration intact ────────────────────────
+    host = _host_preserved(layout, meta)
+    report.gates.append(GateResult(
+        "G10", "host task preserved", host["ok"], host["detail"], host,
+    ))
+
     if verbose:
         _print(report)
     return report
@@ -316,6 +324,56 @@ def _tamper_check(layout) -> dict:
         }
     finally:
         sb.cleanup()
+
+
+def _host_preserved(layout, meta: dict) -> dict:
+    """G10: wrapping must not damage or drop the task's original verifier.
+
+    Three things must hold for a migration to be non-destructive:
+      1. the original verifier was copied aside byte-identically
+      2. the composite entrypoint actually invokes it
+      3. the composite runs it FIRST, so task_score is captured before probes
+    """
+    original = meta.get("original_verifier", "")
+    expected_sha = meta.get("original_verifier_sha256", "")
+
+    if not original:
+        # a task that shipped no verifier is legal — nothing to preserve
+        return {"ok": True, "detail": "host task had no verifier to preserve",
+                "original": None}
+
+    saved = layout.tests / original
+    if not saved.is_file():
+        return {"ok": False, "detail": f"{original} missing — original verifier was lost",
+                "original": original}
+
+    actual_sha = hashlib.sha256(saved.read_bytes()).hexdigest()
+    if expected_sha and actual_sha != expected_sha:
+        return {"ok": False, "detail": f"{original} was modified after wrapping",
+                "original": original, "expected": expected_sha[:12],
+                "actual": actual_sha[:12]}
+
+    entry = layout.verifier_entry or (layout.tests / "test.sh")
+    if not entry.is_file():
+        return {"ok": False, "detail": "composite entrypoint missing",
+                "original": original}
+
+    composite = entry.read_text()
+    if original not in composite:
+        return {"ok": False, "detail": f"composite never invokes {original}",
+                "original": original}
+
+    # ordering: the original verifier must run before the probe grader, or its
+    # reward.json would be overwritten before we read it
+    pos_original = composite.find(original)
+    pos_probe = composite.find("probe_grade.py")
+    if pos_probe != -1 and pos_original > pos_probe:
+        return {"ok": False, "detail": "probe grader runs before the host verifier",
+                "original": original}
+
+    return {"ok": True,
+            "detail": f"{original} preserved byte-identical and invoked first",
+            "original": original, "sha256": actual_sha[:12]}
 
 
 def _dead_probes(gold: dict, familiar: dict, probe_ids: list[str]) -> list[str]:

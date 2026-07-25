@@ -20,7 +20,7 @@ measure prior-override capability. You write nothing.
 pip install -e ".[dev]"
 
 priorlock wrap tasks/my-task          # inject 3 pre-calibrated probes
-priorlock stage0 tasks/my-task        # 9 offline gates — no Docker, no API key
+priorlock stage0 tasks/my-task        # 10 offline gates — no Docker, no API key
 ```
 
 That's the whole workflow. `wrap` picks probes from the catalog based on your
@@ -185,6 +185,7 @@ A PR cannot merge unless everything passes.
 | G7 | bypass | hand-rolling scores 0.0, not 0.40 |
 | G8 | tamper | editing the library is flagged and changes no score |
 | G9 | discrimination | every probe separates gold from familiar |
+| G10 | host preserved | the original verifier survived migration intact |
 
 G7 and G8 are the anti-reward-hacking gates. G7 makes bypassing the library
 strictly worse than using it naively; G8 makes editing it pointless because the

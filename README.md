@@ -3,15 +3,31 @@
 **A Harbor-native RL environment that measures whether an AI agent can override
 its memorized training-data priors when the live environment contradicts them.**
 
-Wrap any Terminal-Bench task in one command. You write nothing.
+You don't author a PriorLock task. You build an ordinary Harbor task, validate
+it, and **migrate** it — the same way Harbor migrated Terminal-Bench 1.0 tasks
+rather than asking anyone to rewrite them.
 
 ```bash
 pip install -e .
 
-priorlock wrap tasks/my-task      # inject 3 pre-calibrated probes
-priorlock stage0 tasks/my-task    # 9 offline gates — no Docker, no API key
-harbor trial start -p tasks/my-task
+# 1-3  build + validate as a normal Harbor task (oracle should score 1.0)
+harbor trial start -p tasks/my-task -a oracle
+
+# 4    is it wrap-ready?
+priorlock preflight tasks/my-task
+
+# 5    migrate, pinning the pre-wrap oracle reward
+priorlock wrap tasks/my-task --baseline-from trials/
+
+# 6    10 offline gates — no Docker, no API key
+priorlock stage0 tasks/my-task
+
+# 7-8  re-run, then prove wrapping did no harm
+harbor trial start -p tasks/my-task -a oracle
+priorlock doctor tasks/my-task
 ```
+
+Full walkthrough: [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md)
 
 ---
 
@@ -127,6 +143,7 @@ grader against *generated* reference solutions.
 | G7 | bypass | hand-rolling scores 0.0, not 0.40 |
 | G8 | tamper | editing the library is flagged and changes no score |
 | G9 | discrimination | every probe separates gold from familiar |
+| G10 | host preserved | the original verifier survived migration intact |
 
 ```
 $ priorlock stage0 tasks/my-task
@@ -143,6 +160,7 @@ G6 canary clean                       PASS  no oracle assets in environment/
 G7 bypass scores zero                 PASS  gap_score=0.0 verdicts={'bypassed': 3}
 G8 tamper-proof grading               PASS  score=1.0 flags=['library_modified']
 G9 all probes discriminate            PASS  every probe separates gold from familiar
+G10 host task preserved               PASS  task_verify.sh preserved byte-identical
 
 ladder  stub 0.0  bypass 0.0  familiar 0.4  gold 1.0
 
@@ -194,10 +212,12 @@ A probe going stale degrades *resolution*, not *validity*.
 ## Commands
 
 ```
-priorlock wrap <task>          inject probes into an existing Harbor task
-priorlock wrap <dir> -r        wrap an entire task suite
-priorlock unwrap <task>        remove everything wrap added
-priorlock stage0 <task>        9 offline gates
+priorlock preflight <task>     is this Harbor task healthy and wrap-ready?
+priorlock wrap <task>          migrate it — inject probes
+priorlock wrap <dir> -r        migrate an entire task suite
+priorlock stage0 <task>        10 offline gates
+priorlock doctor <task>        did wrapping damage the host task?
+priorlock unwrap <task>        roll the migration back
 priorlock verify <task>        grade one solution locally, see supplied args
 priorlock probes               browse the catalog
 priorlock calibrate ...        measure probe informativeness
@@ -236,6 +256,7 @@ same thing the bespoke path does.
 | [`01-ARCHITECTURE.md`](priorlock/docs/01-ARCHITECTURE.md) | engine + cartridge model |
 | [`02-BUILD-SPEC.md`](priorlock/docs/02-BUILD-SPEC.md) | authored-domain spec |
 | [`04-PROBE-SPEC.md`](priorlock/docs/04-PROBE-SPEC.md) | **probe architecture — start here** |
+| [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md) | **build → validate → migrate → gate → doctor** |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | three ways to contribute |
 
 ---
@@ -250,7 +271,8 @@ src/priorlock/
     __init__.py       registry, category inference, selection
   templates.py        generators for every injected file
   inject.py           wrap / unwrap / manifest
-  gates.py            the 9 offline gates
+  lifecycle.py        preflight / baseline capture / doctor
+  gates.py            the 10 offline gates
   calibrate.py        empirical probe informativeness
   scaffold.py         authored-domain scaffolding
   cli.py

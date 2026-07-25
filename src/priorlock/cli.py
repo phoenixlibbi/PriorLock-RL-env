@@ -25,6 +25,7 @@ from pathlib import Path
 
 GREEN = "\033[32m"
 RED = "\033[31m"
+YELLOW = "\033[33m"
 DIM = "\033[2m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
@@ -153,8 +154,58 @@ def cmd_probes(args, root: str) -> int:
     return 0
 
 
+def cmd_preflight(args, root: str) -> int:
+    """Validate a host Harbor task before migrating it."""
+    from priorlock.lifecycle import preflight, print_preflight
+
+    targets = [Path(p) for p in args.paths]
+    if args.recursive:
+        expanded: list[Path] = []
+        for t in targets:
+            if (t / "task.toml").is_file():
+                expanded.append(t)
+            else:
+                expanded += [p.parent for p in sorted(t.rglob("task.toml"))]
+        targets = expanded
+
+    reports = []
+    for target in targets:
+        report = preflight(target)
+        reports.append(report)
+        if not args.json:
+            print_preflight(report)
+            print()
+
+    if args.json:
+        payload = [r.to_dict() for r in reports]
+        print(json.dumps(payload[0] if len(payload) == 1 else payload, indent=2))
+    elif len(reports) > 1:
+        ok = sum(1 for r in reports if r.ready)
+        colour = GREEN if ok == len(reports) else RED
+        print(f"{colour}{ok}/{len(reports)} tasks ready to wrap{RESET}")
+
+    return 0 if all(r.ready for r in reports) else 1
+
+
+def cmd_doctor(args, root: str) -> int:
+    """Compare post-wrap task_score against the recorded pre-wrap baseline."""
+    from priorlock.lifecycle import doctor, print_doctor
+
+    task = Path(args.task).resolve()
+    trials = Path(args.trials) if args.trials else task.parent.parent / "trials"
+    report = doctor(task, trials)
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print_doctor(report)
+    return 0 if report.healthy else 1
+
+
 def cmd_wrap(args, root: str) -> int:
     from priorlock.inject import wrap_task
+    from priorlock.lifecycle import (attach_baseline, find_baseline, preflight,
+                                     print_preflight)
 
     targets = [Path(p) for p in args.paths]
     if args.recursive:
@@ -172,6 +223,19 @@ def cmd_wrap(args, root: str) -> int:
 
     failures = 0
     for target in targets:
+        # ── preflight unless explicitly skipped ──────────────────────────────
+        if not args.skip_preflight:
+            report = preflight(target)
+            if not report.ready:
+                print(f"{RED}✗{RESET} {target}: preflight failed\n")
+                print_preflight(report)
+                print(f"\n  {DIM}fix the blocking checks, or re-run with "
+                      f"--skip-preflight{RESET}\n")
+                failures += 1
+                continue
+            for warn in report.warnings:
+                print(f"{YELLOW}!{RESET} {target}: {warn.id} {warn.name} — {warn.detail}")
+
         try:
             result = wrap_task(
                 target,
@@ -191,6 +255,18 @@ def cmd_wrap(args, root: str) -> int:
         print(f"  probes   " + ", ".join(
             f"{p.id} {DIM}({p.family}){RESET}" for p in result.probes))
         print(f"  weights  task={args.weight_task} gap={args.weight_gap}")
+
+        # ── capture the pre-wrap oracle reward ───────────────────────────────
+        if args.baseline_from:
+            base = find_baseline(args.baseline_from,
+                                 task_id=result.layout.task_id,
+                                 agent=args.baseline_agent)
+            if base:
+                attach_baseline(target, base)
+                print(f"  baseline {base.reward}  {DIM}({base.agent} · {base.trial}){RESET}")
+            else:
+                print(f"  {YELLOW}baseline not found in {args.baseline_from} "
+                      f"(agent={args.baseline_agent}){RESET}")
         if args.verbose:
             for c in result.created:
                 print(f"    {DIM}+ {c}{RESET}")
@@ -430,10 +506,17 @@ def build_parser() -> argparse.ArgumentParser:
         prog="priorlock",
         description="PriorLock — measure prior-override capability in AI agents",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""examples:
-  priorlock wrap tasks/my-task              inject 3 probes into any Harbor task
-  priorlock wrap tasks/ --recursive         wrap an entire task suite
-  priorlock stage0 tasks/my-task            9 offline gates, no Docker needed
+        epilog="""migration lifecycle:
+  1  build + validate your task as an ordinary Harbor task
+  2  harbor trial start -p tasks/my-task -a oracle     capture the baseline
+  3  priorlock preflight tasks/my-task                 is it wrap-ready?
+  4  priorlock wrap tasks/my-task --baseline-from trials/
+  5  priorlock stage0 tasks/my-task                    10 offline gates
+  6  harbor trial start -p tasks/my-task -a oracle     re-run
+  7  priorlock doctor tasks/my-task                    did wrapping break it?
+
+other:
+  priorlock wrap tasks/ --recursive         migrate an entire suite
   priorlock verify tasks/my-task --reference familiar
   priorlock probes --family default_flip    browse the catalog
   priorlock calibrate ingest trials/ --model claude-opus-5
@@ -464,7 +547,23 @@ def build_parser() -> argparse.ArgumentParser:
                         help="weight of the prior-override reward (default 0.5)")
     p_wrap.add_argument("-f", "--force", action="store_true",
                         help="regenerate an already-wrapped task")
+    p_wrap.add_argument("--skip-preflight", action="store_true",
+                        help="wrap even if preflight reports blocking problems")
+    p_wrap.add_argument("--baseline-from", metavar="TRIALS_DIR",
+                        help="record the pre-wrap oracle reward from a Harbor trials dir")
+    p_wrap.add_argument("--baseline-agent", default="oracle",
+                        help="agent name to read the baseline from (default: oracle)")
     p_wrap.add_argument("-v", "--verbose", action="store_true")
+
+    p_pre = sub.add_parser("preflight", help="check a task is healthy and wrap-ready")
+    p_pre.add_argument("paths", nargs="+")
+    p_pre.add_argument("-r", "--recursive", action="store_true")
+    p_pre.add_argument("--json", action="store_true")
+
+    p_doc = sub.add_parser("doctor", help="prove wrapping did not damage the host task")
+    p_doc.add_argument("task")
+    p_doc.add_argument("-t", "--trials", help="Harbor trials dir (default: <task>/../../trials)")
+    p_doc.add_argument("--json", action="store_true")
 
     p_unwrap = sub.add_parser("unwrap", help="remove everything wrap added")
     p_unwrap.add_argument("paths", nargs="+")
@@ -497,6 +596,8 @@ def build_parser() -> argparse.ArgumentParser:
 DISPATCH = {
     "info": cmd_info,
     "probes": cmd_probes,
+    "preflight": cmd_preflight,
+    "doctor": cmd_doctor,
     "wrap": cmd_wrap,
     "unwrap": cmd_unwrap,
     "stage0": cmd_stage0,
