@@ -10,26 +10,20 @@ import Footer from "./components/Footer";
 
 export default function Home() {
   return (
-    <main>
+    <main className="overflow-x-hidden">
       <Nav />
       <Hero />
       <Stats />
-
-      <div className="border-t" style={{ borderColor: "var(--border)" }} />
+      <div className="divider" />
       <HowItWorks />
-
-      <div className="border-t" style={{ borderColor: "var(--border)" }} />
+      <div className="divider" />
       <Scores />
-
-      <div className="border-t" style={{ borderColor: "var(--border)" }} />
+      <div className="divider" />
       <Domains />
-
-      <div className="border-t" style={{ borderColor: "var(--border)" }} />
+      <div className="divider" />
       <Leaderboard />
-
-      <div className="border-t" style={{ borderColor: "var(--border)" }} />
+      <div className="divider" />
       <Quickstart />
-
       <Footer />
     </main>
   );

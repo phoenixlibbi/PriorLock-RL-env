@@ -39,9 +39,10 @@ harbor trial start -p tasks/tablixdemo-0 \\
 
 export default function Quickstart() {
   return (
-    <section id="quickstart" className="py-18 px-8 max-w-5xl mx-auto">
-      <h2 className="font-mono text-2xl font-bold mb-3">Quickstart</h2>
-      <p className="text-sm mb-10" style={{ color: "var(--muted)" }}>
+    <section id="quickstart" className="section">
+      <p className="section-label">Setup</p>
+      <h2 className="section-title">Quickstart</h2>
+      <p className="section-lead">
         Requires Python ≥3.10 and{" "}
         <a
           href="https://harborframework.com"
@@ -56,15 +57,17 @@ export default function Quickstart() {
 
       <div className="flex flex-col gap-5">
         {steps.map((s) => (
-          <div key={s.n} className="flex gap-4">
+          <div key={s.n} className="card flex gap-4 p-5 sm:p-6">
             <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold flex-shrink-0 mt-0.5"
-              style={{ background: "var(--accent)", color: "#0d1117" }}
+              className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold"
+              style={{ background: "var(--accent)", color: "#061018" }}
             >
               {s.n}
             </div>
-            <div className="flex-1">
-              <p className="text-sm mb-2" style={{ color: "var(--muted)" }}>{s.label}</p>
+            <div className="min-w-0 flex-1">
+              <p className="mb-3 text-sm font-medium" style={{ color: "var(--text)" }}>
+                {s.label}
+              </p>
               <pre>{s.code}</pre>
             </div>
           </div>

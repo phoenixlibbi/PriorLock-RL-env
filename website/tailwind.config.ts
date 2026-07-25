@@ -8,20 +8,21 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        mono: ["'SF Mono'", "'Fira Code'", "'Cascadia Code'", "monospace"],
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       colors: {
         bg: {
-          DEFAULT: "#0d1117",
-          2: "#161b22",
-          3: "#1c2128",
+          DEFAULT: "#07090d",
+          2: "#0e131a",
+          3: "#151b24",
         },
-        border: "#30363d",
+        border: "#243041",
         accent: {
-          DEFAULT: "#58a6ff",
-          green: "#3fb950",
-          red: "#f85149",
-          yellow: "#d29922",
+          DEFAULT: "#5b9cff",
+          green: "#3ecf8e",
+          red: "#f07178",
+          yellow: "#e6b450",
         },
       },
     },

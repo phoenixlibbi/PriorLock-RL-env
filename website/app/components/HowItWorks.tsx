@@ -23,27 +23,26 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-18 px-8 max-w-5xl mx-auto">
-      <h2 className="font-mono text-2xl font-bold mb-3">
-        How it <span style={{ color: "var(--muted)", fontWeight: 400 }}>works</span>
+    <section id="how-it-works" className="section">
+      <p className="section-label">Mechanism</p>
+      <h2 className="section-title">
+        How it <span>works</span>
       </h2>
-      <p className="text-sm mb-10 max-w-xl" style={{ color: "var(--muted)" }}>
-        PriorLock isolates a single failure mode: agents that trust memorized knowledge
-        over in-environment documentation.
+      <p className="section-lead">
+        PriorLock isolates a single failure mode: agents that trust memorized knowledge over
+        in-environment documentation.
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {steps.map((s) => (
-          <div
-            key={s.num}
-            className="rounded-xl p-6 border"
-            style={{ background: "var(--bg2)", borderColor: "var(--border)" }}
-          >
-            <p className="font-mono text-xs font-bold tracking-widest uppercase mb-3"
-              style={{ color: "var(--accent)" }}>
+          <div key={s.num} className="card flex h-full flex-col p-6">
+            <p
+              className="mb-3 font-mono text-xs font-bold tracking-[0.14em] uppercase"
+              style={{ color: "var(--accent)" }}
+            >
               Step {s.num}
             </p>
-            <h3 className="font-semibold text-sm mb-2">{s.title}</h3>
+            <h3 className="mb-2 text-[15px] font-semibold tracking-tight">{s.title}</h3>
             <p className="text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
               {s.body}
             </p>
