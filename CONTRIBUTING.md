@@ -167,7 +167,7 @@ archetype helps every task anyone ever wraps.
 Every PR runs, via `.github/workflows/stage0.yml`:
 
 1. **Catalog gates** — all 13 archetypes wrapped individually and put through all
-   9 gates
+   10 gates
 2. **Wrapped-task gates** — every `priorlock.toml` in the repo, gated
 3. **Authored-domain gates** — every `scripts/stage0.py`, run as before
 

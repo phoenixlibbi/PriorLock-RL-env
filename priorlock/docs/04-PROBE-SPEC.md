@@ -328,7 +328,7 @@ deviation would crash (the agent debugs and finds it), or the library is real an
 published (training contamination makes "familiar" undefined).
 
 Every probe in the catalog satisfies these conditions and is verified against all
-nine gates in CI on every commit.
+ten gates in CI on every commit.
 
 ---
 

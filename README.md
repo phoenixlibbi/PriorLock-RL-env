@@ -4,8 +4,8 @@
 its memorized training-data priors when the live environment contradicts them.**
 
 You don't author a PriorLock task. You build an ordinary Harbor task, validate
-it, and **migrate** it — the same way Harbor migrated Terminal-Bench 1.0 tasks
-rather than asking anyone to rewrite them.
+it, and **convert** it. Keeping those steps separate is what lets you tell a
+broken task apart from a broken probe.
 
 ```bash
 pip install -e .
@@ -17,7 +17,7 @@ harbor run -p tasks/my-task -a oracle
 priorlock preflight tasks/my-task
 
 # 5    migrate, pinning the pre-wrap oracle reward
-priorlock wrap tasks/my-task --baseline-from trials/
+priorlock wrap tasks/my-task --baseline-from jobs/
 
 # 6    10 offline gates — no Docker, no API key
 priorlock stage0 tasks/my-task
@@ -90,7 +90,7 @@ every wrapped task.
 
 ## Probe catalog
 
-Thirteen archetypes, three families, five categories. All 13 pass all 9 gates in
+Thirteen archetypes, three families, five categories. All 13 pass all 10 gates in
 CI on every commit.
 
 ```bash
@@ -196,7 +196,7 @@ Calibration does **not** establish the 0.40 baseline — that's structural. It
 measures how *informative* each probe is against a given model.
 
 ```bash
-priorlock calibrate ingest trials/ --model claude-opus-5
+priorlock calibrate ingest jobs/ --model claude-opus-5
 priorlock calibrate report --model claude-opus-5
 priorlock calibrate recommend --model claude-opus-5
 ```

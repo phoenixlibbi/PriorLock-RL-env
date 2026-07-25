@@ -245,6 +245,22 @@ def detect_layout(task_dir: str | Path, repo_dir: str | None = None) -> TaskLayo
     )
 
 
+_ORACLE_NAMES = ("solve.sh", "solution.sh", "run.sh")
+
+
+def _find_oracle(layout: TaskLayout) -> Path | None:
+    """The task's oracle script, if it has one."""
+    sol = layout.root / "solution"
+    if not sol.is_dir():
+        return None
+    for name in _ORACLE_NAMES:
+        p = sol / name
+        if p.is_file():
+            return p
+    scripts = sorted(sol.glob("*.sh"))
+    return scripts[0] if scripts else None
+
+
 def describe_task(layout: TaskLayout) -> str:
     """Gather the text used for probe category inference."""
     chunks: list[str] = [layout.task_id]
@@ -409,6 +425,24 @@ def wrap_task(
     if layout.verifier_entry and str(entry.relative_to(root)) not in modified:
         modified.append(str(entry.relative_to(root)))
 
+    # ── extend the oracle so it still scores 1.0 ─────────────────────────────
+    # Harbor's quality bar is "oracle passes 100%". Wrapping adds a second
+    # scored component; without this the oracle drops to 0.5 and the wrapped
+    # task quietly fails that bar.
+    solve = _find_oracle(layout)
+    if solve is not None:
+        solve_text = solve.read_text()
+        if T.SOLUTION_MARKER_BEGIN not in solve_text:
+            _write(layout.tests / REFERENCE_DIR / "solve.orig", solve_text, created, root)
+            solve.write_text(
+                solve_text.rstrip() + "\n"
+                + T.render_solution_patch(lib, probes, layout.container_repo,
+                                          SOLUTION_NAME, INPUT_REL),
+                encoding="utf-8",
+            )
+            solve.chmod(solve.stat().st_mode | stat.S_IEXEC)
+            modified.append(str(solve.relative_to(root)))
+
     # ── manifest ─────────────────────────────────────────────────────────────
     manifest = render_manifest(layout, lib, probes, lib_sha, w_task, w_gap,
                                original_name, original_sha)
@@ -523,11 +557,16 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
     lib = meta.get("library", "")
     removed: list[str] = []
 
-    # Read the stashed original BEFORE deleting _plx_reference/ — it lives there.
+    # Read the stashed originals BEFORE deleting _plx_reference/ — they live there.
     saved_instruction: str | None = None
     orig_path = layout.tests / REFERENCE_DIR / "instruction.orig"
     if orig_path.is_file():
         saved_instruction = orig_path.read_text()
+
+    saved_solve: str | None = None
+    solve_orig = layout.tests / REFERENCE_DIR / "solve.orig"
+    if solve_orig.is_file():
+        saved_solve = solve_orig.read_text()
 
     def rm(path: Path) -> None:
         if path.is_dir():
@@ -568,7 +607,7 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
         head, _, rest = text.partition(MARKER_BEGIN)
         _, _, tail = rest.partition(MARKER_END)
 
-        if saved_instruction is not None and head == saved_instruction.rstrip() + "\n" \
+        if saved_instruction is not None and head.rstrip() == saved_instruction.rstrip() \
                 and not tail.strip():
             # Untouched since wrapping — restore the original bytes exactly.
             layout.instruction.write_text(saved_instruction, encoding="utf-8")
@@ -578,6 +617,24 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
             layout.instruction.write_text(head.rstrip() + "\n" + tail.lstrip("\n"),
                                           encoding="utf-8")
             removed.append(str(layout.instruction.relative_to(root)) + " (block stripped)")
+
+    # restore the oracle
+    solve = _find_oracle(layout)
+    if solve is not None and solve.is_file():
+        text = solve.read_text()
+        if T.SOLUTION_MARKER_BEGIN in text:
+            head = text.partition(T.SOLUTION_MARKER_BEGIN)[0]
+            # Compare on stripped content: how many blank lines we inserted
+            # before the marker is our business, not evidence of an author edit.
+            if saved_solve is not None and head.rstrip() == saved_solve.rstrip():
+                solve.write_text(saved_solve, encoding="utf-8")
+                removed.append(str(solve.relative_to(root)) + " (restored verbatim)")
+            else:
+                tail = text.partition(T.SOLUTION_MARKER_END)[2]
+                solve.write_text(head.rstrip() + "\n" + tail.lstrip("\n"),
+                                 encoding="utf-8")
+                removed.append(str(solve.relative_to(root)) + " (block stripped)")
+            solve.chmod(solve.stat().st_mode | stat.S_IEXEC)
 
     rm(root / MANIFEST)
 

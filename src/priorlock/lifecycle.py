@@ -1,13 +1,13 @@
 """Task lifecycle — preflight, baseline capture, and post-wrap health check.
 
-The model here is deliberately the same one Harbor used for Terminal-Bench 1.0
-tasks: **you don't author twice, you migrate.** A task is built and validated as
-an ordinary Harbor task first. Only once it is known-good does it get converted.
+**You don't author twice, you convert.** A task is built and validated as an
+ordinary Harbor task first; only once it is known-good does it get converted.
+Keeping the two apart is what lets you tell a broken task from a broken probe.
 
     build → validate → oracle → calibrate → PREFLIGHT → wrap → gates → re-run → DOCTOR
 
-`priorlock wrap` is the migration step. This module supplies the two checks that
-bracket it:
+`priorlock wrap` is the conversion step. This module supplies the two checks
+that bracket it:
 
 ``preflight``
     Runs *before* wrapping. Answers "is this host task actually healthy and
@@ -17,7 +17,7 @@ bracket it:
 ``doctor``
     Runs *after* wrapping and re-running. Answers "did wrapping damage the host
     task?" by comparing the post-wrap ``task_score`` against the oracle reward
-    recorded at wrap time. This is the check that makes migration safe: without
+    recorded at wrap time. This is the check that makes conversion safe: without
     it, a wrap that quietly broke the original verifier would look like a model
     regression rather than a harness bug.
 """
@@ -264,14 +264,17 @@ def find_baseline(trials_dir: str | Path, task_id: str | None = None,
 
     best: Baseline | None = None
     best_time = ""
-    for trial in sorted(p for p in root.iterdir() if p.is_dir()):
-        result = trial / "result.json"
-        if not result.is_file():
-            continue
+    # Harbor nests trials one level down: jobs/<timestamp>/<task>__<id>/result.json
+    # The job-level result.json is an aggregate with no agent_info, so recurse
+    # and skip anything that isn't a trial record.
+    for result in sorted(root.rglob("result.json")):
         try:
             data = json.loads(result.read_text())
         except json.JSONDecodeError:
             continue
+        if "agent_info" not in data:
+            continue          # job-level aggregate, not a trial
+        trial = result.parent
 
         name = (data.get("agent_info") or {}).get("name", "")
         if agent and name != agent:
@@ -376,11 +379,9 @@ def doctor(task_dir: str | Path, trials_dir: str | Path,
     root = Path(trials_dir)
     newest = ""
     if root.is_dir():
-        for trial in sorted(p for p in root.iterdir() if p.is_dir()):
-            summary = trial / "verifier" / "priorlock_summary.json"
+        for summary in sorted(root.rglob("verifier/priorlock_summary.json")):
+            trial = summary.parent.parent
             result = trial / "result.json"
-            if not summary.is_file():
-                continue
             finished = ""
             if result.is_file():
                 try:

@@ -161,7 +161,13 @@ def ingest_trial_dir(trials_dir: str | Path, model: str | None = None) -> list[O
     if not root.is_dir():
         return out
 
-    for trial in sorted(p for p in root.iterdir() if p.is_dir()):
+    seen = set()
+    for marker in sorted(list(root.rglob("verifier/probe_details.json"))
+                         + list(root.rglob("verifier/priorlock_summary.json"))):
+        trial = marker.parent.parent
+        if trial in seen:
+            continue
+        seen.add(trial)
         detail = trial / "verifier" / "probe_details.json"
         summary = trial / "verifier" / "priorlock_summary.json"
         config = trial / "config.json"

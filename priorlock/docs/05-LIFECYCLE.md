@@ -1,30 +1,35 @@
-# Task Lifecycle — build once, migrate once
+# Task Lifecycle — build once, convert once
 
-## The precedent
+## The rule
 
-When Harbor arrived, it did not ask anyone to re-author their Terminal-Bench 1.0
-tasks. It shipped a **migration path**: you kept the task you had already built
-and validated, and a command converted it.
-
-PriorLock follows the same rule, one layer up:
+**You do not author a PriorLock task. You convert a Harbor task you already
+trust.**
 
 ```
-TB 1.0 task  ──[ harbor migrate ]──▶  Harbor task  ──[ priorlock wrap ]──▶  PriorLock task
+Harbor task  ──[ priorlock wrap ]──▶  Harbor task that also measures prior-override
 ```
 
-`priorlock wrap` **is** the migrate command. It is not a build step and it is not
-an authoring format. You build and validate an ordinary Harbor task first — with
-its own oracle, its own verifier, its own calibration — and only convert it once
-you already trust it.
+`priorlock wrap` is a conversion step, not a build step and not an authoring
+format. You build and validate an ordinary Harbor task first — with its own
+oracle, its own verifier, its own difficulty calibration — and only convert it
+once you already trust it.
 
-This matters because it decides what you debug. If authoring and prior-override
-measurement were fused, a bad number could mean either "my task is broken" or
-"the probe is wrong" and you would not know which. Keeping them sequential means
-**the host task is already known-good before probes ever enter the picture.**
+This matters because it decides **what you debug**. If authoring and
+prior-override measurement were fused, a bad number could mean either "my task is
+broken" or "the probe is wrong", and you would have no way to tell them apart.
+Keeping them sequential means the host task is already known-good before probes
+ever enter the picture.
+
+> **A note on an earlier version of this document.** It opened by claiming
+> Harbor had shipped a `harbor migrate` command for Terminal-Bench 1.0 tasks and
+> that PriorLock followed that precedent. That framing was invented and is
+> removed. The argument above stands on its own without it: convert rather than
+> re-author, because it is the only way to know which layer a bad number came
+> from.
 
 ---
 
-## The seven steps
+## The eight steps
 
 ```
   1  build          author an ordinary Harbor task
@@ -32,14 +37,17 @@ measurement were fused, a bad number could mean either "my task is broken" or
   3  calibrate      run models, confirm the task discriminates
   ────────────────── the task is now known-good ──────────────────
   4  preflight      priorlock preflight tasks/t                  is it wrap-ready?
-  5  migrate        priorlock wrap tasks/t --baseline-from trials/
+  5  convert        priorlock wrap tasks/t --baseline-from jobs/
   6  gate           priorlock stage0 tasks/t                     10 offline gates
   7  re-run         harbor run -p tasks/t -a oracle
   8  doctor         priorlock doctor tasks/t                     did wrapping break it?
 ```
 
-Steps 1–3 are pure Harbor. Nothing about PriorLock is involved and nothing
-about your task changes. Steps 4–8 are the migration and its two bookend checks.
+Steps 1–3 are pure Harbor. Nothing about PriorLock is involved and nothing about
+your task changes. Steps 4–8 are the conversion and its two bookend checks.
+
+Steps 4, 5 and 6 need **no Docker, no network and no API key** — together they
+take about five seconds.
 
 ---
 
@@ -88,7 +96,7 @@ real content. Preflight catches that before anything is written.
 ## Step 5 — migrate, and pin the baseline
 
 ```bash
-priorlock wrap tasks/my-task --baseline-from trials/
+priorlock wrap tasks/my-task --baseline-from jobs/
 ```
 
 ```
@@ -101,7 +109,7 @@ priorlock wrap tasks/my-task --baseline-from trials/
   14 files created, 2 modified
 ```
 
-`--baseline-from` reads your Harbor trials directory, finds the most recent
+`--baseline-from` reads your Harbor output directory (./jobs on 0.1.x), finds the most recent
 **oracle** run, and pins its reward into `priorlock.toml`:
 
 ```toml
@@ -166,7 +174,7 @@ G10 passed=False  detail=probe grader runs before the host verifier
 Runs after the post-wrap re-run. Answers *"did wrapping damage the host task?"*
 
 ```bash
-priorlock doctor tasks/my-task -t trials/
+priorlock doctor tasks/my-task -t jobs/
 ```
 
 ```
@@ -236,7 +244,7 @@ a whole suite and roll back:
 
 ```bash
 priorlock preflight tasks/ --recursive
-priorlock wrap tasks/ --recursive --baseline-from trials/
+priorlock wrap tasks/ --recursive --baseline-from jobs/
 priorlock stage0 tasks/
 ```
 
