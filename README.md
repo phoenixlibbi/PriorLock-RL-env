@@ -11,7 +11,7 @@ rather than asking anyone to rewrite them.
 pip install -e .
 
 # 1-3  build + validate as a normal Harbor task (oracle should score 1.0)
-harbor trial start -p tasks/my-task -a oracle
+harbor run -p tasks/my-task -a oracle
 
 # 4    is it wrap-ready?
 priorlock preflight tasks/my-task
@@ -23,7 +23,7 @@ priorlock wrap tasks/my-task --baseline-from trials/
 priorlock stage0 tasks/my-task
 
 # 7-8  re-run, then prove wrapping did no harm
-harbor trial start -p tasks/my-task -a oracle
+harbor run -p tasks/my-task -a oracle
 priorlock doctor tasks/my-task
 ```
 
@@ -60,7 +60,8 @@ Every task produces two scores.
 
 `reward = (task_score × w_task + gap_score × w_gap) / (w_task + w_gap)`
 
-Harbor only reads `reward.json`, so wrapping is transparent to the runner.
+Harbor reads `reward.txt` or `reward.json`; the composite emits both, so wrapping
+is transparent to the runner.
 
 ---
 

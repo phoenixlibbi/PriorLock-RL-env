@@ -40,11 +40,11 @@ absent from agent-visible surface.
 ## Harbor run (needs Docker + harbor installed)
 
     # Oracle smoke (should give reward 1.0):
-    harbor trial start -p tasks/tablixdemo-0
+    harbor run -p tasks/tablixdemo-0
 
     # Agent run:
     export ANTHROPIC_API_KEY=<key>
-    harbor trial start -p tasks/tablixdemo-0 -a claude-code -m anthropic/claude-opus-4-8
+    harbor run -p tasks/tablixdemo-0 -a claude-code -m anthropic/claude-opus-4-8
 
 ## Folder layout
 

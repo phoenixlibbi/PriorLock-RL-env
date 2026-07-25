@@ -28,13 +28,13 @@ measurement were fused, a bad number could mean either "my task is broken" or
 
 ```
   1  build          author an ordinary Harbor task
-  2  validate       harbor trial start -p tasks/t -a oracle      → reward 1.0
+  2  validate       harbor run -p tasks/t -a oracle      → reward 1.0
   3  calibrate      run models, confirm the task discriminates
   ────────────────── the task is now known-good ──────────────────
   4  preflight      priorlock preflight tasks/t                  is it wrap-ready?
   5  migrate        priorlock wrap tasks/t --baseline-from trials/
   6  gate           priorlock stage0 tasks/t                     10 offline gates
-  7  re-run         harbor trial start -p tasks/t -a oracle
+  7  re-run         harbor run -p tasks/t -a oracle
   8  doctor         priorlock doctor tasks/t                     did wrapping break it?
 ```
 
@@ -54,16 +54,16 @@ priorlock preflight tasks/my-task
 
 ```
 P1   task.toml present                PASS  task.toml
-P2   schema_version declared          PASS  schema_version = 1.3
+P2   task format version declared     PASS  version = 1.0
 P3   instruction file present         PASS  instruction.md (1517 chars)
 P4   environment/ with Dockerfile     PASS  environment/Dockerfile
 P5   agent workdir resolves           PASS  /app/repo → environment/repo
 P6   verifier entrypoint present      PASS  tests/test.sh
-P7   verifier writes reward.json      PASS  found reward.json reference
+P7   verifier emits a reward          PASS  writes reward.txt
 P8   oracle solution present          PASS  solve.sh
 P9   not already wrapped              PASS  clean
 P10  no reserved-path collisions      PASS  clean
-P11  network disabled                 PASS  network_mode = "no-network"
+P11  network disabled                 PASS  allow_internet = false
 P12  python present in image          PASS  python referenced in Dockerfile
 
 READY TO WRAP
@@ -72,7 +72,7 @@ READY TO WRAP
 | Check | Level | Why it matters |
 |---|---|---|
 | P1, P3, P4, P5, P6 | error | wrap needs these to place files correctly |
-| P7 | error | the composite verifier composites on `reward.json` |
+| P7 | error | the composite reads whichever reward file the verifier writes |
 | P9, P10 | error | wrapping would clobber content the task already owns |
 | P2, P8, P11, P12 | warn | advisable, not fatal |
 
@@ -214,8 +214,9 @@ gap_score    ←  the injected probes
 reward       =  (task_score × w_task + gap_score × w_gap) / (w_task + w_gap)
 ```
 
-Harbor only ever reads `reward.json`, so the whole arrangement is invisible to
-the runner. Set `w_gap = 0.0` and a wrapped task behaves exactly like the
+Harbor reads `reward.txt` (the `harbor tasks init` default) or `reward.json`.
+The composite reads whichever the original verifier wrote and re-emits both, so
+the whole arrangement is invisible to the runner. Set `w_gap = 0.0` and a wrapped task behaves exactly like the
 original while still recording probe verdicts for calibration.
 
 ---

@@ -22,7 +22,7 @@ const steps = [
   {
     num: "05",
     title: "Two scores come out",
-    body: "task_score from the task's original verifier, untouched. gap_score from the probes. Harbor only reads reward.json, so wrapping is transparent to the runner.",
+    body: "task_score from the task's original verifier, untouched. gap_score from the probes. Harbor reads reward.txt or reward.json; the composite emits both, so wrapping is transparent to the runner.",
   },
   {
     num: "06",

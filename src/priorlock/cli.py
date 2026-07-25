@@ -119,7 +119,7 @@ def cmd_info(args, root: str) -> int:
     print()
     print("Wrap any task:  priorlock wrap <task-dir>")
     print("Offline gates:  priorlock stage0 <task-dir>")
-    print("Harbor run:     harbor trial start -p <task-dir>")
+    print("Harbor run:     harbor run -p <task-dir>")
     return 0
 
 
@@ -512,11 +512,11 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""migration lifecycle:
   1  build + validate your task as an ordinary Harbor task
-  2  harbor trial start -p tasks/my-task -a oracle     capture the baseline
+  2  harbor run -p tasks/my-task -a oracle     capture the baseline
   3  priorlock preflight tasks/my-task                 is it wrap-ready?
   4  priorlock wrap tasks/my-task --baseline-from trials/
   5  priorlock stage0 tasks/my-task                    10 offline gates
-  6  harbor trial start -p tasks/my-task -a oracle     re-run
+  6  harbor run -p tasks/my-task -a oracle     re-run
   7  priorlock doctor tasks/my-task                    did wrapping break it?
 
 other:

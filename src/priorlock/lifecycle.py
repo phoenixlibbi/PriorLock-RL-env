@@ -403,7 +403,7 @@ def doctor(task_dir: str | Path, trials_dir: str | Path,
 
     if observed is None:
         notes.append("no post-wrap run found — run "
-                     "`harbor trial start -p <task> -a oracle` after wrapping")
+                     "`harbor run -p <task> -a oracle` after wrapping")
         return DoctorReport(task_id, baseline, None, None, None, "no-data", notes, probes)
 
     if baseline is None:

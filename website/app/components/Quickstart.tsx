@@ -54,7 +54,7 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
     n: 5,
     label: "Run an agent (Harbor + Docker + API key)",
     code: `export ANTHROPIC_API_KEY=sk-...
-harbor trial start -p tasks/my-task \\
+harbor run -p tasks/my-task \\
   -a claude-code -m anthropic/claude-sonnet-5
 
 # reward.json          composite

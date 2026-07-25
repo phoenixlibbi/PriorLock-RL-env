@@ -29,7 +29,8 @@ appends a "Part 2" section to `instruction.md`, and rewrites `tests/test.sh` int
 a composite verifier that reports both scores.
 
 Your original verifier is preserved as `tests/task_verify.sh` and still runs
-first. Harbor only reads `reward.json`, so wrapping is transparent to the runner.
+first. Harbor reads `reward.txt` or `reward.json`; the composite emits both, so
+wrapping is transparent to the runner.
 
 ### Useful flags
 
