@@ -40,8 +40,8 @@ export default function HowItWorks() {
       </h2>
       <p className="section-lead">
         PriorLock isolates a single failure mode: agents that trust memorized knowledge
-        over in-environment documentation. It rides along on top of whatever the task
-        already measured.
+        over in-environment ground truth. Domain-agnostic wrap means you can measure —
+        and train — prior override on top of whatever Harbor task you already trust.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

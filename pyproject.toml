@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "priorlock"
-version = "0.1.0"
-description = "A Harbor-native benchmark measuring prior-override capability in AI agents"
+version = "0.1.1"
+description = "PriorLock: A Domain-Agnostic Reinforcement Learning Environment for Measuring and Training Prior Override in Autonomous Agents"
 authors = [{name = "Muhammad Labeeb Tariq", email = "labeebjutt80@gmail.com"}]
+maintainers = [{name = "Muhammad Labeeb Tariq", email = "labeebjutt80@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}

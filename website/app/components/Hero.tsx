@@ -12,21 +12,66 @@ export default function Hero() {
       />
 
       <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
-        <span className="badge rise mb-7">Harbor-native · RL environment · v0.1.1</span>
+        <span className="badge rise mb-7">
+          Domain-agnostic · RL environment · Measure &amp; train
+        </span>
 
         <h1
-          className="rise rise-delay-1 font-mono font-bold leading-[1.05] mb-6"
+          className="rise rise-delay-1 font-mono font-bold leading-[1.05] mb-4"
           style={{ fontSize: "clamp(2.75rem, 8vw, 4.75rem)", letterSpacing: "-0.04em" }}
         >
           Prior<span style={{ color: "var(--accent)" }}>Lock</span>
         </h1>
 
         <p
-          className="rise rise-delay-2 mb-7 max-w-xl text-base sm:text-lg leading-relaxed"
+          className="rise rise-delay-1 mb-5 max-w-2xl text-sm sm:text-base font-medium leading-snug"
+          style={{ color: "var(--text)" }}
+        >
+          A Domain-Agnostic Reinforcement Learning Environment for Measuring and
+          Training Prior Override in Autonomous Agents
+        </p>
+
+        <p
+          className="rise rise-delay-2 mb-4 max-w-xl text-base sm:text-lg leading-relaxed"
           style={{ color: "var(--muted)" }}
         >
-          A benchmark that measures whether AI agents can override stale memorized
-          knowledge when confronted with ground truth inside the environment.
+          Wrap any Harbor task. Reward agents that override stale memorized priors
+          when environment ground truth contradicts them — and train that skill
+          with a real RL signal.
+        </p>
+
+        <p
+          className="rise rise-delay-2 mb-8 font-mono text-xs sm:text-sm"
+          style={{ color: "var(--muted)" }}
+        >
+          Created by{" "}
+          <a
+            href="https://github.com/phoenixlibbi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-[var(--text)]"
+            style={{ color: "var(--accent)" }}
+          >
+            Muhammad Labeeb Tariq
+          </a>
+          {" · "}
+          <a
+            href="mailto:labeebjutt80@gmail.com"
+            className="transition-colors hover:text-[var(--text)]"
+            style={{ color: "var(--accent)" }}
+          >
+            labeebjutt80@gmail.com
+          </a>
+          {" · "}
+          <a
+            href="https://github.com/phoenixlibbi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-[var(--text)]"
+            style={{ color: "var(--accent)" }}
+          >
+            @phoenixlibbi
+          </a>
         </p>
 
         <div

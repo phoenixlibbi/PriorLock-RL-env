@@ -1,8 +1,18 @@
 # PriorLock
 
-An RL environment (Harbor task format) that rewards coding agents for grounding their code in the
-INSTALLED environment instead of their parametric memory ("priors"). Built as the trial-build
-submission.
+**PriorLock: A Domain-Agnostic Reinforcement Learning Environment for Measuring
+and Training Prior Override in Autonomous Agents**
+
+An RL environment (Harbor task format) that rewards agents for grounding actions
+in the INSTALLED environment instead of parametric memory ("priors"). Domain-agnostic:
+wrap any Harbor task; probes inject the measurement without re-authoring.
+
+| | |
+|---|---|
+| **Creator** | [Muhammad Labeeb Tariq](https://github.com/phoenixlibbi) |
+| **Email** | [labeebjutt80@gmail.com](mailto:labeebjutt80@gmail.com) |
+| **GitHub** | [github.com/phoenixlibbi](https://github.com/phoenixlibbi) |
+| **Repository** | [PriorLock-RL-env](https://github.com/phoenixlibbi/PriorLock-RL-env) |
 
 ## The idea in one paragraph (the kitchen story)
 
@@ -22,11 +32,13 @@ models fail this ~half the time even when told the version explicitly (GitChamel
     |  |- 00-THE-GAP.md             <- the capability gap, evidence, why nobody covered it
     |  |- 01-ARCHITECTURE.md        <- full technical design (library, tasks, verifier, generator)
     |  |- 02-BUILD-SPEC.md          <- step-by-step implementation playbook (feed this to an AI agent)
+    |  |- 04-PROBE-SPEC.md          <- probe architecture (domain-agnostic wrap path)
+    |  |- 05-LIFECYCLE.md           <- build → validate → wrap → gate → doctor
     |- papers/                      <- reference receipts for every cited paper (+ PDF links)
 
-## Status
+## Author
 
-Planning complete. Next step: execute docs/02-BUILD-SPEC.md phase by phase.
+**Muhammad Labeeb Tariq** · [labeebjutt80@gmail.com](mailto:labeebjutt80@gmail.com) · [@phoenixlibbi](https://github.com/phoenixlibbi)
 
 ## Ground rules
 

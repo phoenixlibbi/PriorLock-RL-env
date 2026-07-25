@@ -1,5 +1,11 @@
 # Task Lifecycle — build once, convert once
 
+> **PriorLock:** A Domain-Agnostic Reinforcement Learning Environment for
+> Measuring and Training Prior Override in Autonomous Agents.
+>
+> Created by **Muhammad Labeeb Tariq** · labeebjutt80@gmail.com ·
+> [github.com/phoenixlibbi](https://github.com/phoenixlibbi)
+
 ## The rule
 
 **You do not author a PriorLock task. You convert a Harbor task you already

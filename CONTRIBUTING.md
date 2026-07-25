@@ -1,5 +1,11 @@
 # Contributing to PriorLock
 
+**PriorLock: A Domain-Agnostic Reinforcement Learning Environment for Measuring
+and Training Prior Override in Autonomous Agents**
+
+Created by **Muhammad Labeeb Tariq** · [labeebjutt80@gmail.com](mailto:labeebjutt80@gmail.com) ·
+[@phoenixlibbi](https://github.com/phoenixlibbi)
+
 There are three ways to contribute, in descending order of how often they're
 needed.
 

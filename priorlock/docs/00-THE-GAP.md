@@ -1,5 +1,11 @@
 # 00 - The Gap: Stale Priors Beat Installed Reality
 
+> **PriorLock:** A Domain-Agnostic Reinforcement Learning Environment for
+> Measuring and Training Prior Override in Autonomous Agents.
+>
+> Created by **Muhammad Labeeb Tariq** · labeebjutt80@gmail.com ·
+> [github.com/phoenixlibbi](https://github.com/phoenixlibbi)
+
 ## 1. Plain-language version
 
 Models learn coding from a frozen snapshot of the internet. When they write code, they write from

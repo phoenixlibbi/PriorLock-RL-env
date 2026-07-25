@@ -17,13 +17,15 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PriorLock",
+  title: "PriorLock — Domain-Agnostic RL Environment for Prior Override",
   description:
-    "A Harbor-native benchmark measuring prior-override capability in AI agents.",
+    "PriorLock: A Domain-Agnostic Reinforcement Learning Environment for Measuring and Training Prior Override in Autonomous Agents. Created by Muhammad Labeeb Tariq.",
+  authors: [{ name: "Muhammad Labeeb Tariq", url: "https://github.com/phoenixlibbi" }],
+  creator: "Muhammad Labeeb Tariq",
   openGraph: {
-    title: "PriorLock",
+    title: "PriorLock: Domain-Agnostic RL Environment for Prior Override",
     description:
-      "A Harbor-native benchmark measuring prior-override capability in AI agents.",
+      "A domain-agnostic reinforcement learning environment for measuring and training prior override in autonomous agents. Created by Muhammad Labeeb Tariq.",
     type: "website",
     url: "https://phoenixlibbi.github.io/PriorLock-RL-env",
   },

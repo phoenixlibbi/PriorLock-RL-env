@@ -1,7 +1,18 @@
 # PriorLock
 
-**A Harbor-native RL environment that measures whether an AI agent can override
-its memorized training-data priors when the live environment contradicts them.**
+**PriorLock: A Domain-Agnostic Reinforcement Learning Environment for Measuring
+and Training Prior Override in Autonomous Agents**
+
+A Harbor-native RL environment that measures — and can train — whether an agent
+overrides stale memorized priors when live environment ground truth contradicts
+them. Domain-agnostic by design: wrap any Harbor task; no re-authoring required.
+
+| | |
+|---|---|
+| **Creator** | [Muhammad Labeeb Tariq](https://github.com/phoenixlibbi) |
+| **Email** | [labeebjutt80@gmail.com](mailto:labeebjutt80@gmail.com) |
+| **GitHub** | [github.com/phoenixlibbi](https://github.com/phoenixlibbi) |
+| **Repository** | [PriorLock-RL-env](https://github.com/phoenixlibbi/PriorLock-RL-env) |
 
 You don't author a PriorLock task. You build an ordinary Harbor task, validate
 it, and **convert** it. Keeping those steps separate is what lets you tell a
@@ -347,4 +358,10 @@ priorlock/papers/     literature notes
 
 ---
 
-MIT · [PriorLock trial build](TRIAL-BUILD-PLAN.md)
+## Author
+
+**Muhammad Labeeb Tariq** · [labeebjutt80@gmail.com](mailto:labeebjutt80@gmail.com) · [@phoenixlibbi](https://github.com/phoenixlibbi)
+
+---
+
+MIT · Created by Muhammad Labeeb Tariq
