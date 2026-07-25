@@ -40,6 +40,7 @@ export default function Hero() {
             Wrap any Harbor task · you write nothing
           </p>
           <CodeBlock
+            variant="inline"
             code="priorlock wrap tasks/my-task"
             preClassName="!border-0 !bg-transparent !px-0 !py-0 !text-sm !text-[var(--green)]"
           />

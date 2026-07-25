@@ -6,9 +6,16 @@ type CodeBlockProps = {
   code: string;
   className?: string;
   preClassName?: string;
+  /** Inline row: code left, copy button right, vertically centered (hero/one-liners). */
+  variant?: "block" | "inline";
 };
 
-export default function CodeBlock({ code, className = "", preClassName = "" }: CodeBlockProps) {
+export default function CodeBlock({
+  code,
+  className = "",
+  preClassName = "",
+  variant = "block",
+}: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -17,7 +24,6 @@ export default function CodeBlock({ code, className = "", preClassName = "" }: C
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      // Fallback for older browsers / restricted contexts
       const ta = document.createElement("textarea");
       ta.value = code;
       ta.style.position = "fixed";
@@ -31,26 +37,39 @@ export default function CodeBlock({ code, className = "", preClassName = "" }: C
     }
   }
 
+  const btn = (
+    <button
+      type="button"
+      className="code-copy-btn"
+      onClick={handleCopy}
+      aria-label={copied ? "Copied" : "Copy code"}
+    >
+      {copied ? (
+        <>
+          <CheckIcon />
+          Copied
+        </>
+      ) : (
+        <>
+          <CopyIcon />
+          Copy
+        </>
+      )}
+    </button>
+  );
+
+  if (variant === "inline") {
+    return (
+      <div className={`code-block code-block-inline ${className}`.trim()}>
+        <pre className={preClassName}>{code}</pre>
+        {btn}
+      </div>
+    );
+  }
+
   return (
-    <div className={`code-block ${className}`.trim()}>
-      <button
-        type="button"
-        className="code-copy-btn"
-        onClick={handleCopy}
-        aria-label={copied ? "Copied" : "Copy code"}
-      >
-        {copied ? (
-          <>
-            <CheckIcon />
-            Copied
-          </>
-        ) : (
-          <>
-            <CopyIcon />
-            Copy
-          </>
-        )}
-      </button>
+    <div className={`code-block code-block-stack ${className}`.trim()}>
+      <div className="code-block-toolbar">{btn}</div>
       <pre className={preClassName}>{code}</pre>
     </div>
   );

@@ -88,9 +88,9 @@ export default function Contribute() {
         contributions are one command.
       </p>
 
-      <div className="mb-12 grid gap-4 lg:grid-cols-3">
+      <div className="mb-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {paths.map((p) => (
-          <div key={p.title} className="card flex h-full flex-col gap-4 p-6">
+          <div key={p.title} className="card flex h-full min-w-0 flex-col gap-4 overflow-hidden p-6">
             <div className="flex items-center justify-between gap-2">
               <span
                 className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider"

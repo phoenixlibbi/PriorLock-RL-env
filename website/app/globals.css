@@ -33,6 +33,12 @@ html {
   scroll-behavior: smooth;
 }
 
+html,
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
 body {
   background-color: var(--bg);
   color: var(--text);
@@ -235,18 +241,59 @@ a {
 /* Code */
 .code-block {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.code-block pre {
-  padding-right: 4.5rem;
+.code-block-stack {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #0a0f16;
+  overflow: hidden;
+}
+
+.code-block-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(12, 16, 22, 0.95);
+}
+
+.code-block-stack pre {
   margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.code-block-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.code-block-inline pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.code-block-inline .code-copy-btn {
+  flex-shrink: 0;
 }
 
 .code-copy-btn {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
-  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -284,7 +331,13 @@ pre {
   border-radius: var(--radius-sm);
   padding: 1rem 1.1rem;
   overflow-x: auto;
+  max-width: 100%;
   color: #c9d4e3;
+}
+
+/* Prevent grid children from forcing page-wide horizontal scroll */
+.section .grid > * {
+  min-width: 0;
 }
 
 code {
@@ -353,6 +406,71 @@ code {
 
 .lb-table tbody tr:hover {
   background: rgba(91, 156, 255, 0.04);
+}
+
+/* Gates verification table */
+.gates-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  min-width: 100%;
+}
+
+.gates-col-id {
+  width: 4.25rem;
+}
+
+.gates-col-check {
+  width: 38%;
+}
+
+.gates-col-req {
+  width: auto;
+}
+
+.gates-table th,
+.gates-table td {
+  text-align: left;
+  vertical-align: middle;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.gates-table th {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 650;
+  background: rgba(12, 16, 22, 0.9);
+  white-space: nowrap;
+}
+
+.gates-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.gates-table tbody tr:hover {
+  background: rgba(91, 156, 255, 0.04);
+}
+
+.gates-table td {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.gates-table .gates-id {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.gates-table .gates-req {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .score-track {

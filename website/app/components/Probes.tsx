@@ -13,8 +13,8 @@ const families = [
     code: `# shipped v2.0 — 1.x default was "first"
 dedupe(items, key, keep="last")
 
-dedupe(items, "sku")                 # 0.40  prior-locked
-dedupe(items, "sku", keep="first")   # 1.00  read the docs`,
+dedupe(items, "sku")               # 0.40 prior-locked
+dedupe(items, "sku", keep="first") # 1.00 read the docs`,
   },
   {
     id: "value_remap",
@@ -25,11 +25,11 @@ dedupe(items, "sku", keep="first")   # 1.00  read the docs`,
     color: "var(--yellow)",
     bg: "rgba(230,180,74,0.07)",
     border: "rgba(230,180,74,0.24)",
-    code: `# "keep" used to mean keep the EXISTING value
+    code: `# "keep" used to mean keep EXISTING
 merge(base, patch, on_conflict="keep_right")
 
-on_conflict="keep"        # 0.40  patch wins
-on_conflict="keep_left"   # 1.00  base wins`,
+on_conflict="keep"      # 0.40 patch wins
+on_conflict="keep_left" # 1.00 base wins`,
   },
   {
     id: "result_shape",
@@ -43,8 +43,8 @@ on_conflict="keep_left"   # 1.00  base wins`,
     code: `# tie-inclusive: may return MORE than k
 top_k(records, 3, "amount")
 
-result[:3]                # 0.40  "top 3 means 3"
-report all tied records   # 1.00  read the docs`,
+result[:3]              # 0.40 "top 3 means 3"
+report all tied records # 1.00 read the docs`,
   },
 ];
 
@@ -179,11 +179,11 @@ export default function Probes() {
         <code> default_flip</code> and still fails <code>result_shape</code>.
       </p>
 
-      <div className="mb-12 grid gap-4 lg:grid-cols-3">
+      <div className="mb-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {families.map((f) => (
           <div
             key={f.id}
-            className="flex flex-col gap-4 rounded-[var(--radius)] border p-5"
+            className="flex min-w-0 flex-col gap-4 overflow-hidden rounded-[var(--radius)] border p-5"
             style={{ background: f.bg, borderColor: f.border }}
           >
             <div className="flex items-baseline justify-between gap-3">
@@ -265,31 +265,36 @@ export default function Probes() {
         will actually run in the container.
       </p>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="card p-6">
-          <table className="lb-table w-full">
-            <thead>
-              <tr>
-                <th style={{ width: "3rem" }}>Gate</th>
-                <th>Check</th>
-                <th>Requirement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gates.map(([id, check, req]) => (
-                <tr key={id}>
-                  <td className="font-mono" style={{ color: "var(--accent)" }}>
-                    {id}
-                  </td>
-                  <td>{check}</td>
-                  <td style={{ color: "var(--muted)" }}>{req}</td>
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+        <div className="card overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="gates-table w-full">
+              <colgroup>
+                <col className="gates-col-id" />
+                <col className="gates-col-check" />
+                <col className="gates-col-req" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">Gate</th>
+                  <th scope="col">Check</th>
+                  <th scope="col">Requirement</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {gates.map(([id, check, req]) => (
+                  <tr key={id}>
+                    <td className="gates-id">{id}</td>
+                    <td>{check}</td>
+                    <td className="gates-req">{req}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="card p-6">
+        <div className="card flex flex-col p-6">
           <CodeBlock
             code={`$ priorlock stage0 tasks/my-task
 
@@ -305,12 +310,12 @@ G9 all probes discriminate PASS
 
 ALL GATES PASS`}
           />
-          <p className="mt-4 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-            CI runs all 13 archetypes through all 9 gates on every commit, plus every
-            wrapped task and every authored domain in the repo.
-          </p>
         </div>
       </div>
+      <p className="mt-4 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+        CI runs all 13 archetypes through all 9 gates on every commit, plus every
+        wrapped task and every authored domain in the repo.
+      </p>
     </section>
   );
 }
