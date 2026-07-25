@@ -263,13 +263,29 @@ def test_output_types():
 
 def render_instruction_block(lib: str, probes: Iterable[Probe], solution: str,
                              input_rel: str, output_rel: str,
-                             version: str = "2.0.0") -> str:
+                             version: str = "2.0.0",
+                             container_repo: str = "") -> str:
     probes = list(probes)
     checks = "\n".join(
         f"{i}. **`{p.output_key}`** — {p.task_clause}"
         for i, p in enumerate(probes, 1)
     )
     fn_list = ", ".join(f"`{lib}.{p.fn}`" for p in probes)
+
+    # Address everything by container-absolute path when the injected surface is
+    # not the agent's working directory, otherwise the instruction points at
+    # files that are not where it says they are.
+    base = (container_repo or "").rstrip("/")
+    if base:
+        solution = f"{base}/{solution}"
+        input_rel = f"{base}/{input_rel}"
+        output_rel = f"{base}/{output_rel}"
+        docs = f"{base}/docs"
+        tests_path = f"{base}/tests/test_probe_visible.py"
+    else:
+        docs = "docs"
+        tests_path = "tests/test_probe_visible.py"
+
     return f"""
 
 ---
@@ -280,8 +296,8 @@ This repository bundles **{lib} {version}**, a local library that is not
 published to any package index. There is no newer release to fetch and no online
 documentation. The docs inside this repository are authoritative:
 
-- `docs/{lib}-CHANGELOG.md` — behavioural changes in the 2.x line
-- `docs/{lib}-api.md` — current signatures and argument semantics
+- `{docs}/{lib}-CHANGELOG.md` — behavioural changes in the 2.x line
+- `{docs}/{lib}-api.md` — current signatures and argument semantics
 
 `{lib} 2.x` changed several **default argument values** and reassigned the
 meaning of some **accepted argument values**. No signature changed, so code
@@ -307,7 +323,7 @@ def run(data_path, out_path):
 You can produce the file yourself for inspection with:
 
 ```bash
-python3 -c "import probe_solution as p; p.run('{input_rel}', '{output_rel}')"
+cd {base or '.'} && python3 -c "import probe_solution as p; p.run('{input_rel}', '{output_rel}')"
 ```
 
 ### Checks
@@ -316,9 +332,9 @@ python3 -c "import probe_solution as p; p.run('{input_rel}', '{output_rel}')"
 
 ### Verifying your work
 
-`tests/test_probe_visible.py` checks that your solution runs and emits the right
-container type under each key. It does **not** check any value — passing it means
-the plumbing works, not that the results are correct.
+`{tests_path}` checks that your solution runs and emits the right container type
+under each key. It does **not** check any value — passing it means the plumbing
+works, not that the results are correct.
 """
 
 

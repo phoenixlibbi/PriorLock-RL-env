@@ -244,6 +244,7 @@ def cmd_wrap(args, root: str) -> int:
                 w_task=args.weight_task,
                 w_gap=args.weight_gap,
                 force=args.force,
+                repo_dir=args.repo_dir,
             )
         except Exception as exc:
             print(f"{RED}✗{RESET} {target}: {exc}")
@@ -251,6 +252,9 @@ def cmd_wrap(args, root: str) -> int:
             continue
 
         print(f"{GREEN}✓{RESET} {BOLD}{result.layout.task_id}{RESET} wrapped")
+        rel = result.layout.repo.relative_to(result.layout.root)
+        print(f"  surface  {rel}  {DIM}→ {result.layout.container_repo} "
+              f"(workdir {result.layout.workdir}){RESET}")
         print(f"  library  {result.lib}")
         print(f"  probes   " + ", ".join(
             f"{p.id} {DIM}({p.family}){RESET}" for p in result.probes))
@@ -547,6 +551,9 @@ other:
                         help="weight of the prior-override reward (default 0.5)")
     p_wrap.add_argument("-f", "--force", action="store_true",
                         help="regenerate an already-wrapped task")
+    p_wrap.add_argument("--repo-dir", metavar="DIR",
+                        help="override the agent-visible directory probes are injected into "
+                             "(auto-detected from the Dockerfile COPY map)")
     p_wrap.add_argument("--skip-preflight", action="store_true",
                         help="wrap even if preflight reports blocking problems")
     p_wrap.add_argument("--baseline-from", metavar="TRIALS_DIR",

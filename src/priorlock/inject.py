@@ -71,6 +71,12 @@ class TaskLayout:
     agent workdir is ``environment/repo``, ``environment/app``, or the
     environment root, and in whether the verifier entrypoint is ``run-tests.sh``
     or ``test.sh``.
+
+    ``container_repo`` is the crucial one. A task's ``environment/`` layout does
+    not have to mirror the container: a Dockerfile may ``COPY src/ /app/src/``
+    and ``COPY task_file/ /app/task_file/`` with nothing mapping to ``/app``
+    itself. Injected files have to be addressed by their **container** path, or
+    the instruction tells the agent to read a file that is not where it says.
     """
     root: Path
     task_toml: Path | None
@@ -80,10 +86,17 @@ class TaskLayout:
     tests: Path
     verifier_entry: Path | None
     workdir: str
+    container_repo: str = ""
+    copy_map: dict = field(default_factory=dict)
 
     @property
     def task_id(self) -> str:
         return self.root.name
+
+    def container_path(self, rel: str) -> str:
+        """Container-absolute path for a file placed at ``repo/rel``."""
+        base = (self.container_repo or self.workdir).rstrip("/")
+        return f"{base}/{rel.lstrip('/')}"
 
 
 _WORKDIR_RE = re.compile(r'^\s*workdir\s*=\s*["\']([^"\']+)["\']', re.M)
@@ -96,7 +109,50 @@ _INSTRUCTION_NAMES = ("instruction.md", "instructions.md", "task.md", "TASK.md",
 _VERIFIER_NAMES = ("test.sh", "run-tests.sh", "run_tests.sh", "verify.sh")
 
 
-def detect_layout(task_dir: str | Path) -> TaskLayout:
+_COPY_RE = re.compile(
+    r'^\s*COPY\s+(?:--[\w=.-]+\s+)*(?P<src>[^\s]+)\s+(?P<dst>[^\s]+)\s*$',
+    re.M | re.I,
+)
+_READONLY_RE = re.compile(r'chmod\s+-R\s+a-w\s+(?P<path>[^\s&|;]+)', re.I)
+_DOCKER_WORKDIR_RE = re.compile(r'^\s*WORKDIR\s+(?P<path>\S+)\s*$', re.M | re.I)
+
+
+def parse_dockerfile(dockerfile: Path) -> tuple[dict[str, str], set[str], str]:
+    """Return ``(copy_map, readonly_container_paths, workdir)`` from a Dockerfile.
+
+    ``copy_map`` maps an environment-relative directory to the container path it
+    lands at, so injected files can be addressed correctly regardless of how the
+    task chose to lay out ``environment/``.
+    """
+    copy_map: dict[str, str] = {}
+    readonly: set[str] = set()
+    workdir = ""
+    if not dockerfile.is_file():
+        return copy_map, readonly, workdir
+
+    text = dockerfile.read_text()
+    m = _DOCKER_WORKDIR_RE.search(text)
+    if m:
+        workdir = m.group("path").rstrip("/") or "/"
+
+    for match in _COPY_RE.finditer(text):
+        src = match.group("src").strip().strip("'\"")
+        dst = match.group("dst").strip().strip("'\"")
+        if src in (".", "./") or src.startswith("--"):
+            src = ""
+        src = src.rstrip("/").lstrip("./")
+        dst = dst.rstrip("/") or "/"
+        if not dst.startswith("/"):
+            dst = f"{workdir or '/app'}/{dst}"
+        copy_map[src] = dst
+
+    for match in _READONLY_RE.finditer(text):
+        readonly.add(match.group("path").rstrip("/"))
+
+    return copy_map, readonly, workdir
+
+
+def detect_layout(task_dir: str | Path, repo_dir: str | None = None) -> TaskLayout:
     root = Path(task_dir).resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"not a directory: {root}")
@@ -118,15 +174,63 @@ def detect_layout(task_dir: str | Path) -> TaskLayout:
         if m:
             workdir = m.group(1)
 
-    # the agent-visible repo: prefer the directory the workdir basename names
-    repo = environment / Path(workdir).name
-    if not repo.is_dir():
-        for candidate in ("repo", "app", "workspace", "src"):
-            if (environment / candidate).is_dir():
-                repo = environment / candidate
-                break
+    dockerfile = next(iter(sorted(environment.rglob("Dockerfile"))), None)
+    copy_map, readonly, docker_workdir = parse_dockerfile(dockerfile) if dockerfile else ({}, set(), "")
+    if docker_workdir and not (task_toml and _WORKDIR_RE.search(task_toml.read_text())):
+        workdir = docker_workdir
+    workdir = workdir.rstrip("/") or "/"
+
+    repo: Path | None = None
+    container_repo = ""
+
+    # 0. explicit override always wins
+    if repo_dir:
+        candidate = (root / repo_dir) if not Path(repo_dir).is_absolute() else Path(repo_dir)
+        if not candidate.is_dir():
+            raise FileNotFoundError(f"--repo-dir not found: {candidate}")
+        repo = candidate.resolve()
+        rel = str(repo.relative_to(environment)) if repo != environment else ""
+        container_repo = copy_map.get(rel, f"{workdir}/{rel}".rstrip("/") if rel else workdir)
+
+    # 1. a COPY that lands exactly on the workdir
+    if repo is None:
+        for src, dst in copy_map.items():
+            if dst == workdir:
+                candidate = environment / src if src else environment
+                if candidate.is_dir():
+                    repo, container_repo = candidate, dst
+                    break
+
+    # 2. a COPY that lands under the workdir and is NOT made read-only.
+    #    Read-only trees (task_file, fixtures) can't host an injected library.
+    if repo is None and copy_map:
+        writable = [
+            (src, dst) for src, dst in copy_map.items()
+            if dst.startswith(workdir) and not any(
+                dst == ro or dst.startswith(ro + "/") for ro in readonly
+            )
+            and (environment / src if src else environment).is_dir()
+        ]
+        if writable:
+            writable.sort(key=lambda kv: (kv[1].count("/"), len(kv[1])))
+            src, dst = writable[0]
+            repo, container_repo = (environment / src if src else environment), dst
+
+    # 3. conventional directory names
+    if repo is None:
+        named = environment / Path(workdir).name
+        if named.is_dir():
+            repo, container_repo = named, workdir
         else:
-            repo = environment
+            for name in ("repo", "app", "workspace", "src"):
+                if (environment / name).is_dir():
+                    repo = environment / name
+                    container_repo = copy_map.get(name, f"{workdir}/{name}")
+                    break
+
+    # 4. the environment root itself
+    if repo is None:
+        repo, container_repo = environment, workdir
 
     tests = root / "tests"
     verifier_entry = next(
@@ -137,6 +241,7 @@ def detect_layout(task_dir: str | Path) -> TaskLayout:
         root=root, task_toml=task_toml, instruction=instruction,
         environment=environment, repo=repo, tests=tests,
         verifier_entry=verifier_entry, workdir=workdir,
+        container_repo=container_repo or workdir, copy_map=copy_map,
     )
 
 
@@ -198,8 +303,9 @@ def wrap_task(
     w_gap: float = 0.5,
     force: bool = False,
     seed_suffix: str = "",
+    repo_dir: str | None = None,
 ) -> WrapResult:
-    layout = detect_layout(task_dir)
+    layout = detect_layout(task_dir, repo_dir=repo_dir)
     root = layout.root
 
     if is_wrapped(root):
@@ -241,9 +347,15 @@ def wrap_task(
            T.render_visible_test(lib, probes, SOLUTION_NAME, INPUT_REL), created, root)
 
     # ── instruction addendum ─────────────────────────────────────────────────
+    # Use container-absolute paths whenever the injected surface is not the
+    # agent's working directory.
+    needs_abs = layout.container_repo.rstrip("/") != layout.workdir.rstrip("/")
     block = (
         MARKER_BEGIN
-        + T.render_instruction_block(lib, probes, SOLUTION_NAME, INPUT_REL, OUTPUT_REL)
+        + T.render_instruction_block(
+            lib, probes, SOLUTION_NAME, INPUT_REL, OUTPUT_REL,
+            container_repo=layout.container_repo if needs_abs else "",
+        )
         + "\n"
         + MARKER_END
         + "\n"
@@ -282,7 +394,9 @@ def wrap_task(
         entry = layout.verifier_entry
     else:
         entry = layout.tests / "test.sh"
-    _write(entry, T.render_composite_test_sh(original_name, layout.workdir, w_task, w_gap),
+    _write(entry,
+           T.render_composite_test_sh(original_name, layout.container_repo,
+                                      w_task, w_gap),
            created if entry not in (layout.verifier_entry,) else modified, root,
            executable=True)
     if layout.verifier_entry and str(entry.relative_to(root)) not in modified:
@@ -318,6 +432,7 @@ def render_manifest(layout: TaskLayout, lib: str, probes: list[Probe],
         f'solution = "{SOLUTION_NAME}"',
         f'input = "{INPUT_REL}"',
         f'workdir = "{layout.workdir}"',
+        f'container_repo = "{layout.container_repo}"',
         f'original_verifier = "{original_verifier}"',
         f'original_verifier_sha256 = "{original_sha}"',
         "familiar_baseline = 0.40",
