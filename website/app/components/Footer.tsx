@@ -11,15 +11,7 @@ export default function Footer() {
         </p>
         <p className="mt-3">
           Created by{" "}
-          <a
-            href="https://github.com/phoenixlibbi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors hover:text-[var(--text)]"
-            style={{ color: "var(--accent)" }}
-          >
-            Muhammad Labeeb Tariq
-          </a>
+          <span style={{ color: "var(--text)" }}>Muhammad Labeeb Tariq</span>
           {" · "}
           <a
             href="mailto:labeebjutt80@gmail.com"
@@ -27,16 +19,6 @@ export default function Footer() {
             style={{ color: "var(--accent)" }}
           >
             labeebjutt80@gmail.com
-          </a>
-          {" · "}
-          <a
-            href="https://github.com/phoenixlibbi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors hover:text-[var(--text)]"
-            style={{ color: "var(--accent)" }}
-          >
-            github.com/phoenixlibbi
           </a>
         </p>
         <p className="mt-2">

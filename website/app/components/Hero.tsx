@@ -45,15 +45,7 @@ export default function Hero() {
           style={{ color: "var(--muted)" }}
         >
           Created by{" "}
-          <a
-            href="https://github.com/phoenixlibbi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors hover:text-[var(--text)]"
-            style={{ color: "var(--accent)" }}
-          >
-            Muhammad Labeeb Tariq
-          </a>
+          <span style={{ color: "var(--text)" }}>Muhammad Labeeb Tariq</span>
           {" · "}
           <a
             href="mailto:labeebjutt80@gmail.com"
@@ -61,16 +53,6 @@ export default function Hero() {
             style={{ color: "var(--accent)" }}
           >
             labeebjutt80@gmail.com
-          </a>
-          {" · "}
-          <a
-            href="https://github.com/phoenixlibbi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-colors hover:text-[var(--text)]"
-            style={{ color: "var(--accent)" }}
-          >
-            @phoenixlibbi
           </a>
         </p>
 
