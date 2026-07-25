@@ -362,6 +362,13 @@ def wrap_task(
     )
     instruction = layout.instruction or (root / "instruction.md")
     existing = instruction.read_text() if instruction.is_file() else "# Task\n"
+
+    # Stash the original verbatim so `unwrap` is a byte-exact round trip.
+    # Reconstructing it by stripping markers loses trailing whitespace, which
+    # makes unwrap-then-diff report drift that isn't real — and a "restore"
+    # that doesn't restore is worse than none.
+    _write(layout.tests / REFERENCE_DIR / "instruction.orig", existing, created, root)
+
     instruction.write_text(existing.rstrip() + "\n" + block, encoding="utf-8")
     modified.append(str(instruction.relative_to(root)))
 
@@ -516,6 +523,12 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
     lib = meta.get("library", "")
     removed: list[str] = []
 
+    # Read the stashed original BEFORE deleting _plx_reference/ — it lives there.
+    saved_instruction: str | None = None
+    orig_path = layout.tests / REFERENCE_DIR / "instruction.orig"
+    if orig_path.is_file():
+        saved_instruction = orig_path.read_text()
+
     def rm(path: Path) -> None:
         if path.is_dir():
             shutil.rmtree(path, ignore_errors=True)
@@ -549,15 +562,36 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
         if "PriorLock composite verifier" in text:
             rm(layout.verifier_entry)
 
-    # strip the instruction addendum
-    if layout.instruction and layout.instruction.is_file():
-        text = layout.instruction.read_text()
-        if MARKER_BEGIN in text:
-            head, _, rest = text.partition(MARKER_BEGIN)
-            _, _, tail = rest.partition(MARKER_END)
+    # restore the instruction file
+    if layout.instruction and layout.instruction.is_file() and MARKER_BEGIN in (
+            text := layout.instruction.read_text()):
+        head, _, rest = text.partition(MARKER_BEGIN)
+        _, _, tail = rest.partition(MARKER_END)
+
+        if saved_instruction is not None and head == saved_instruction.rstrip() + "\n" \
+                and not tail.strip():
+            # Untouched since wrapping — restore the original bytes exactly.
+            layout.instruction.write_text(saved_instruction, encoding="utf-8")
+            removed.append(str(layout.instruction.relative_to(root)) + " (restored verbatim)")
+        else:
+            # The author edited it while wrapped; keep their text, drop our block.
             layout.instruction.write_text(head.rstrip() + "\n" + tail.lstrip("\n"),
                                           encoding="utf-8")
-            removed.append(str(layout.instruction.relative_to(root)) + " (block)")
+            removed.append(str(layout.instruction.relative_to(root)) + " (block stripped)")
 
     rm(root / MANIFEST)
+
+    # Prune directories that only existed to hold injected files. A task whose
+    # environment/ had no docs/ before wrapping must not have an empty docs/
+    # after unwrapping — otherwise "unwrap" is not actually a round trip, and
+    # the next preflight sees a layout the author never wrote.
+    for candidate in ("data", "docs", "tests"):
+        d = layout.repo / candidate
+        try:
+            if d.is_dir() and not any(d.iterdir()):
+                d.rmdir()
+                removed.append(str(d.relative_to(root)) + "/ (empty)")
+        except OSError:
+            pass
+
     return removed

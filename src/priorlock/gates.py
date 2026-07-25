@@ -46,6 +46,7 @@ from .inject import (
     read_manifest,
 )
 from .probes.base import FAMILIAR_BASELINE
+from . import progress
 
 EPS = 1e-6
 
@@ -165,6 +166,13 @@ def _grade_variant(layout, variant: str) -> dict:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def run_stage0(task_dir: str | Path, verbose: bool = True) -> Stage0Report:
+    """Run all ten gates, reporting each one live as it completes.
+
+    Every gate here spawns subprocesses — four reference gradings, two pytest
+    runs and a tamper re-grade. That is tens of seconds of silence if results
+    are batched to the end, which reads as a hang. Each gate therefore announces
+    itself before it starts and prints its own result with an elapsed time.
+    """
     task_dir = Path(task_dir).resolve()
     if not is_wrapped(task_dir):
         raise RuntimeError(
@@ -181,97 +189,139 @@ def run_stage0(task_dir: str | Path, verbose: bool = True) -> Stage0Report:
         probes=probe_ids,
     )
 
+    if verbose:
+        print(f"=== Stage-0 · {report.task_id} ===")
+        print(f"{DIM}library {report.library} · {len(probe_ids)} probes: "
+              f"{', '.join(probe_ids)}{RESET}")
+        print(f"{DIM}10 gates · no Docker, no network, no API key{RESET}\n")
+
+    total = 10
+    n = [0]
+
+    def gate(gid: str, name: str):
+        """Context manager yielding a setter for one gate's result."""
+        n[0] += 1
+        label = f"{gid:<4}{name}"
+        if verbose:
+            return progress.Step(f"[{n[0]:>2}/{total}] {label}", width=42)
+        return _NullStep()
+
+    def record(gid, name, ok, detail, data=None) -> GateResult:
+        r = GateResult(gid, name, ok, detail, data or {})
+        report.gates.append(r)
+        return r
+
     # ── G1 / G2 / G3 / G7 — score the four reference solutions ───────────────
-    gold = _grade_variant(layout, "gold")
-    familiar = _grade_variant(layout, "familiar")
-    stub = _grade_variant(layout, "stub")
-    bypass = _grade_variant(layout, "bypass")
+    # Grade all four up front (they share setup cost), but announce each.
+    with gate("G1", "gold score") as st:
+        gold = _grade_variant(layout, "gold")
+        g = float(gold.get("gap_score", 0.0))
+        ok = abs(g - 1.0) < EPS
+        record("G1", "gold score", ok, f"gap_score={g}",
+               {"verdicts": gold.get("verdict_counts", {}), "flags": gold.get("flags", [])})
+        st.done(ok, f"gap_score={g}  (want 1.0)")
 
-    g = float(gold.get("gap_score", 0.0))
-    f = float(familiar.get("gap_score", 0.0))
-    s = float(stub.get("gap_score", 0.0))
-    b = float(bypass.get("gap_score", 0.0))
-    report.scores = {"gold": g, "familiar": f, "stub": s, "bypass": b}
+    with gate("G2", "familiar score") as st:
+        familiar = _grade_variant(layout, "familiar")
+        f = float(familiar.get("gap_score", 0.0))
+        ok = abs(f - FAMILIAR_BASELINE) < EPS
+        record("G2", "familiar score", ok, f"gap_score={f} (want {FAMILIAR_BASELINE})",
+               {"verdicts": familiar.get("verdict_counts", {}),
+                "flags": familiar.get("flags", [])})
+        st.done(ok, f"gap_score={f}  (want {FAMILIAR_BASELINE})")
 
-    report.gates.append(GateResult(
-        "G1", "gold score", abs(g - 1.0) < EPS,
-        f"gap_score={g}", {"verdicts": gold.get("verdict_counts", {}),
-                           "flags": gold.get("flags", [])},
-    ))
-    report.gates.append(GateResult(
-        "G2", "familiar score", abs(f - FAMILIAR_BASELINE) < EPS,
-        f"gap_score={f} (want {FAMILIAR_BASELINE})",
-        {"verdicts": familiar.get("verdict_counts", {}),
-         "flags": familiar.get("flags", [])},
-    ))
-    report.gates.append(GateResult(
-        "G3", "stub score", abs(s) < EPS, f"gap_score={s}",
-        {"flags": stub.get("flags", [])},
-    ))
-    report.gates.append(GateResult(
-        "G4", "strict ladder", s < f < g, f"{s} < {f} < {g}",
-    ))
+    with gate("G3", "stub score") as st:
+        stub = _grade_variant(layout, "stub")
+        s = float(stub.get("gap_score", 0.0))
+        ok = abs(s) < EPS
+        record("G3", "stub score", ok, f"gap_score={s}", {"flags": stub.get("flags", [])})
+        st.done(ok, f"gap_score={s}  (want 0.0)")
+
+    with gate("G4", "strict ladder") as st:
+        ok = s < f < g
+        record("G4", "strict ladder", ok, f"{s} < {f} < {g}")
+        st.done(ok, f"{s} < {f} < {g}")
+
+    report.scores = {"gold": g, "familiar": f, "stub": s, "bypass": 0.0}
 
     # ── G5 — visible tests must not discriminate ─────────────────────────────
-    vis_results = {}
-    for variant in ("gold", "familiar"):
-        ref = layout.tests / REFERENCE_DIR / f"{variant}.py"
-        sb = _Sandbox(layout)
-        try:
-            sb.install_solution(ref)
-            ok, out = sb.run_visible_tests()
-            vis_results[variant] = {"passed": ok, "output": out}
-        finally:
-            sb.cleanup()
-    g5_ok = all(v["passed"] for v in vis_results.values())
-    report.gates.append(GateResult(
-        "G5", "visible tests non-discriminating", g5_ok,
-        " ".join(f"{k}={'pass' if v['passed'] else 'FAIL'}" for k, v in vis_results.items()),
-        vis_results,
-    ))
+    with gate("G5", "visible tests non-discriminating") as st:
+        vis_results = {}
+        for variant in ("gold", "familiar"):
+            ref = layout.tests / REFERENCE_DIR / f"{variant}.py"
+            sb = _Sandbox(layout)
+            try:
+                sb.install_solution(ref)
+                passed, out = sb.run_visible_tests()
+                vis_results[variant] = {"passed": passed, "output": out}
+            finally:
+                sb.cleanup()
+        ok = all(v["passed"] for v in vis_results.values())
+        detail = " ".join(f"{k}={'pass' if v['passed'] else 'FAIL'}"
+                          for k, v in vis_results.items())
+        record("G5", "visible tests non-discriminating", ok, detail, vis_results)
+        st.done(ok, detail)
 
     # ── G6 — canary: no verifier asset on the agent surface ──────────────────
-    leaks = _canary(layout)
-    report.gates.append(GateResult(
-        "G6", "canary clean", not leaks,
-        "no oracle assets in environment/" if not leaks else f"{len(leaks)} leak(s)",
-        {"leaks": leaks},
-    ))
+    with gate("G6", "canary clean") as st:
+        leaks = _canary(layout)
+        ok = not leaks
+        detail = "no oracle assets in environment/" if ok else f"{len(leaks)} leak(s)"
+        record("G6", "canary clean", ok, detail, {"leaks": leaks})
+        st.done(ok, detail)
 
     # ── G7 — bypassing the library must score 0.0, not 0.40 ──────────────────
-    bypass_verdicts = bypass.get("verdict_counts", {})
-    g7_ok = abs(b) < EPS and bypass_verdicts.get("bypassed", 0) == len(probe_ids)
-    report.gates.append(GateResult(
-        "G7", "bypass scores zero", g7_ok,
-        f"gap_score={b} verdicts={bypass_verdicts}",
-        {"verdicts": bypass_verdicts},
-    ))
+    with gate("G7", "bypass scores zero") as st:
+        bypass = _grade_variant(layout, "bypass")
+        b = float(bypass.get("gap_score", 0.0))
+        report.scores["bypass"] = b
+        verdicts = bypass.get("verdict_counts", {})
+        ok = abs(b) < EPS and verdicts.get("bypassed", 0) == len(probe_ids)
+        detail = f"gap_score={b} verdicts={verdicts}"
+        record("G7", "bypass scores zero", ok, detail, {"verdicts": verdicts})
+        st.done(ok, detail)
 
     # ── G8 — tampering is detected and cannot change the score ───────────────
-    tamper = _tamper_check(layout)
-    report.gates.append(GateResult(
-        "G8", "tamper-proof grading", tamper["ok"],
-        f"score={tamper['score']} flags={tamper['flags']}", tamper,
-    ))
+    with gate("G8", "tamper-proof grading") as st:
+        tamper = _tamper_check(layout)
+        detail = f"score={tamper['score']} flags={tamper['flags']}"
+        record("G8", "tamper-proof grading", tamper["ok"], detail, tamper)
+        st.done(tamper["ok"], detail)
 
     # ── G9 — every probe individually discriminates ──────────────────────────
-    dead = _dead_probes(gold, familiar, probe_ids)
-    report.gates.append(GateResult(
-        "G9", "all probes discriminate", not dead,
-        "every probe separates gold from familiar" if not dead
-        else f"non-discriminating: {', '.join(dead)}",
-        {"dead": dead},
-    ))
+    with gate("G9", "all probes discriminate") as st:
+        dead = _dead_probes(gold, familiar, probe_ids)
+        ok = not dead
+        detail = ("every probe separates gold from familiar" if ok
+                  else f"non-discriminating: {', '.join(dead)}")
+        record("G9", "all probes discriminate", ok, detail, {"dead": dead})
+        st.done(ok, detail)
 
     # ── G10 — the host task survived migration intact ────────────────────────
-    host = _host_preserved(layout, meta)
-    report.gates.append(GateResult(
-        "G10", "host task preserved", host["ok"], host["detail"], host,
-    ))
+    with gate("G10", "host task preserved") as st:
+        host = _host_preserved(layout, meta)
+        record("G10", "host task preserved", host["ok"], host["detail"], host)
+        st.done(host["ok"], host["detail"])
 
     if verbose:
-        _print(report)
+        _summary(report)
     return report
+
+
+class _NullStep:
+    """No-op Step used when verbose=False (CI matrices, --json)."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def done(self, *a, **k):
+        pass
+
+    def note(self, *a, **k):
+        pass
 
 
 def _canary(layout) -> list[str]:
@@ -395,18 +445,26 @@ def _dead_probes(gold: dict, familiar: dict, probe_ids: list[str]) -> list[str]:
 #  Reporting
 # ═════════════════════════════════════════════════════════════════════════════
 
-def _print(report: Stage0Report) -> None:
-    print(f"=== Stage-0 · {report.task_id} ===")
-    print(f"{DIM}library {report.library} · probes: {', '.join(report.probes)}{RESET}\n")
-    for gate in report.gates:
-        mark = f"{GREEN}PASS{RESET}" if gate.passed else f"{RED}FAIL{RESET}"
-        print(f"{gate.id} {gate.name:<34} {mark}  {DIM}{gate.detail}{RESET}")
-        if not gate.passed and gate.data:
-            snippet = json.dumps(gate.data, ensure_ascii=False)[:400]
-            print(f"   {DIM}{snippet}{RESET}")
-    print()
-    scores = report.scores
-    print(f"ladder  stub {scores.get('stub')}  bypass {scores.get('bypass')}  "
-          f"familiar {scores.get('familiar')}  gold {scores.get('gold')}")
-    print(f"\n{GREEN if report.passed else RED}"
-          f"{'ALL GATES PASS' if report.passed else 'SOME GATES FAILED'}{RESET}")
+def _summary(report: Stage0Report) -> None:
+    """Printed after the live gate lines — failures in full, then the ladder."""
+    failed = [g for g in report.gates if not g.passed]
+    if failed:
+        print(f"\n{RED}failures{RESET}")
+        for gate in failed:
+            print(f"  {gate.id} {gate.name}: {gate.detail}")
+            if gate.data:
+                snippet = json.dumps(gate.data, ensure_ascii=False)[:400]
+                print(f"     {DIM}{snippet}{RESET}")
+
+    s = report.scores
+    print(f"\n{DIM}ladder{RESET}  "
+          f"stub {s.get('stub')}  bypass {s.get('bypass')}  "
+          f"familiar {s.get('familiar')}  gold {s.get('gold')}")
+    passed = sum(1 for g in report.gates if g.passed)
+    colour = GREEN if report.passed else RED
+    verdict = "ALL GATES PASS" if report.passed else "SOME GATES FAILED"
+    print(f"{colour}{verdict}{RESET}  {DIM}({passed}/{len(report.gates)}){RESET}")
+
+
+# kept for backwards compatibility with anything importing _print
+_print = _summary

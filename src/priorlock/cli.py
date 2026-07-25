@@ -221,8 +221,18 @@ def cmd_wrap(args, root: str) -> int:
         print(f"{RED}no tasks found{RESET}", file=sys.stderr)
         return 1
 
+    from priorlock.inject import is_wrapped, unwrap_task
+
     failures = 0
     for target in targets:
+        # ── --force: unwrap FIRST, so preflight judges the original task ─────
+        # Otherwise P9 ("not already wrapped") and P10 ("no path collisions")
+        # both fail on artefacts we are about to remove ourselves, and --force
+        # becomes unusable — which is exactly when you most need it.
+        if args.force and is_wrapped(target):
+            removed = unwrap_task(target)
+            print(f"{DIM}  unwrapped first ({len(removed)} paths removed){RESET}")
+
         # ── preflight unless explicitly skipped ──────────────────────────────
         if not args.skip_preflight:
             report = preflight(target)
