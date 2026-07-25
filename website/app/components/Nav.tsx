@@ -1,6 +1,7 @@
 export default function Nav() {
   const links = [
     { id: "how-it-works", label: "How it works" },
+    { id: "research", label: "Research" },
     { id: "domains", label: "Domains" },
     { id: "leaderboard", label: "Leaderboard" },
     { id: "contribute", label: "Contribute" },
