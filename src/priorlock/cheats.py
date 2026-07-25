@@ -422,10 +422,16 @@ def _run_one(layout, cheat: dict) -> CheatResult:
         sb.install_solution(cheat["source"])
         grader = sb.tests / "probe_grade.py"
         try:
+            # cwd MUST be the sandbox — this is the path the cheats actually
+            # take, and two of them write to relative paths on purpose
+            # ("probe_details.json", "../tests/probe_grade.py"). Without a
+            # contained cwd those escape into whatever directory the harness
+            # was invoked from.
             proc = subprocess.run(
                 [sys.executable, str(grader),
                  "--submission", str(sb.submission), "--tests-dir", str(sb.tests)],
                 capture_output=True, text=True, timeout=CHEAT_TIMEOUT,
+                cwd=str(sb.tmp),
             )
             stderr, stdout = proc.stderr, proc.stdout
         except subprocess.TimeoutExpired as exc:
