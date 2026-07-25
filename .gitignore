@@ -1,3 +1,14 @@
+# Tracked (keep these):
+#   docs/  implementation-progress/  priorlock/  priorlock-env/
+#   src/  tablixdemo/  website/
+#   README.md  CONTRIBUTING.md  PriorLock-Proposal.docx  .gitignore
+
+# ── Not tracked (local / trial artifacts) ──
+harbortasks/
+jobs/
+.github/
+pyproject.toml
+
 # local notes
 
 
@@ -13,6 +24,12 @@ __pycache__/
 venv/
 .env
 .env.*
+
+# Node / Next (website)
+node_modules/
+.next/
+out/
+*.tsbuildinfo
 
 # OS / editor
 .DS_Store
