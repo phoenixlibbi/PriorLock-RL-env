@@ -410,6 +410,7 @@ class SoundnessReceipt:
                              "wilson95": [round(rci[0], 4), round(rci[1], 4)]},
             "worst_surviving_cheat": self.worst_score,
             "familiar_baseline": FAMILIAR_BASELINE,
+            "classes": sorted({r.klass for r in self.results}),
             "cheats": [r.to_dict() for r in self.results],
         }
 
