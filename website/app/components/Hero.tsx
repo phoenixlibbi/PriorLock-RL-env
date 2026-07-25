@@ -12,7 +12,7 @@ export default function Hero() {
       />
 
       <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
-        <span className="badge rise mb-7">Harbor-native · RL environment · v0.1.0</span>
+        <span className="badge rise mb-7">Harbor-native · RL environment · v0.1.1</span>
 
         <h1
           className="rise rise-delay-1 font-mono font-bold leading-[1.05] mb-6"
