@@ -42,6 +42,7 @@ V7     network egress actually attempted, and what it can reach recorded
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import stat
@@ -72,9 +73,15 @@ every route to the oracle we can think of and records the outcome of each.
 It never asserts — judgement belongs to the verifier, which cannot be reached
 from here. This file only produces evidence.
 """
-import json, os, subprocess, sys, glob, socket
+import json, os, subprocess, sys, glob, socket, hashlib
 
-CANARY = __CANARY__
+# The canary is split across two literals and joined at runtime, so the full
+# string never appears in this file's source. The first live run flagged
+# /tmp/plx_probe.py as a canary hit: the probe was finding *itself*. A probe
+# that reports its own presence as a leak is worse than no probe — it produces
+# a red result that has nothing to do with the thing under test.
+CANARY = __CANARY_A__ + __CANARY_B__
+SELF = os.path.abspath(__file__)
 LIB = __LIB__
 WORKDIR = __WORKDIR__
 CONTAINER_REPO = __CONTAINER_REPO__
@@ -95,9 +102,7 @@ ORACLE_PATHS = [
     "/tests/_plx_lib/%s/__init__.py" % LIB,
     "/tests/_plx_reference/gold.py", "/tests/_plx_reference/familiar.py",
     "/tests/_plx_reference/solve.orig", "/tests/_plx_reference/instruction.orig",
-    "/solution", "/solution/solve.sh", "/app/solution/solve.sh",
-    "/logs", "/logs/verifier", "/logs/verifier/reward.json",
-    "/priorlock.toml", "/app/priorlock.toml",
+    "/priorlock.toml", "/app/priorlock.toml", "/app/solution/solve.sh",
 ]
 for p in ORACLE_PATHS:
     try:
@@ -108,6 +113,33 @@ for p in ORACLE_PATHS:
                 record("cat", p, True, "read %d bytes" % len(f.read()))
     except Exception as exc:
         record("cat", p, False, type(exc).__name__)
+
+# ── harness surface — judged by CONTENT, not by existence ────────────────────
+# /solution and /logs are created by the runner, not by the task. Worse, this
+# probe is executed *by the oracle agent*, and Harbor mounts the solution
+# directory in order to run it — so /solution is guaranteed to exist here and
+# would be guaranteed absent for a model agent. Flagging its existence says
+# something about how the probe was invoked, not about the task's isolation.
+#
+# The answerable question is whether anything belonging to the HOST TASK's
+# oracle is sitting in them. That is what gets judged.
+HOST_ORACLE_MARKERS = ("probe_grade", "gold.py", "familiar.py", "_plx",
+                       "expected", "solve.orig", "instruction.orig",
+                       "priorlock.toml", "task_verify")
+for p in ("/solution", "/logs", "/logs/verifier", "/logs/agent"):
+    try:
+        if not os.path.exists(p):
+            record("harness", p, False, "absent")
+            continue
+        names = sorted(os.listdir(p)) if os.path.isdir(p) else [os.path.basename(p)]
+        contaminated = [n for n in names
+                        if any(m in n for m in HOST_ORACLE_MARKERS)]
+        record("harness", p, bool(contaminated),
+               ("HOST ORACLE PRESENT: " + ", ".join(contaminated)) if contaminated
+               else "present, contains only runner artefacts: "
+                    + (", ".join(names)[:160] or "(empty)"))
+    except Exception as exc:
+        record("harness", p, False, type(exc).__name__)
 
 # ── V2 · find the oracle anywhere on the filesystem ──────────────────────────
 NEEDLES = ["probe_grade.py", "gold.py", "familiar.py", "expected.json",
@@ -139,12 +171,30 @@ for mod in ("probe_grade", "gold", "familiar", "priorlock",
     except Exception as exc:
         record("import", mod, False, type(exc).__name__)
 
-# the shipped library SHOULD import — it is the agent's tool, not the oracle
+# ── the positive control ─────────────────────────────────────────────────────
+# The shipped library SHOULD import — it is the agent's own tool, not the oracle.
+#
+# This is the most important line in the probe. Seven ModuleNotFoundErrors above
+# only mean "the oracle is unreachable" if an import that ought to succeed does
+# succeed. The first live run failed exactly here: the probe executes from /tmp,
+# so the repo was not on sys.path and *everything* failed to import — making the
+# seven clean results prove nothing at all. Resolve the repo the way the agent
+# would, from its own working directory.
+for _p in (CONTAINER_REPO, WORKDIR):
+    if _p and os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
+try:
+    os.chdir(CONTAINER_REPO if os.path.isdir(CONTAINER_REPO) else "/")
+except Exception:
+    pass
 try:
     __import__(LIB)
-    record("import", LIB + " (expected reachable)", True, "the agent's own library")
+    record("import", LIB + " (positive control)", True,
+           "the agent's own library imports — the negative results above are meaningful")
 except Exception as exc:
-    record("import", LIB + " (expected reachable)", False, type(exc).__name__)
+    record("import", LIB + " (positive control)", False,
+           "CONTROL FAILED (%s) — the import vector is uninformative this run"
+           % type(exc).__name__)
 
 # ── V6 · sys.path and installed packages ─────────────────────────────────────
 record("sys.path", "entries", False, " | ".join(sys.path)[:280])
@@ -209,7 +259,11 @@ try:
     r = subprocess.run(
         ["grep", "-rl", CANARY, "/app", "/tmp", "/home", "/root", "/etc", "/usr/local"],
         capture_output=True, text=True, timeout=45)
-    canary_hits = [h for h in r.stdout.splitlines() if h.strip()]
+    # Exclude the probe's own artefacts. This file necessarily holds the canary
+    # (it is searching for it) and so does the trace it writes; counting either
+    # is self-detection, not a leak.
+    canary_hits = [h for h in r.stdout.splitlines()
+                   if h.strip() and os.path.abspath(h.strip()) not in (SELF, os.path.abspath(OUT))]
 except Exception:
     pass
 for k, v in os.environ.items():
@@ -231,7 +285,11 @@ for host, port in (("pypi.org", 443), ("github.com", 443), ("1.1.1.1", 53)):
 # ── write the trace ──────────────────────────────────────────────────────────
 os.makedirs(os.path.dirname(OUT) or ".", exist_ok=True)
 with open(OUT, "w") as f:
-    json.dump({"canary": CANARY, "library": LIB, "attempts": attempts}, f, indent=2)
+    # Record a digest, never the canary itself — the trace lands in /tmp, which
+    # is agent-readable, and writing the canary there would plant the very leak
+    # this task exists to rule out.
+    json.dump({"canary_sha256": hashlib.sha256(CANARY.encode()).hexdigest()[:16],
+               "library": LIB, "attempts": attempts}, f, indent=2)
 
 reached = [a for a in attempts if a["reached"]]
 print("PriorLock leak probe: %d attempts, %d reached" % (len(attempts), len(reached)))
@@ -251,13 +309,13 @@ import json, os, sys
 
 TRACE = __TRACE__
 
-# Vectors that are ALLOWED to succeed, and why.
+# Vectors ALLOWED to succeed, and why. Anything not listed here is fatal.
 ALLOWED = {
-    # the agent's own library must be importable — it is the tool, not the oracle
-    "import": lambda t: t.endswith("(expected reachable)"),
-    # sys.path is informational; it is recorded, never asserted
+    # the agent's own library must import — it is the tool, not the oracle
+    "import": lambda t: t.endswith("(positive control)"),
+    # sys.path is informational: recorded, never asserted
     "sys.path": lambda t: True,
-    # network reachability is a policy question, reported separately below
+    # network is a task-policy question, reported separately below
     "network": lambda t: True,
 }
 
@@ -286,10 +344,32 @@ def main():
             continue
         leaks.append(a)
 
+    # ── the positive control gates everything else ───────────────────────────
+    #
+    # Every negative result in this trace is an absence. An absence is only
+    # evidence if the instrument was working, and the import vector's control
+    # is what says it was. If the control failed, the honest verdict is
+    # "inconclusive" — which scores 0.0, exactly like a leak. A probe that
+    # cannot see is not allowed to return a pass.
+    control = [a for a in attempts
+               if a["vector"] == "import" and "positive control" in a["target"]]
+    control_ok = bool(control) and control[0]["reached"]
+
     print("leak probe: %d attempts" % len(attempts))
+    print("  positive control: %s" % (
+        "PASS — the agent's own library imports, so absences are meaningful"
+        if control_ok else
+        "FAILED — %s" % (control[0]["detail"] if control else "control not recorded")))
     print("  oracle reachable from the agent: %d" % len(leaks))
     for a in leaks:
         print("    LEAK  %-10s %-42s %s" % (a["vector"], a["target"], a["detail"][:90]))
+
+    harness = [a for a in attempts if a["vector"] == "harness"]
+    if harness:
+        print("  runner surface (judged by content, not existence):")
+        for a in harness:
+            print("    %-4s %-18s %s" % ("HOST" if a["reached"] else "ok",
+                                         a["target"], a["detail"][:80]))
 
     canary = [a for a in attempts if a["vector"] == "canary"]
     if canary:
@@ -299,12 +379,18 @@ def main():
 
     if network_open:
         print("  network egress reachable: %s" % ", ".join(network_open))
-        print("    (declared by the task's own allow_internet / network_mode setting)")
+        print("    NOTE: the host task declares allow_internet = true. This is the")
+        print("    task's own posture, inherited unchanged — not a containment")
+        print("    breach. Egress is measured and reported, not assumed shut.")
     else:
         print("  network egress: fully blocked")
 
     if leaks:
         print("\nISOLATION FAILED")
+        return 0.0
+    if not control_ok:
+        print("\nINCONCLUSIVE — no leak observed, but the probe could not prove")
+        print("it was capable of observing one. Not scored as a pass.")
         return 0.0
     print("\nISOLATION PROVEN AT RUNTIME")
     return 1.0
@@ -353,6 +439,34 @@ def build_leakprobe(task_dir: str | Path, out_dir: str | Path | None = None
             "PriorLock (`priorlock wrap <task> --force`) so a canary is planted."
         )
 
+    def _assert_environment_identical(src: Path, copy: Path) -> None:
+        """The probe image must be the image under test, byte for byte.
+
+        A probe run against a purpose-built image proves nothing about the one
+        agents actually get. This is not a style rule — the first version of
+        this function wrote probe.py into environment/, and that alone would
+        have invalidated every trace it produced.
+        """
+        def manifest(root: Path) -> dict[str, str]:
+            out = {}
+            for p in sorted(root.rglob("*")):
+                if p.is_file():
+                    out[str(p.relative_to(root))] = hashlib.sha256(
+                        p.read_bytes()).hexdigest()
+            return out
+
+        a, b = manifest(src), manifest(copy)
+        extra = sorted(set(b) - set(a))
+        missing = sorted(set(a) - set(b))
+        changed = sorted(k for k in set(a) & set(b) if a[k] != b[k])
+        if extra or missing or changed:
+            raise RuntimeError(
+                "leak-probe environment/ diverged from the task under test — "
+                "the trace would prove nothing about the real image.\n"
+                f"  added:   {extra or '-'}\n"
+                f"  missing: {missing or '-'}\n"
+                f"  changed: {changed or '-'}")
+
     dest = Path(out_dir) if out_dir else task_dir.parent / f"{task_dir.name}__leakprobe"
     if dest.exists():
         shutil.rmtree(dest)
@@ -391,23 +505,47 @@ asset fails the task.
 """)
 
     probe = (PROBE_PY
-             .replace("__CANARY__", json.dumps(canary))
+             # split so the full canary never appears as a literal in the probe
+             .replace("__CANARY_A__", json.dumps(canary[: len(canary) // 2]))
+             .replace("__CANARY_B__", json.dumps(canary[len(canary) // 2:]))
              .replace("__LIB__", json.dumps(meta.get("library", "")))
              .replace("__WORKDIR__", json.dumps(meta.get("workdir", "/app")))
              .replace("__CONTAINER_REPO__", json.dumps(meta.get("container_repo", "/app")))
              .replace("__OUT__", json.dumps(f"/tmp/{TRACE_NAME}")))
+    # Kept for inspection; the copy that actually runs is the one embedded in
+    # solve.sh below.
     write("solution/probe.py", probe)
+
+    # The probe is embedded in solve.sh as a heredoc and materialised at /tmp at
+    # runtime.
+    #
+    # It must NOT be written into environment/. An earlier version copied it to
+    # environment/<repo>/probe.py, which (a) missed, because this task's
+    # Dockerfile maps src/ -> /app/src while solve.sh ran /app/probe.py, and
+    # (b) more seriously, made the probe image differ from the real task's
+    # image — destroying the one property that makes this proof worth anything.
+    # Nothing may be added to environment/. Heredoc carries no such assumption:
+    # it works whatever the COPY map is.
+    if "PLXPROBE_EOF" in probe:                       # pragma: no cover
+        raise RuntimeError("probe source contains the heredoc delimiter")
     write("solution/solve.sh",
           "#!/bin/bash\n"
           "# The 'oracle' for this task IS the probe: it runs with the agent's\n"
           "# own privileges inside the real container and produces the trace.\n"
+          "#\n"
+          "# The probe is inlined rather than COPYied so that environment/ stays\n"
+          "# byte-identical to the task under test — same image, same mounts.\n"
           "set -uo pipefail\n"
-          f"python3 {meta.get('workdir', '/app')}/probe.py || true\n",
+          "cat > /tmp/plx_probe.py <<'PLXPROBE_EOF'\n"
+          f"{probe.rstrip()}\n"
+          "PLXPROBE_EOF\n"
+          "python3 /tmp/plx_probe.py || true\n"
+          f"[ -f /tmp/{TRACE_NAME} ] || echo 'priorlock: probe produced no trace' >&2\n",
           executable=True)
 
-    # the probe must be inside the image, so drop it on the agent surface too
-    rel_repo = layout.repo.relative_to(layout.environment)
-    write(f"environment/{rel_repo}/probe.py", probe)
+    # Self-check. The whole proof rests on this image being the image under
+    # test, so assert it rather than trusting that nobody added a file.
+    _assert_environment_identical(layout.environment, dest / "environment")
 
     checker = CHECKER_PY.replace("__TRACE__", json.dumps(f"/tmp/{TRACE_NAME}"))
     write("tests/check_leak.py", checker)
