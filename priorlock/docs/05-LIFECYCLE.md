@@ -38,7 +38,7 @@ ever enter the picture.
   ────────────────── the task is now known-good ──────────────────
   4  preflight      priorlock preflight tasks/t                  is it wrap-ready?
   5  convert        priorlock wrap tasks/t --baseline-from jobs/
-  6  gate           priorlock stage0 tasks/t                     10 offline gates
+  6  gate           priorlock stage0 tasks/t                     11 offline gates
   7  re-run         harbor run -p tasks/t -a oracle
   8  doctor         priorlock doctor tasks/t                     did wrapping break it?
 ```
@@ -138,8 +138,8 @@ Use `--baseline-agent` to pin against something other than the oracle.
 priorlock stage0 tasks/my-task
 ```
 
-Ten offline gates. The first nine validate the probe measurement; **G10
-validates the migration itself.**
+Eleven offline gates. G1–G9 validate the probe measurement; **G10 and G11
+validate the conversion itself.**
 
 | Gate | Check |
 |---|---|
@@ -150,6 +150,7 @@ validates the migration itself.**
 | G8 | tampering is flagged and changes no score |
 | G9 | every probe separates gold from familiar |
 | **G10** | **the host task's original verifier survived intact** |
+| **G11** | **the shipped oracle scores 1.0 on the probes** |
 
 G10 asserts three things about the migration:
 

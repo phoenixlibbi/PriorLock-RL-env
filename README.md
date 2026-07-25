@@ -19,7 +19,7 @@ priorlock preflight tasks/my-task
 # 5    migrate, pinning the pre-wrap oracle reward
 priorlock wrap tasks/my-task --baseline-from jobs/
 
-# 6    10 offline gates — no Docker, no API key
+# 6    11 offline gates — no Docker, no API key
 priorlock stage0 tasks/my-task
 
 # 7-8  re-run, then prove wrapping did no harm
@@ -90,7 +90,7 @@ every wrapped task.
 
 ## Probe catalog
 
-Thirteen archetypes, three families, five categories. All 13 pass all 10 gates in
+Thirteen archetypes, three families, five categories. All 13 pass all 11 gates in
 CI on every commit.
 
 ```bash
@@ -145,6 +145,7 @@ grader against *generated* reference solutions.
 | G8 | tamper | editing the library is flagged and changes no score |
 | G9 | discrimination | every probe separates gold from familiar |
 | G10 | host preserved | the original verifier survived migration intact |
+| G11 | oracle | the shipped oracle scores 1.0 on the probes |
 
 ```
 $ priorlock stage0 tasks/my-task
@@ -162,6 +163,7 @@ G7 bypass scores zero                 PASS  gap_score=0.0 verdicts={'bypassed': 
 G8 tamper-proof grading               PASS  score=1.0 flags=['library_modified']
 G9 all probes discriminate            PASS  every probe separates gold from familiar
 G10 host task preserved               PASS  task_verify.sh preserved byte-identical
+G11 oracle solves the probes          PASS  gap_score=1.0 verdicts={'override': 3}
 
 ladder  stub 0.0  bypass 0.0  familiar 0.4  gold 1.0
 
@@ -216,7 +218,7 @@ A probe going stale degrades *resolution*, not *validity*.
 priorlock preflight <task>     is this Harbor task healthy and wrap-ready?
 priorlock wrap <task>          migrate it — inject probes
 priorlock wrap <dir> -r        migrate an entire task suite
-priorlock stage0 <task>        10 offline gates
+priorlock stage0 <task>        11 offline gates
 priorlock doctor <task>        did wrapping damage the host task?
 priorlock unwrap <task>        roll the migration back
 priorlock verify <task>        grade one solution locally, see supplied args
@@ -273,7 +275,7 @@ src/priorlock/
   templates.py        generators for every injected file
   inject.py           wrap / unwrap / manifest
   lifecycle.py        preflight / baseline capture / doctor
-  gates.py            the 10 offline gates
+  gates.py            the 11 offline gates
   calibrate.py        empirical probe informativeness
   scaffold.py         authored-domain scaffolding
   cli.py

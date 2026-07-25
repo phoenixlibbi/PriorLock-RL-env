@@ -26,7 +26,7 @@ const steps = [
   },
   {
     num: "06",
-    title: "Ten gates prove it offline",
+    title: "Eleven gates prove it offline",
     body: "Before any model runs, the harness verifies gold=1.0, familiar=0.40, stub=0.0, bypass=0.0, tamper-detection, per-probe discrimination, and that the host verifier survived. No Docker, no API key.",
   },
 ];

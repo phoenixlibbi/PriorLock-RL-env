@@ -17,6 +17,7 @@ G7 bypass     hand-rolling the familiar answer scores 0.0, not 0.40
 G8 tamper     editing the shipped library is flagged and changes no score
 G9 discrim    every individual probe separates gold from familiar
 G10 host      the task's original verifier survived migration intact
+G11 oracle    the shipped oracle actually scores 1.0 on the probes
 ============  ==========================================================
 
 G7 and G8 are the anti-reward-hacking gates and are the reason a wrapped task
@@ -193,9 +194,9 @@ def run_stage0(task_dir: str | Path, verbose: bool = True) -> Stage0Report:
         print(f"=== Stage-0 · {report.task_id} ===")
         print(f"{DIM}library {report.library} · {len(probe_ids)} probes: "
               f"{', '.join(probe_ids)}{RESET}")
-        print(f"{DIM}10 gates · no Docker, no network, no API key{RESET}\n")
+        print(f"{DIM}11 gates · no Docker, no network, no API key{RESET}\n")
 
-    total = 10
+    total = 11
     n = [0]
 
     def gate(gid: str, name: str):
@@ -302,6 +303,12 @@ def run_stage0(task_dir: str | Path, verbose: bool = True) -> Stage0Report:
         host = _host_preserved(layout, meta)
         record("G10", "host task preserved", host["ok"], host["detail"], host)
         st.done(host["ok"], host["detail"])
+
+    # ── G11 — the shipped oracle actually solves the probes ──────────────────
+    with gate("G11", "oracle solves the probes") as st:
+        oracle = _oracle_solves_probes(layout)
+        record("G11", "oracle solves the probes", oracle["ok"], oracle["detail"], oracle)
+        st.done(oracle["ok"], oracle["detail"])
 
     if verbose:
         _summary(report)
@@ -424,6 +431,59 @@ def _host_preserved(layout, meta: dict) -> dict:
     return {"ok": True,
             "detail": f"{original} preserved byte-identical and invoked first",
             "original": original, "sha256": actual_sha[:12]}
+
+
+def _oracle_solves_probes(layout) -> dict:
+    """G11: the oracle Harbor will actually run must score 1.0 on the probes.
+
+    Everything the wrapped task ships — the library, the CHANGELOG, the gold
+    call arguments — is generated from the same ``Probe`` objects, so in
+    principle they cannot disagree. That is an argument, not evidence. This gate
+    turns it into evidence: extract the gold solution **as embedded in
+    ``solution/solve.sh``** (not the copy in ``_plx_reference/``) and grade it.
+
+    Without this, a stale or mis-rendered oracle patch would ship silently:
+    G1 grades ``_plx_reference/gold.py``, which is a different file.
+    """
+    from .inject import _find_oracle
+    from . import templates as T
+
+    solve = _find_oracle(layout)
+    if solve is None or not solve.is_file():
+        return {"ok": True, "detail": "task ships no oracle — nothing to check",
+                "skipped": True}
+
+    text = solve.read_text()
+    if T.SOLUTION_MARKER_BEGIN not in text:
+        return {"ok": False, "detail": "oracle was never patched — it cannot score 1.0"}
+
+    marker = "<<'PRIORLOCK_GOLD_EOF'\n"
+    if marker not in text or "\nPRIORLOCK_GOLD_EOF" not in text:
+        return {"ok": False, "detail": "cannot extract the embedded gold solution"}
+    embedded = text.split(marker, 1)[1].split("\nPRIORLOCK_GOLD_EOF", 1)[0]
+
+    sb = _Sandbox(layout)
+    try:
+        sb.install_solution(embedded + "\n")
+        result = sb.run_grader()
+    finally:
+        sb.cleanup()
+
+    score = float(result.get("gap_score", 0.0))
+    verdicts = result.get("verdict_counts", {})
+    ok = abs(score - 1.0) < EPS
+
+    # cross-check: the oracle's gold must be the same source the gates graded
+    ref = layout.tests / REFERENCE_DIR / "gold.py"
+    same = ref.is_file() and ref.read_text().strip() == embedded.strip()
+
+    return {
+        "ok": ok and same,
+        "detail": (f"gap_score={score} verdicts={verdicts}"
+                   + ("" if same else "  MISMATCH: differs from _plx_reference/gold.py")),
+        "score": score,
+        "matches_reference": same,
+    }
 
 
 def _dead_probes(gold: dict, familiar: dict, probe_ids: list[str]) -> list[str]:
