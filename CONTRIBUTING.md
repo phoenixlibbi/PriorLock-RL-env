@@ -21,6 +21,7 @@ pip install -e ".[dev]"
 
 priorlock wrap tasks/my-task          # inject 3 pre-calibrated probes
 priorlock stage0 tasks/my-task        # 11 offline gates — no Docker, no API key
+priorlock cheats tasks/my-task        # 8-class cheat battery
 ```
 
 That's the whole workflow. `wrap` picks probes from the catalog based on your
@@ -188,6 +189,23 @@ A PR cannot merge unless everything passes.
 | G9 | discrimination | every probe separates gold from familiar |
 | G10 | host preserved | the original verifier survived migration intact |
 | G11 | oracle | the shipped oracle scores 1.0 on the probes |
+
+## Soundness receipt
+
+The gates prove the ladder holds. The **cheat battery** proves it cannot be
+bought without doing the work:
+
+```bash
+priorlock cheats tasks/my-task --suite -o receipt.json
+```
+
+Eight classes — memorise-visible, oracle-steal, read-internals, tamper-config,
+edit-tests, constant-stub, timeout-abuse, self-report. Every cheat carries an
+execution marker; one that scores 0 without reaching its exploit path is
+excluded from the false-accept denominator rather than counted as caught.
+
+Current pooled receipt: **FAR 0/104, Wilson95 [0.0000, 0.0356]**, worst
+surviving cheat 0.0 against a 0.40 baseline.
 
 G7 and G8 are the anti-reward-hacking gates. G7 makes bypassing the library
 strictly worse than using it naively; G8 makes editing it pointless because the

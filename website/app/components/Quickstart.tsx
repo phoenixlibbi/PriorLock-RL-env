@@ -42,6 +42,18 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
   },
   {
     n: 4,
+    label: "Attack it — 8 cheat classes, pooled FAR receipt",
+    code: `priorlock cheats tasks/my-task --suite
+
+# trials          104     8 classes x 13 archetypes
+# all executed    104/104 none excluded
+# false accepts   0/104   Wilson95 [0.0000, 0.0356]
+# required        upper < 0.05                  PASS
+# worst surviving 0.0     against a 0.40 baseline
+# SOUND`,
+  },
+  {
+    n: 5,
     label: "Inspect what the benchmark actually reads",
     code: `priorlock verify tasks/my-task --reference familiar
 
@@ -51,7 +63,7 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
 #     output matches: familiar`,
   },
   {
-    n: 5,
+    n: 6,
     label: "Run an agent (Harbor + Docker + API key)",
     code: `export ANTHROPIC_API_KEY=sk-...
 harbor run -p tasks/my-task \\
@@ -61,7 +73,7 @@ harbor run -p tasks/my-task \\
 # priorlock_summary.json   task_score + gap_score + per-probe verdicts`,
   },
   {
-    n: 6,
+    n: 7,
     label: "Measure how informative each probe is for that model",
     code: `priorlock calibrate ingest trials/ --model claude-sonnet-5
 priorlock calibrate report --model claude-sonnet-5

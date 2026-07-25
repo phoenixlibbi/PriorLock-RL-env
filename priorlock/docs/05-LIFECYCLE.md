@@ -39,6 +39,7 @@ ever enter the picture.
   4  preflight      priorlock preflight tasks/t                  is it wrap-ready?
   5  convert        priorlock wrap tasks/t --baseline-from jobs/
   6  gate           priorlock stage0 tasks/t                     11 offline gates
+  6b soundness      priorlock cheats tasks/t --suite             FAR receipt
   7  re-run         harbor run -p tasks/t -a oracle
   8  doctor         priorlock doctor tasks/t                     did wrapping break it?
 ```

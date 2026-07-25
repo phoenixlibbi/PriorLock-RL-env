@@ -9,6 +9,7 @@ import Contribute from "./components/Contribute";
 import Quickstart from "./components/Quickstart";
 import Research from "./components/Research";
 import Probes from "./components/Probes";
+import Soundness from "./components/Soundness";
 import Footer from "./components/Footer";
 
 export default function Home() {
@@ -21,6 +22,8 @@ export default function Home() {
       <HowItWorks />
       <div className="divider" />
       <Probes />
+      <div className="divider" />
+      <Soundness />
       <div className="divider" />
       <Scores />
       <div className="divider" />

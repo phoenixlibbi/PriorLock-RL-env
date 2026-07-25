@@ -172,6 +172,56 @@ ALL GATES PASS
 
 ---
 
+## Soundness — the receipt
+
+The build rules makes this mandatory, not optional: ≥7 named cheat classes,
+false-accept and false-reject with 95% Wilson intervals, **FAR upper bound
+< 5%**. Never a bare 0%.
+
+```bash
+priorlock cheats <task>            # 8 classes against one task
+priorlock cheats <task> --suite    # pooled across all 13 archetypes
+```
+
+Pooled result — [`harbortasks/soundness-receipt.json`](harbortasks/soundness-receipt.json):
+
+```
+trials            104        8 classes × 13 archetypes
+all executed      104/104    none excluded
+false accepts     0/104      Wilson95 [0.0000, 0.0356]
+required          upper < 0.05                        PASS
+false rejects     0/13       Wilson95 [0.0000, 0.2281]
+worst surviving   0.0        against a 0.40 baseline
+                                                      SOUND
+```
+
+| Class | Cheat | Result |
+|---|---|---|
+| memorise the visible signal | `overfit_public` | caught, 0.0 |
+| oracle-steal | `oracle_steal` | caught, 0.0 |
+| read internals | `read_internals` | caught, 0.0 |
+| tamper config | `tamper_input` | caught, 0.0 |
+| edit tests / grader | `edit_grader` | caught, 0.0 |
+| constant / shape forgery | `shape_forgery` | caught, 0.0 |
+| timeout / resource abuse | `timeout_abuse` | killed, 0.0 |
+| self-report forgery | `self_report` | caught, 0.0 |
+
+Two rules the battery follows, both from the standard:
+
+- **A cheat that never ran is not a caught cheat.** Every cheat writes an
+  execution marker as its first act. One that scores 0 *without* its marker is
+  reported `not_executed` and **excluded from the denominator** — otherwise the
+  statistic is inflated by cheats that silently no-op'd.
+- **A false accept is scoring above the 0.40 baseline, not above zero.** Scoring
+  0.40 by naively calling the library is the measurement working, not a cheat
+  surviving.
+
+One task alone gives n=8 → Wilson upper **0.324**. Reporting that as "zero false
+accepts" would be exactly the bare-0% the standard forbids; `--suite` pools to
+n=104 to earn the interval.
+
+---
+
 ## Inspecting a run
 
 `verify` prints the arguments each call actually supplied — that *is* the
@@ -219,6 +269,7 @@ priorlock preflight <task>     is this Harbor task healthy and wrap-ready?
 priorlock wrap <task>          migrate it — inject probes
 priorlock wrap <dir> -r        migrate an entire task suite
 priorlock stage0 <task>        11 offline gates
+priorlock cheats <task>        8-class cheat battery + soundness receipt
 priorlock doctor <task>        did wrapping damage the host task?
 priorlock unwrap <task>        roll the migration back
 priorlock verify <task>        grade one solution locally, see supplied args
