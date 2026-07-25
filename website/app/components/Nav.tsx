@@ -1,49 +1,55 @@
-"use client";
-
+// Server component — no event handlers needed; hover handled via CSS in globals.css
 export default function Nav() {
+  const links = ["how-it-works", "domains", "leaderboard", "quickstart"];
+
   return (
-    <nav
-      className="sticky top-0 z-50 flex items-center gap-8 px-8 h-14 border-b"
-      style={{
-        background: "rgba(13,17,23,0.92)",
-        backdropFilter: "blur(8px)",
-        borderColor: "var(--border)",
-      }}
-    >
-      <span className="font-mono text-sm font-bold tracking-wide" style={{ color: "var(--text)" }}>
-        Prior<span style={{ color: "var(--accent)" }}>Lock</span>
-      </span>
+    <>
+      <style>{`
+        .nav-link { color: var(--muted); transition: color 0.15s; }
+        .nav-link:hover { color: var(--text); text-decoration: none; }
+        .nav-gh:hover { background: var(--bg3) !important; text-decoration: none; }
+      `}</style>
 
-      <div className="flex gap-6 ml-auto items-center">
-        {["how-it-works", "domains", "leaderboard", "quickstart"].map((id) => (
+      <nav
+        className="sticky top-0 z-50 flex items-center gap-8 px-8 h-14 border-b"
+        style={{
+          background: "rgba(13,17,23,0.92)",
+          backdropFilter: "blur(8px)",
+          borderColor: "var(--border)",
+        }}
+      >
+        <span className="font-mono text-sm font-bold tracking-wide" style={{ color: "var(--text)" }}>
+          Prior<span style={{ color: "var(--accent)" }}>Lock</span>
+        </span>
+
+        <div className="flex gap-6 ml-auto items-center">
+          {links.map((id) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="nav-link text-sm hidden sm:block"
+            >
+              {id.replace("-", " ")}
+            </a>
+          ))}
+
           <a
-            key={id}
-            href={`#${id}`}
-            className="text-sm hidden sm:block transition-colors hover:no-underline"
-            style={{ color: "var(--muted)" }}
-            onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "var(--text)")}
-            onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--muted)")}
+            href="https://github.com/phoenixlibbi/PriorLock-RL-env"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="nav-gh flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md border"
+            style={{
+              background: "var(--bg2)",
+              borderColor: "var(--border)",
+              color: "var(--text)",
+            }}
           >
-            {id.replace("-", " ")}
+            <GithubIcon />
+            GitHub
           </a>
-        ))}
-
-        <a
-          href="https://github.com/phoenixlibbi/PriorLock-RL-env"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md border transition-colors hover:no-underline"
-          style={{
-            background: "var(--bg2)",
-            borderColor: "var(--border)",
-            color: "var(--text)",
-          }}
-        >
-          <GithubIcon />
-          GitHub
-        </a>
-      </div>
-    </nav>
+        </div>
+      </nav>
+    </>
   );
 }
 
