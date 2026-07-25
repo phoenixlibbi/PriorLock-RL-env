@@ -91,7 +91,9 @@ class PreflightReport:
 
 
 _NETWORK_RE = re.compile(r'network_mode\s*=\s*["\']([^"\']+)["\']')
+_INTERNET_RE = re.compile(r'allow_internet\s*=\s*(true|false)', re.I)
 _SCHEMA_RE = re.compile(r'schema_version\s*=\s*["\']([^"\']+)["\']')
+_VERSION_RE = re.compile(r'^\s*version\s*=\s*["\']([^"\']+)["\']', re.M)
 
 
 def preflight(task_dir: str | Path) -> PreflightReport:
@@ -109,12 +111,15 @@ def preflight(task_dir: str | Path) -> PreflightReport:
     add("P1", "task.toml present", toml_ok,
         detail=str(layout.task_toml.relative_to(root)) if toml_ok else "missing task.toml")
 
+    # Harbor accepts either `version` (what `harbor tasks init` generates) or
+    # `schema_version`. Both are valid; we only care that one is present.
     if toml_ok:
-        m = _SCHEMA_RE.search(raw)
-        add("P2", "schema_version declared", bool(m), "warn",
-            f"schema_version = {m.group(1)}" if m else "not declared")
+        m = _SCHEMA_RE.search(raw) or _VERSION_RE.search(raw)
+        field = "schema_version" if _SCHEMA_RE.search(raw) else "version"
+        add("P2", "task format version declared", bool(m), "warn",
+            f"{field} = {m.group(1)}" if m else "neither version nor schema_version set")
     else:
-        add("P2", "schema_version declared", False, "warn", "no task.toml")
+        add("P2", "task format version declared", False, "warn", "no task.toml")
 
     # ── P3 instruction ───────────────────────────────────────────────────────
     instr = layout.instruction
@@ -140,15 +145,17 @@ def preflight(task_dir: str | Path) -> PreflightReport:
         detail=(str(layout.verifier_entry.relative_to(root)) if ver_ok
                 else "no tests/test.sh or run-tests.sh"))
 
-    # ── P7 verifier writes reward.json ───────────────────────────────────────
+    # ── P7 verifier emits a reward ───────────────────────────────────────────
+    # Harbor supports both reward.txt (the `harbor tasks init` default) and
+    # reward.json. The composite verifier reads whichever the task writes.
     if ver_ok:
         vtext = layout.verifier_entry.read_text()
-        writes_reward = "reward.json" in vtext
-        add("P7", "verifier writes reward.json", writes_reward, "error",
-            "found reward.json reference" if writes_reward
-            else "wrap composites on reward.json — the verifier must write it")
+        found = [n for n in ("reward.json", "reward.txt") if n in vtext]
+        add("P7", "verifier emits a reward", bool(found), "error",
+            f"writes {', '.join(found)}" if found
+            else "verifier must write reward.txt or reward.json")
     else:
-        add("P7", "verifier writes reward.json", False, "error", "no verifier")
+        add("P7", "verifier emits a reward", False, "error", "no verifier")
 
     # ── P8 oracle solution present ───────────────────────────────────────────
     sol_dir = root / "solution"
@@ -169,11 +176,21 @@ def preflight(task_dir: str | Path) -> PreflightReport:
         detail="clean" if not collisions else "would clobber: " + ", ".join(collisions))
 
     # ── P11 network disabled ─────────────────────────────────────────────────
+    # Harbor expresses this two ways: `allow_internet` (the `harbor tasks init`
+    # default) or `network_mode`. Either is fine; we only care that the agent
+    # cannot go online and refresh the prior we are trying to measure.
     net = _NETWORK_RE.search(raw)
-    net_ok = bool(net) and net.group(1) == "no-network"
-    add("P11", "network disabled", net_ok, "warn",
-        f'network_mode = "{net.group(1)}"' if net
-        else 'network_mode not set — recommend "no-network" so priors cannot be refreshed online')
+    inet = _INTERNET_RE.search(raw)
+    if net:
+        net_ok, detail = net.group(1) == "no-network", f'network_mode = "{net.group(1)}"'
+    elif inet:
+        net_ok = inet.group(1).lower() == "false"
+        detail = f"allow_internet = {inet.group(1)}"
+        if not net_ok:
+            detail += " — an online agent can refresh the prior being measured"
+    else:
+        net_ok, detail = False, "neither allow_internet nor network_mode set"
+    add("P11", "network disabled", net_ok, "warn", detail)
 
     # ── P12 python available in image ────────────────────────────────────────
     py_ok = True
