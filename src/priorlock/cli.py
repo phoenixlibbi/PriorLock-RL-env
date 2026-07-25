@@ -417,6 +417,25 @@ def cmd_verify(args, root: str) -> int:
     return 0
 
 
+def cmd_cheats(args, root: str) -> int:
+    """Run the 8-class cheat battery and emit the soundness receipt."""
+    from priorlock.cheats import run_battery
+
+    task = Path(args.task).resolve()
+    if args.suite:
+        from priorlock.cheats import run_suite
+        receipt = run_suite(task, verbose=not args.json)
+    else:
+        receipt = run_battery(task, verbose=not args.json)
+    if args.json:
+        print(json.dumps(receipt.to_dict(), indent=2))
+    if args.out:
+        Path(args.out).write_text(json.dumps(receipt.to_dict(), indent=2) + "\n")
+        if not args.json:
+            print(f"{DIM}  receipt written to {args.out}{RESET}")
+    return 0 if receipt.passed else 1
+
+
 def cmd_calibrate(args, root: str) -> int:
     from priorlock import calibrate as C
 
@@ -597,6 +616,13 @@ other:
                           help="grade a generated reference solution instead")
     p_verify.add_argument("--json", action="store_true")
 
+    p_ch = sub.add_parser("cheats", help="run the cheat battery, emit a soundness receipt")
+    p_ch.add_argument("task")
+    p_ch.add_argument("--suite", action="store_true",
+                      help="pool across every probe archetype for a usable Wilson interval")
+    p_ch.add_argument("--json", action="store_true")
+    p_ch.add_argument("-o", "--out", metavar="FILE", help="write the receipt as JSON")
+
     p_cal = sub.add_parser("calibrate", help="measure how informative each probe is")
     p_cal.add_argument("action", choices=["ingest", "report", "recommend"])
     p_cal.add_argument("paths", nargs="*", help="Harbor trials dir(s) or report JSON")
@@ -619,6 +645,7 @@ DISPATCH = {
     "unwrap": cmd_unwrap,
     "stage0": cmd_stage0,
     "verify": cmd_verify,
+    "cheats": cmd_cheats,
     "calibrate": cmd_calibrate,
     "new-domain": cmd_new_domain,
 }
