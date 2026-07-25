@@ -28,3 +28,5 @@ def run(data_path, out_path):
     with open(out_path, "w") as f:
         json.dump(out, f, ensure_ascii=False)
     return out
+
+# oracle canary: PLXCANARY-868C0937A4E150B6E006EA41

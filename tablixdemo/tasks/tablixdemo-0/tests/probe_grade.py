@@ -250,3 +250,5 @@ def emit(report):
 
 if __name__ == "__main__":
     sys.exit(main())
+
+# oracle canary — verifier-side only: PLXCANARY-868C0937A4E150B6E006EA41

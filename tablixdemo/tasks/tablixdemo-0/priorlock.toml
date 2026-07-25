@@ -10,6 +10,7 @@ solution = "probe_solution.py"
 input = "data/probe_input.json"
 workdir = "/app/repo"
 container_repo = "/app/repo"
+canary = "PLXCANARY-868C0937A4E150B6E006EA41"
 original_verifier = "task_verify.sh"
 original_verifier_sha256 = "91939ab6fa68f770dec110d286da23a154d497a9afbbad6be744a085b52f8d11"
 familiar_baseline = 0.40

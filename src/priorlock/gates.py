@@ -18,6 +18,7 @@ G8 tamper     editing the shipped library is flagged and changes no score
 G9 discrim    every individual probe separates gold from familiar
 G10 host      the task's original verifier survived migration intact
 G11 oracle    the shipped oracle actually scores 1.0 on the probes
+G12 canary    the oracle-exclusive canary never reaches the agent surface
 ============  ==========================================================
 
 G7 and G8 are the anti-reward-hacking gates and are the reason a wrapped task
@@ -199,9 +200,9 @@ def run_stage0(task_dir: str | Path, verbose: bool = True) -> Stage0Report:
         print(f"=== Stage-0 · {report.task_id} ===")
         print(f"{DIM}library {report.library} · {len(probe_ids)} probes: "
               f"{', '.join(probe_ids)}{RESET}")
-        print(f"{DIM}11 gates · no Docker, no network, no API key{RESET}\n")
+        print(f"{DIM}12 gates · no Docker, no network, no API key{RESET}\n")
 
-    total = 11
+    total = 12
     n = [0]
 
     def gate(gid: str, name: str):
@@ -314,6 +315,16 @@ def run_stage0(task_dir: str | Path, verbose: bool = True) -> Stage0Report:
         oracle = _oracle_solves_probes(layout)
         record("G11", "oracle solves the probes", oracle["ok"], oracle["detail"], oracle)
         st.done(oracle["ok"], oracle["detail"])
+
+    # ── G12 — the oracle canary never reaches the agent surface ──────────────
+    # The offline half of the canary check. It scans file contents rather than
+    # filenames, so it catches a leak G6 cannot see. It is not a runtime proof;
+    # `priorlock leakprobe` produces that.
+    with gate("G12", "oracle canary contained") as st:
+        from .leakprobe import canary_scan
+        scan = canary_scan(task_dir)
+        record("G12", "oracle canary contained", scan["ok"], scan["detail"], scan)
+        st.done(scan["ok"], scan["detail"])
 
     if verbose:
         _summary(report)
@@ -478,9 +489,15 @@ def _oracle_solves_probes(layout) -> dict:
     verdicts = result.get("verdict_counts", {})
     ok = abs(score - 1.0) < EPS
 
-    # cross-check: the oracle's gold must be the same source the gates graded
+    # Cross-check: the oracle's gold must be the same source the gates graded.
+    # The canary comment (canary check) is stamped onto the verifier-side copy only, so
+    # normalise it out — it is provenance metadata, not solution logic.
+    def _strip_canary(src: str) -> str:
+        return "\n".join(l for l in src.splitlines()
+                          if "PLXCANARY-" not in l and "oracle canary" not in l).strip()
+
     ref = layout.tests / REFERENCE_DIR / "gold.py"
-    same = ref.is_file() and ref.read_text().strip() == embedded.strip()
+    same = ref.is_file() and _strip_canary(ref.read_text()) == _strip_canary(embedded)
 
     return {
         "ok": ok and same,

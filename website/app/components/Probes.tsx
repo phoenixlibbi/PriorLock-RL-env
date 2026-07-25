@@ -93,6 +93,7 @@ const gates = [
   ["G9", "discrimination", "every probe separates"],
   ["G10", "host preserved", "original verifier intact"],
   ["G11", "oracle", "oracle scores 1.0 on probes"],
+  ["G12", "canary", "canary never reaches the agent"],
 ];
 
 export default function Probes() {
@@ -259,7 +260,7 @@ export default function Probes() {
       {/* gates */}
       <p className="section-label mt-16">Verification</p>
       <h2 className="section-title">
-        Eleven offline <span>gates</span>
+        Twelve offline <span>gates</span>
       </h2>
       <p className="section-lead">
         No Docker, no network, no API key. Every gate runs the <em>generated</em> grader
@@ -315,7 +316,7 @@ ALL GATES PASS`}
         </div>
       </div>
       <p className="mt-4 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-        CI runs all 13 archetypes through all 11 gates on every commit, plus every
+        CI runs all 13 archetypes through all 12 gates on every commit, plus every
         wrapped task and every authored domain in the repo.
       </p>
     </section>

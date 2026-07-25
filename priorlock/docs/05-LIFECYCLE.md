@@ -38,8 +38,9 @@ ever enter the picture.
   ────────────────── the task is now known-good ──────────────────
   4  preflight      priorlock preflight tasks/t                  is it wrap-ready?
   5  convert        priorlock wrap tasks/t --baseline-from jobs/
-  6  gate           priorlock stage0 tasks/t                     11 offline gates
+  6  gate           priorlock stage0 tasks/t                     12 offline gates
   6b soundness      priorlock cheats tasks/t --suite             FAR receipt
+  6c isolation      priorlock leakprobe tasks/t                  runtime proof
   7  re-run         harbor run -p tasks/t -a oracle
   8  doctor         priorlock doctor tasks/t                     did wrapping break it?
 ```
@@ -139,8 +140,9 @@ Use `--baseline-agent` to pin against something other than the oracle.
 priorlock stage0 tasks/my-task
 ```
 
-Eleven offline gates. G1–G9 validate the probe measurement; **G10 and G11
-validate the conversion itself.**
+Twelve offline gates. G1–G9 validate the probe measurement; **G10 and G11**
+validate the conversion; **G12** is the offline half of the isolation proof —
+`priorlock leakprobe` produces the runtime half.
 
 | Gate | Check |
 |---|---|
@@ -152,6 +154,7 @@ validate the conversion itself.**
 | G9 | every probe separates gold from familiar |
 | **G10** | **the host task's original verifier survived intact** |
 | **G11** | **the shipped oracle scores 1.0 on the probes** |
+| **G12** | **the oracle canary never reaches the agent surface** |
 
 G10 asserts three things about the migration:
 

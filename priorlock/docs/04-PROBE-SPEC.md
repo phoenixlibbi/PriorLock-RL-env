@@ -285,6 +285,7 @@ artefact that will actually run in the container.
 | **G9** | discrimination | every individual probe separates gold from familiar |
 | **G10** | host preserved | the task's original verifier survived intact |
 | **G11** | oracle | the shipped oracle scores 1.0 on the probes |
+| **G12** | canary | the oracle canary never reaches the agent surface |
 
 ```bash
 priorlock stage0 <task-dir>
@@ -330,7 +331,7 @@ deviation would crash (the agent debugs and finds it), or the library is real an
 published (training contamination makes "familiar" undefined).
 
 Every probe in the catalog satisfies these conditions and is verified against all
-eleven gates in CI on every commit.
+twelve gates in CI on every commit.
 
 ---
 

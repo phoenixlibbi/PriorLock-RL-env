@@ -417,6 +417,30 @@ def cmd_verify(args, root: str) -> int:
     return 0
 
 
+def cmd_leakprobe(args, root: str) -> int:
+    """Generate the runtime leak-probe task."""
+    from priorlock.leakprobe import build_leakprobe, canary_scan
+
+    task = Path(args.task).resolve()
+    scan = canary_scan(task)
+    print(f"{BOLD}offline canary scan{RESET}  {DIM}(the static half of the canary check){RESET}")
+    print(f"  agent surface   {RED + ', '.join(scan['agent_hits']) + RESET if scan['agent_hits'] else GREEN + 'canary absent' + RESET}")
+    print(f"  verifier side   {DIM}{', '.join(scan['verifier_hits']) or 'none'}{RESET}")
+
+    result = build_leakprobe(task, args.out)
+    print(f"\n{GREEN}✓{RESET} leak-probe task generated")
+    print(f"  path    {result.path}")
+    print(f"  canary  {DIM}{result.canary}{RESET}")
+    if args.verbose:
+        for c in result.created:
+            print(f"    {DIM}+ {c}{RESET}")
+    print(f"\n  {BOLD}run it on the real container:{RESET}")
+    print(f"    harbor run -p {result.path} -a oracle")
+    print(f"  {DIM}reward 1.0 = every oracle route failed; the trace is saved to")
+    print(f"  jobs/*/verifier/leakprobe_trace.json{RESET}")
+    return 0 if scan["ok"] else 1
+
+
 def cmd_cheats(args, root: str) -> int:
     """Run the 8-class cheat battery and emit the soundness receipt."""
     from priorlock.cheats import run_battery
@@ -616,6 +640,12 @@ other:
                           help="grade a generated reference solution instead")
     p_verify.add_argument("--json", action="store_true")
 
+    p_lp = sub.add_parser("leakprobe",
+                          help="generate the runtime isolation proof")
+    p_lp.add_argument("task")
+    p_lp.add_argument("-o", "--out", help="where to write the probe task")
+    p_lp.add_argument("-v", "--verbose", action="store_true")
+
     p_ch = sub.add_parser("cheats", help="run the cheat battery, emit a soundness receipt")
     p_ch.add_argument("task")
     p_ch.add_argument("--suite", action="store_true",
@@ -645,6 +675,7 @@ DISPATCH = {
     "unwrap": cmd_unwrap,
     "stage0": cmd_stage0,
     "verify": cmd_verify,
+    "leakprobe": cmd_leakprobe,
     "cheats": cmd_cheats,
     "calibrate": cmd_calibrate,
     "new-domain": cmd_new_domain,
