@@ -1,0 +1,11 @@
+id,product,category,amount
+1,Widget A,Electronics,149.99
+2,Widget B,Electronics,149.99
+3,Gadget Pro,Home,200.00
+4,Tool Master,Tools,300.00
+5,Gadget Lite,Home,200.00
+6,Widget C,Electronics,149.99
+7,Mystery Box,,89.99
+8,Super Tool,Tools,300.00
+9,Mini Gadget,Home,200.00
+10,Widget D,Electronics,149.99

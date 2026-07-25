@@ -1,0 +1,21 @@
+{
+  "categorySales": {
+    "Electronics": 599.96,
+    "Home": 600.0,
+    "Tools": 600.0,
+    "__missing__": 89.99
+  },
+  "categoryCount": {
+    "Electronics": 4,
+    "Home": 3,
+    "Tools": 2,
+    "__missing__": 1
+  },
+  "topProductIds": [
+    3,
+    4,
+    5,
+    8,
+    9
+  ]
+}
