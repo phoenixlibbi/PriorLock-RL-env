@@ -385,6 +385,24 @@ def doctor(task_dir: str | Path, trials_dir: str | Path,
     probes: list[dict] = []
     root = Path(trials_dir)
     newest = ""
+    # Integrity flags that make an observation's gap_score meaningless. The
+    # task_score may still be right, but reporting HEALTHY off a run whose
+    # library was missing is exactly the kind of quietly-wrong verdict this
+    # command exists to prevent.
+    UNRELIABLE = {"library_removed", "library_modified", "shadowed_library_import",
+                  "pristine_import_failed", "grader_no_output", "grader_bad_json"}
+
+    newest_any = ""          # newest Harbor trial of ANY kind
+    if root.is_dir():
+        for res in root.rglob("result.json"):
+            try:
+                d = json.loads(res.read_text())
+            except (json.JSONDecodeError, OSError):
+                continue
+            if "agent_info" not in d:
+                continue
+            newest_any = max(newest_any, d.get("finished_at", "") or "")
+
     if root.is_dir():
         candidates = []
         for summary in root.rglob("verifier/priorlock_summary.json"):
@@ -411,10 +429,28 @@ def doctor(task_dir: str | Path, trials_dir: str | Path,
             observed = float(comps.get("task_score", 0.0))
             gap = float(comps.get("gap_score", 0.0))
             probes = data.get("probes", [])
-            if data.get("flags"):
-                notes.append("verifier flags: " + ", ".join(data["flags"]))
+            flags = data.get("flags", [])
+            if flags:
+                notes.append("verifier flags: " + ", ".join(flags))
             if len(candidates) > 1:
                 notes.append(f"compared the newest of {len(candidates)} post-wrap runs")
+
+            # The newest Harbor run produced no composite summary — so the task
+            # was NOT wrapped when it ran, and this observation is older than
+            # your last run. Say so rather than silently comparing stale data.
+            if newest_any and newest.lstrip("~") < newest_any:
+                notes.append(
+                    f"your most recent Harbor run ({newest_any[:19]}) produced no "
+                    f"composite summary — the task was not wrapped when it ran")
+                return DoctorReport(task_id, baseline, observed, gap, None,
+                                    "stale", notes, probes)
+
+            bad = sorted(set(flags) & UNRELIABLE)
+            if bad:
+                notes.append(f"this run is not trustworthy: {', '.join(bad)} — "
+                             f"the gap_score cannot be read from it")
+                return DoctorReport(task_id, baseline, observed, gap, None,
+                                    "unreliable", notes, probes)
 
     if observed is None:
         notes.append("no post-wrap run found — run "
@@ -460,8 +496,8 @@ def print_doctor(report: DoctorReport) -> None:
             print(f"    {p.get('id', '?'):<28} {p.get('verdict', '?'):<16} "
                   f"{p.get('score', 0):.2f}")
 
-    colour = {"healthy": GREEN, "no-data": YELLOW,
-              "no-baseline": YELLOW}.get(report.verdict, RED)
+    colour = {"healthy": GREEN, "no-data": YELLOW, "no-baseline": YELLOW,
+              "stale": YELLOW, "unreliable": YELLOW}.get(report.verdict, RED)
     print(f"\n{colour}{report.verdict.upper()}{RESET}")
     for note in report.notes:
         print(f"  {DIM}{note}{RESET}")
