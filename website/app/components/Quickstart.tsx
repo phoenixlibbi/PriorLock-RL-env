@@ -40,10 +40,8 @@ harbor run -p tasks/my-task -a oracle
 priorlock wrap tasks/my-task --baseline-from jobs/
 
 # ✓ my-task wrapped
-#   library  datawright
-#   probes   tie_inclusive_topk (result_shape),
-#            null_key_policy (default_flip),
-#            merge_precedence_remap (value_remap)
+#   library  <synthetic>
+#   probes   <selected from catalog>
 #   weights  task=0.5 gap=0.5
 
 priorlock wrap tasks/ --recursive     # or an entire suite`,
@@ -82,9 +80,8 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
     code: `priorlock verify tasks/my-task --reference familiar
 
 # gap_score 0.4
-#   merge_precedence_remap   prior_locked   0.40
-#     supplied: [{"on_conflict": "keep"}]     ← the 1.x meaning
-#     output matches: familiar`,
+#   <probe>   prior_locked   0.40
+#   …`,
   },
   {
     n: 7,

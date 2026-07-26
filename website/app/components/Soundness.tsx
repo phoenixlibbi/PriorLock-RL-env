@@ -317,9 +317,9 @@ ISOLATION PROVEN AT RUNTIME                              reward 1.0`}
   drift                0.0000
   gap_score            1.0000   (prior-override, new signal)
 
-    merge_precedence_remap       override         1.00
-    tie_inclusive_topk           override         1.00
-    range_end_inclusive          override         1.00
+    <probe>                      override         1.00
+    <probe>                      override         1.00
+    <probe>                      override         1.00
 
 HEALTHY
   task_score is unchanged — wrapping did not perturb the host task`}

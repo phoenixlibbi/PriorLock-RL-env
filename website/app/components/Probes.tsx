@@ -1,99 +1,51 @@
 import CodeBlock from "./CodeBlock";
 
-const families = [
-  {
-    id: "default_flip",
-    label: "default_flip",
-    count: 33,
-    mechanism: "A keyword argument's default value was inverted.",
-    signal: "call arguments",
-    color: "var(--accent)",
-    bg: "rgba(91,156,255,0.07)",
-    border: "rgba(91,156,255,0.22)",
-    code: `# shipped v2.0 — 1.x default was "first"
-dedupe(items, key, keep="last")
-
-dedupe(items, "sku")               # 0.40 prior-locked
-dedupe(items, "sku", keep="first") # 1.00 read the docs`,
-  },
-  {
-    id: "value_remap",
-    label: "value_remap",
-    count: 16,
-    mechanism: "An accepted value's meaning was reassigned.",
-    signal: "call arguments",
-    color: "var(--yellow)",
-    bg: "rgba(230,180,74,0.07)",
-    border: "rgba(230,180,74,0.24)",
-    code: `# "keep" used to mean keep EXISTING
-merge(base, patch, on_conflict="keep_right")
-
-on_conflict="keep"      # 0.40 patch wins
-on_conflict="keep_left" # 1.00 base wins`,
-  },
-  {
-    id: "result_shape",
-    label: "result_shape",
-    count: 12,
-    mechanism: "The return shape changed; don't sanity-correct it.",
-    signal: "output values",
-    color: "var(--green)",
-    bg: "rgba(62,207,142,0.07)",
-    border: "rgba(62,207,142,0.25)",
-    code: `# tie-inclusive: may return MORE than k
-top_k(records, 3, "amount")
-
-result[:3]              # 0.40 "top 3 means 3"
-report all tied records # 1.00 read the docs`,
-  },
-];
-
 const defences = [
   {
     n: "01",
-    title: "The verifier owns the library",
-    body: "Grading imports a pristine copy from tests/_plx_lib/, placed first on sys.path. Editing the shipped copy is flagged and changes nothing.",
+    title: "Grading uses a verifier-owned library copy",
+    body: "Tampering with the agent-visible library cannot change the score.",
     gate: "G8",
   },
   {
     n: "02",
-    title: "Call arguments are observed",
-    body: "Recovered via inspect.Signature.bind, which excludes defaults. There is no trace file to forge and no log the agent can write to.",
+    title: "Scores come from behaviour, not self-report",
+    body: "Agents cannot write a log or trace that the grader trusts as ground truth.",
     gate: null,
   },
   {
     n: "03",
-    title: "Bypassing scores 0.00, not 0.40",
-    body: "An agent that reimplements the function never reaches the prior-locked rung. Hand-rolling is strictly worse than calling naively.",
+    title: "Bypassing is worse than being prior-locked",
+    body: "Reimplementing instead of using the shipped library cannot reach the middle rung.",
     gate: "G7",
   },
   {
     n: "04",
-    title: "Visible tests can't leak",
-    body: "Generated from the probe set; they assert container types and key presence only. Gold and familiar solutions both pass them.",
+    title: "Visible tests do not discriminate the trap",
+    body: "Smoke tests both paths can pass; they are not a side channel for the answer.",
     gate: "G5",
   },
   {
     n: "05",
-    title: "Probes rotate per task",
-    body: "Selection is seeded on the task ID and library names rotate through a pool of plausible non-existent packages. A leaked answer is worth one task.",
+    title: "Probe sets rotate per task",
+    body: "Selection is seeded per task so a leaked answer for one instance does not transfer.",
     gate: null,
   },
 ];
 
 const gates = [
-  ["G1", "gold score", "exactly 1.0"],
-  ["G2", "familiar score", "exactly 0.40"],
-  ["G3", "stub score", "exactly 0.0"],
-  ["G4", "strict ladder", "0.0 < 0.40 < 1.0"],
-  ["G5", "visible tests", "pass for BOTH paths"],
-  ["G6", "canary", "no verifier asset exposed"],
-  ["G7", "bypass", "scores 0.0, not 0.40"],
-  ["G8", "tamper", "flagged, changes no score"],
+  ["G1", "gold score", "reference upper bound"],
+  ["G2", "familiar score", "structural mid rung"],
+  ["G3", "stub score", "lower bound"],
+  ["G4", "strict ladder", "ordering holds"],
+  ["G5", "visible tests", "non-discriminating"],
+  ["G6", "canary", "no verifier leak"],
+  ["G7", "bypass", "cannot farm mid rung"],
+  ["G8", "tamper", "edits do not help"],
   ["G9", "discrimination", "every probe separates"],
   ["G10", "host preserved", "original verifier intact"],
-  ["G11", "oracle", "oracle scores 1.0 on probes"],
-  ["G12", "canary", "canary never reaches the agent"],
+  ["G11", "oracle", "shipped oracle solves probes"],
+  ["G12", "canary", "canary never agent-visible"],
 ];
 
 export default function Probes() {
@@ -104,29 +56,26 @@ export default function Probes() {
         You don&apos;t write the <span>deviation</span>
       </h2>
       <p className="section-lead">
-        Probes are pre-calibrated units drawn from a catalog and injected automatically.
-        Point PriorLock at any Harbor task and it generates the synthetic library, the
-        in-container docs, the sub-task, and the grader. The task author writes nothing
-        and never hears the word &ldquo;deviation&rdquo;.
+        Probes are pre-calibrated units drawn from a private catalog and injected
+        automatically. Point PriorLock at any Harbor task — it generates the synthetic
+        library, in-container docs, sub-task, and grader. Authors never see (or need)
+        the probe design notes.
       </p>
 
-      {/* one command */}
       <div className="card mb-12 p-6">
         <CodeBlock
           code={`$ priorlock wrap tasks/my-task
 
 ✓ my-task wrapped
-  library  datawright
-  probes   tie_inclusive_topk (result_shape), null_key_policy (default_flip),
-           merge_precedence_remap (value_remap)
+  library  <synthetic>
+  probes   <selected from catalog>
   weights  task=0.5 gap=0.5
-  14 files created, 2 modified
+  files created / modified
 
   next: priorlock stage0 tasks/my-task`}
         />
       </div>
 
-      {/* the ladder */}
       <div
         className="mb-12 rounded-[var(--radius)] border p-6 sm:p-8"
         style={{ background: "var(--bg2)", borderColor: "var(--border)" }}
@@ -138,16 +87,15 @@ export default function Probes() {
           The structural ladder
         </p>
         <p className="mb-6 text-sm leading-relaxed" style={{ color: "var(--muted)" }}>
-          Every probe scores on three rungs <em>by construction</em>, not by per-domain
-          calibration. That is the whole reason this scales: the 0.40 baseline is now a
-          property of the harness, verified offline by gate G2 for every wrapped task.
+          Every probe scores on three rungs <em>by construction</em>. The mid rung is a
+          property of the harness, verified offline — not a number tuned per domain.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-3">
           {[
-            { s: "0.00", v: "bypassed", d: "never called the library", c: "var(--red)" },
-            { s: "0.40", v: "prior_locked", d: "applied the memorized default", c: "var(--yellow)" },
-            { s: "1.00", v: "override", d: "read the CHANGELOG and acted", c: "var(--green)" },
+            { s: "0.00", v: "bypassed", d: "did not use the shipped library", c: "var(--red)" },
+            { s: "0.40", v: "prior_locked", d: "trusted memory over the docs", c: "var(--yellow)" },
+            { s: "1.00", v: "override", d: "followed environment ground truth", c: "var(--green)" },
           ].map((r) => (
             <div
               key={r.v}
@@ -171,51 +119,47 @@ export default function Probes() {
         </div>
       </div>
 
-      {/* three families */}
       <p className="section-label mt-16">Catalog</p>
       <h2 className="section-title">
-        Three probe <span>families</span>
+        Probe <span>catalog</span>
       </h2>
       <p className="section-lead">
-        61 probes across 9 domains at three difficulty levels (L1–L3). Selection enforces
-        one probe from each family — an agent that learns to always pass keyword arguments
-        explicitly defeats <code> default_flip</code> and still fails <code>result_shape</code>.
+        Dozens of probes across multiple domains and difficulty levels. Exact mechanisms,
+        IDs, and pass/fail recipes are intentionally unpublished — the only authoritative
+        specification is the documentation inside each wrapped task.
       </p>
 
-      <div className="mb-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {families.map((f) => (
+      <div className="mb-12 grid gap-4 sm:grid-cols-3">
+        {[
+          { label: "Domains", value: "9", hint: "coding → frameworks" },
+          { label: "Probes", value: "61", hint: "L1 · L2 · L3" },
+          { label: "Selection", value: "seeded", hint: "rotates per task" },
+        ].map((c) => (
           <div
-            key={f.id}
-            className="flex min-w-0 flex-col gap-4 overflow-hidden rounded-[var(--radius)] border p-5"
-            style={{ background: f.bg, borderColor: f.border }}
+            key={c.label}
+            className="rounded-[var(--radius)] border p-5"
+            style={{ background: "var(--bg2)", borderColor: "var(--border)" }}
           >
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="font-mono text-sm font-bold" style={{ color: f.color }}>
-                {f.label}
-              </p>
-              <span className="font-mono text-xs" style={{ color: "var(--muted)" }}>
-                {f.count} probes
-              </span>
-            </div>
-            <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-              {f.mechanism}
+            <p className="font-mono text-xs font-bold uppercase tracking-widest" style={{ color: "var(--muted)" }}>
+              {c.label}
             </p>
-            <CodeBlock code={f.code} preClassName="!text-[11px]" />
-            <p className="mt-auto font-mono text-[11px]" style={{ color: "var(--muted)" }}>
-              signal read from <span style={{ color: f.color }}>{f.signal}</span>
+            <p className="mt-2 font-mono text-2xl font-bold" style={{ color: "var(--accent)" }}>
+              {c.value}
+            </p>
+            <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
+              {c.hint}
             </p>
           </div>
         ))}
       </div>
 
-      {/* anti-hacking */}
       <p className="section-label mt-16">Robustness</p>
       <h2 className="section-title">
         Why it can&apos;t be <span>farmed</span>
       </h2>
       <p className="section-lead">
-        Five independent defences. Two of them are enforced as gates, so a task that loses
-        a defence cannot merge.
+        Independent defences, several enforced as merge-blocking gates. Details that would
+        help an attacker are kept out of public docs.
       </p>
 
       <div
@@ -257,15 +201,13 @@ export default function Probes() {
         ))}
       </div>
 
-      {/* gates */}
       <p className="section-label mt-16">Verification</p>
       <h2 className="section-title">
         Twelve offline <span>gates</span>
       </h2>
       <p className="section-lead">
-        No Docker, no network, no API key. Every gate runs the <em>generated</em> grader
-        against <em>generated</em> reference solutions, so it validates the artefact that
-        will actually run in the container.
+        No Docker, no network, no API key. Gates validate the generated artefact — not a
+        hand-written story about it.
       </p>
 
       <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
@@ -301,23 +243,13 @@ export default function Probes() {
           <CodeBlock
             code={`$ priorlock stage0 tasks/my-task
 
-G1 gold score              PASS  1.0
-G2 familiar score          PASS  0.4
-G3 stub score              PASS  0.0
-G4 strict ladder           PASS  0.0 < 0.4 < 1.0
-G5 visible tests           PASS  gold=pass familiar=pass
-G6 canary clean            PASS  no oracle assets
-G7 bypass scores zero      PASS  verdicts={bypassed: 3}
-G8 tamper-proof grading    PASS  flags=[library_modified]
-G9 all probes discriminate PASS
-
+G1–G12 … PASS
 ALL GATES PASS`}
           />
         </div>
       </div>
       <p className="mt-4 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-        CI runs all 13 archetypes through all 12 gates on every commit, plus every
-        wrapped task and every authored domain in the repo.
+        CI runs the catalog and wrapped tasks through the gate suite on every commit.
       </p>
     </section>
   );

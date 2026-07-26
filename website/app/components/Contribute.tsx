@@ -21,16 +21,11 @@ priorlock wrap tasks/ --recursive`,
     title: "Add a probe archetype",
     time: "~1 hour",
     desc: "A new archetype is immediately available to every wrapped task, present and future. One archetype helps everyone; one domain helps one task.",
-    code: `# src/priorlock/probes/catalog.py
-Probe(
-    id="my_probe",
-    family="default_flip",
-    fn="normalize",
-    param="mode",
-    gold_kwargs={"mode": "strict"},
-    familiar_kwargs={},
-    ...
-)`,
+    code: `# extend the private catalog (contributors)
+# see CONTRIBUTING.md — do not publish
+# mechanism notes or pass/fail recipes
+
+priorlock probes --list   # IDs only, for maintainers`,
   },
   {
     tag: "Escape hatch",
@@ -54,7 +49,7 @@ const tips = [
     bg: "rgba(62,207,142,0.07)",
     border: "rgba(62,207,142,0.25)",
     items: [
-      "Familiar shape — models have a strong prior about dedupe(items, key)",
+      "Familiar shape — models bring strong priors from training data",
       "Silent — wrong values, never a crash or a type error",
       "Documented — reading the CHANGELOG is sufficient to score 1.0",
       "Discriminating — gold output differs from familiar output",

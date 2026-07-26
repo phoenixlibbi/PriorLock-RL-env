@@ -59,15 +59,9 @@ Models memorize the APIs they saw during training. When an environment ships a
 newer library whose defaults changed, the model confidently applies what it
 remembers. No exception is raised. The smoke tests pass. The output is wrong.
 
-```python
-# The container ships v2.0, where keep defaults to "last".
-# The CHANGELOG says so. The model doesn't read it.
-
-dedupe(items, "sku")                 # prior-locked  → last occurrence wins
-dedupe(items, "sku", keep="first")   # doc-reading   → first occurrence wins
-```
-
-That single difference is the entire measurement.
+The container ships documentation that contradicts common training-data priors.
+Code written from memory still runs and still looks right — smoke tests pass —
+but the hidden score does not. Reading the in-environment docs is the skill.
 
 ---
 
@@ -112,41 +106,27 @@ every wrapped task.
 
 ## Probe catalog
 
-Thirteen archetypes, three families, five categories. All 13 pass all 12 gates in
-CI on every commit.
+Dozens of probes across multiple domains and difficulty levels. Exact mechanisms,
+IDs, and pass/fail recipes are **not published** — the authoritative specification
+is the documentation inside each wrapped task environment.
 
 ```bash
-priorlock probes
-priorlock probes --show tie_inclusive_topk
+priorlock wrap tasks/my-task      # selects probes; authors write nothing
+priorlock stage0 tasks/my-task    # offline gates on the generated artefact
 ```
-
-| Family | Mechanism | Signal read from |
-|--------|-----------|------------------|
-| `default_flip` | a keyword argument's **default** was inverted | call arguments |
-| `value_remap` | an accepted value's **meaning** was reassigned | call arguments |
-| `result_shape` | the **return shape** changed | output values |
-
-Selection enforces one probe from each family. An agent that learns to always
-pass keyword arguments explicitly defeats `default_flip` — and still fails
-`result_shape`.
 
 ---
 
 ## Why it can't be farmed
 
-Five independent defences, two of them enforced as gates.
+Independent defences (several merge-blocking). Public docs intentionally omit
+implementation details that would help an attacker. At a high level:
 
-1. **The verifier owns the library.** Grading imports a pristine copy from
-   `tests/_plx_lib/`, first on `sys.path`. Editing the shipped copy is flagged
-   and changes nothing. *(gate G8)*
-2. **Call arguments are observed, not self-reported.** Recovered via
-   `inspect.Signature.bind`, which excludes defaults. No trace file to forge.
-3. **Bypassing scores 0.00, not 0.40.** Hand-rolling the familiar behaviour is
-   strictly worse than calling the library naively. *(gate G7)*
-4. **Visible tests are non-discriminating by construction.** Generated from the
-   probe set; they assert types and key presence only. *(gate G5)*
-5. **Probes rotate per task.** Selection is seeded on the task ID, and library
-   names rotate through a pool of plausible non-existent packages.
+1. Grading uses a verifier-owned library copy — agent-side edits do not help.
+2. Scores come from observed behaviour, not agent-written traces.
+3. Bypassing the library is worse than being prior-locked.
+4. Visible tests do not leak the discriminating signal.
+5. Probe sets rotate per task so leaks do not transfer.
 
 ---
 
@@ -174,7 +154,7 @@ grader against *generated* reference solutions.
 $ priorlock stage0 tasks/my-task
 
 === Stage-0 · my-task ===
-library datawright · probes: tie_inclusive_topk, null_key_policy, merge_precedence_remap
+library <synthetic> · probes: <selected>
 
 G1 gold score                         PASS  gap_score=1.0
 G2 familiar score                     PASS  gap_score=0.4 (want 0.4)
@@ -295,20 +275,16 @@ n=104 to earn the interval.
 
 ## Inspecting a run
 
-`verify` prints the arguments each call actually supplied — that *is* the
-measurement:
+`verify` prints per-probe verdicts for a reference solution (gold / familiar /
+stub). Exact probe IDs and argument recipes are task-local — do not republish
+them in public write-ups.
 
 ```
 $ priorlock verify tasks/my-task --reference familiar
 
 gap_score 0.4  (familiar.py)
-
-  null_key_policy              prior_locked      0.40
-    supplied: [{"key": "region"}]                  ← nulls= never passed
-    output matches: familiar
-  merge_precedence_remap       prior_locked      0.40
-    supplied: [{"on_conflict": "keep"}]            ← the 1.x meaning
-    output matches: familiar
+  <probe>   prior_locked   0.40
+  …
 ```
 
 ---

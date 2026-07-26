@@ -105,7 +105,7 @@ export default function Research() {
             icon: "🔬",
             title: "The Measurement",
             body:
-              "PriorLock ships a synthetic library in two forms: the familiar (v1.x, matches training-data shape) and the installed (v2.0, silent behavioral deviations on edge-case inputs). The score gap between familiar and gold measures prior-lock strength. The familiar baseline is calibrated to 0.40 — model-free, domain-invariant.",
+              "PriorLock ships a synthetic library in two forms: familiar (matches common training-data shapes) and installed (docs describe the live behaviour). The score gap between familiar and gold measures prior-lock strength. The familiar baseline is calibrated to 0.40 — model-free, domain-invariant.",
           },
           {
             icon: "📐",
@@ -147,19 +147,19 @@ export default function Research() {
             step: "02",
             title: "Agent writes a solution",
             detail:
-              "The agent reads the CHANGELOG and API reference, discovers the behavioral deviations from v1.x, and writes solve.py. A model with strong priors will apply the familiar behavior without reading the docs.",
+              "The agent should read the CHANGELOG and API reference for the installed library, then write solve.py. A model with strong priors may skip the docs and apply familiar behaviour instead.",
           },
           {
             step: "03",
             title: "Visible tests run",
             detail:
-              "test_visible.py runs inside the container. Both the familiar solution and the gold solution pass these tests — they check shape and type only, never exact values. A prior-locked agent sees green and submits.",
+              "Smoke tests run inside the container. Both the familiar path and the gold path can pass them — they are not a side channel for the answer. A prior-locked agent may see green and still score mid-rung.",
           },
           {
             step: "04",
             title: "Grader scores the output",
             detail:
-              "grade.py compares output.json to expected.json. Score = 0.40 × core_correct + 0.30 × deviation_1_correct + 0.30 × deviation_2_correct. Prior-locked: 0.40. Gold: 1.0.",
+              "The grader scores against environment ground truth. Prior-locked solutions land on the mid rung (0.40). Gold solutions reach 1.0. Exact scoring weights and probe recipes are not published.",
           },
           {
             step: "05",
@@ -209,10 +209,9 @@ export default function Research() {
           <ul className="space-y-2">
             {[
               "Any domain where a familiar API shape exists in pretraining data",
-              "Silent behavioral deviations — wrong values on edge-case inputs",
-              "Library APIs, data-processing functions, sorting/grouping/joining semantics",
-              "Any language where a synthetic library can ship in a container",
-              "Domains validated by the 6-gate Stage-0 contract",
+              "Installed behaviour that differs from what models typically memorize",
+              "Synthetic libraries that can ship inside a Harbor container",
+              "Domains validated by the Stage-0 offline contract",
             ].map((item) => (
               <li key={item} className="flex gap-2 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
                 <span style={{ color: "var(--green)", flexShrink: 0 }}>✓</span>
@@ -233,8 +232,7 @@ export default function Research() {
             {[
               "General coding ability (use Terminal-Bench for that)",
               "Novel APIs with no pretraining prior — prior-lock signal disappears",
-              "Signature-change deviations — these crash, not mislead",
-              "Tasks where wrong output is detectable from visible tests",
+              "Tasks where visible smoke tests already reveal the answer",
               "Real published libraries (training contamination invalidates G2)",
             ].map((item) => (
               <li key={item} className="flex gap-2 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
