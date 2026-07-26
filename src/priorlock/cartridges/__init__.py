@@ -8,7 +8,7 @@ its fields.
 Cartridges are discovered automatically:
 
 1. Built-in cartridges in this package (coding, sql, linux, config, cloud,
-   finance, math_domain) are registered at import time.
+   finance, math_domain, frontend, backend) are registered at import time.
 2. External cartridges installed via ``pip install priorlock-<domain>`` register
    themselves through the ``priorlock.cartridges`` entry-point group.
 
@@ -233,6 +233,8 @@ def _ensure_builtins() -> None:
     from . import cloud       # noqa: F401
     from . import finance     # noqa: F401
     from . import math_domain # noqa: F401
+    from . import frontend    # noqa: F401
+    from . import backend     # noqa: F401
 
     # Load L2 coupled probes and L3 workflow probes, merge into parent cartridges
     from .coupled import ALL_L2_PROBES

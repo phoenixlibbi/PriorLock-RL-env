@@ -56,6 +56,22 @@ const domains = [
     dashed: false,
   },
   {
+    tag: "Frontend Frameworks",
+    status: "active" as const,
+    name: "frontend",
+    desc: "6 L1 probes: React useEffect cleanup, Next.js SSR/SSG data fetching, Angular OnPush change detection, Vue reactivity, React key generation, Next.js App Router routing.",
+    deviations: ["useEffect cleanup mode flipped", "SSG→SSR default changed"],
+    dashed: false,
+  },
+  {
+    tag: "Backend Frameworks",
+    status: "active" as const,
+    name: "backend",
+    desc: "7 L1 probes: Django ORM lazy evaluation, Flask route types, FastAPI serialization, Express middleware order, Spring Boot auto-config, Django CSRF, FastAPI dependency scope.",
+    deviations: ["Django eager→lazy queryset", "FastAPI exclude_none flipped"],
+    dashed: false,
+  },
+  {
     tag: "Extend",
     status: "soon" as const,
     name: "Add your domain",

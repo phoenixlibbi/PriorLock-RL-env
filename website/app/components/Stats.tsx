@@ -1,8 +1,8 @@
 const stats = [
-  { value: "48", label: "Probes across 7 domains · L1–L3 difficulty" },
+  { value: "61", label: "Probes across 9 domains · L1–L3 difficulty" },
   { value: "0.40", label: "Prior-locked baseline — structural, not calibrated" },
   { value: "12", label: "Stage-0 offline gates" },
-  { value: "7", label: "Domain cartridges · coding to finance" },
+  { value: "9", label: "Domain cartridges · coding to Spring Boot" },
 ];
 
 export default function Stats() {
