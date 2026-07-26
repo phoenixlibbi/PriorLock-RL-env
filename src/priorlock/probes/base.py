@@ -108,13 +108,16 @@ class Probe:
     # ── metadata ──────────────────────────────────────────────────────────────
     tags: tuple[str, ...] = ()
     weight: float = 1.0
+    domain: str = "coding"              # which cartridge owns this probe
+    level: int = 1                      # L1=atomic, L2=coupled, L3=workflow, L4=evolving
+    dependencies: tuple[str, ...] = ()  # ids of probes that must co-occur (L2+)
 
     # ── validation ────────────────────────────────────────────────────────────
     def __post_init__(self) -> None:
         if self.family not in FAMILIES:
             raise ValueError(f"{self.id}: unknown family {self.family!r}")
-        if self.category not in CATEGORIES:
-            raise ValueError(f"{self.id}: unknown category {self.category!r}")
+        if not self.category:
+            raise ValueError(f"{self.id}: category must be non-empty")
         if self.family == "result_shape":
             if self.gold_kwargs or self.familiar_kwargs:
                 raise ValueError(f"{self.id}: result_shape probes take no discriminating kwargs")
