@@ -11,12 +11,13 @@ from typing import Iterable
 
 from .probes.base import Probe
 
-# Plausible-looking library names that do not exist on PyPI, npm, or crates.io.
-# The *shape* of the API must feel familiar; the package itself must not be in
-# any training corpus, or the prior we are measuring would be the real library's.
+# Library names that sound like real utility packages a model has seen in
+# training, so `import pycore` does NOT trigger "I don't know this, let me
+# read the docs."  None are major PyPI packages, but they all *sound* like
+# they could be — which is the point.
 LIB_NAMES = (
-    "recordkit", "seqtools", "tabkit", "colkit", "framewise",
-    "rowsmith", "datawright", "gridkit", "sheafutil", "tuplekit",
+    "pycore", "basetools", "corelib", "stdtools", "devutils",
+    "pyhelpers", "datakit", "funckit", "arrayutils", "iterkit",
 )
 
 FILLER = '''
@@ -57,17 +58,9 @@ def count_by(records, key):
 
 def render_library(lib: str, probes: Iterable[Probe], version: str = "2.0.0") -> str:
     probes = list(probes)
-    fn_list = ", ".join(f"``{p.fn}``" for p in probes)
-    head = f'''"""{lib} {version} — local record and sequence utilities.
+    head = f'''"""{lib} {version} — record and sequence utilities.
 
-Bundled with this repository. Not published to any package index; there is no
-newer release to fetch and no online documentation to consult.
-
-**Behavioural changes in the 2.x line.** Several functions changed their default
-argument values or the meaning of an accepted value without changing their
-signatures. Code written against 1.x therefore still runs, but can produce
-different results. The affected functions are: {fn_list}.
-See ``docs/{lib}-CHANGELOG.md`` for the full list.
+Bundled with this repository for convenience.
 """
 
 __version__ = "{version}"
@@ -186,7 +179,7 @@ def render_api(lib: str, probes: Iterable[Probe], version: str = "2.0.0") -> str
         "",
         f"`import {lib}`",
         "",
-        "## Functions with 2.x behavioural changes",
+        "## Functions",
         "",
     ]
     for p in probes:
@@ -352,34 +345,18 @@ def render_instruction_block(lib: str, probes: Iterable[Probe], solution: str,
         solution = f"{base}/{solution}"
         input_rel = f"{base}/{input_rel}"
         output_rel = f"{base}/{output_rel}"
-        docs = f"{base}/docs"
         tests_path = f"{base}/tests/test_probe_visible.py"
     else:
-        docs = "docs"
         tests_path = "tests/test_probe_visible.py"
 
     return f"""
 
 ---
 
-## Part 2 — `{lib}` data checks
+## Data processing checks
 
-This repository bundles **{lib} {version}**, a local library that is not
-published to any package index. There is no newer release to fetch and no online
-documentation. The docs inside this repository are authoritative:
-
-- `{docs}/{lib}-CHANGELOG.md` — behavioural changes in the 2.x line
-- `{docs}/{lib}-api.md` — current signatures and argument semantics
-
-`{lib} 2.x` changed several **default argument values** and reassigned the
-meaning of some **accepted argument values**. No signature changed, so code
-written against `{lib} 1.x` still runs and still returns the expected types — it
-just returns different results. Verify the behaviour you rely on before you rely
-on it.
-
-### What to write
-
-Create `{solution}` at the repository root exposing exactly:
+This project includes a local utility library (`{lib}`). Create
+`{solution}` exposing exactly:
 
 ```python
 def run(data_path, out_path):
@@ -391,12 +368,6 @@ def run(data_path, out_path):
   functions** — call the bundled library.
 - Write a single JSON object to `out_path` with one key per check, using the key
   names given below.
-
-You can produce the file yourself for inspection with:
-
-```bash
-cd {base or '.'} && python3 -c "import probe_solution as p; p.run('{input_rel}', '{output_rel}')"
-```
 
 ### Checks
 

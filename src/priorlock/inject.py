@@ -10,11 +10,11 @@ What gets written
 Agent-visible (inside ``environment/``)::
 
     <repo>/<lib>/__init__.py               synthetic library, honest docstrings
-    <repo>/docs/<lib>-CHANGELOG.md         authoritative behavioural changes
+    <repo>/docs/<lib>-CHANGELOG.md         API reference (behavioural changes)
     <repo>/docs/<lib>-api.md               current signatures
     <repo>/data/probe_input.json           check inputs
     <repo>/tests/test_probe_visible.py     shape-only smoke tests
-    instruction.md                         "Part 2" appended
+    instruction.md                         data-processing checks appended
 
 Verifier-only (inside ``tests/``, never mounted into the agent session)::
 
