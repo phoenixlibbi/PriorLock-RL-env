@@ -234,6 +234,27 @@ def _ensure_builtins() -> None:
     from . import finance     # noqa: F401
     from . import math_domain # noqa: F401
 
+    # Load L2 coupled probes and L3 workflow probes, merge into parent cartridges
+    from .coupled import ALL_L2_PROBES
+    from .workflow import ALL_L3_PROBES
+    for probe in (*ALL_L2_PROBES, *ALL_L3_PROBES):
+        if probe.domain in _REGISTRY:
+            spec = _REGISTRY[probe.domain]
+            # Only add if not already present
+            if probe.id not in spec.by_id:
+                # Rebuild the spec with the extra probe — frozen dataclass
+                extended = CartridgeSpec(
+                    domain=spec.domain,
+                    display_name=spec.display_name,
+                    description=spec.description,
+                    probes=spec.probes + (probe,),
+                    categories=spec.categories,
+                    lexicon=spec.lexicon,
+                    system_prompt_override=spec.system_prompt_override,
+                    max_level=max(spec.max_level, probe.level),
+                )
+                _REGISTRY[spec.domain] = extended
+
     # Try loading external cartridges via entry points
     try:
         from importlib.metadata import entry_points

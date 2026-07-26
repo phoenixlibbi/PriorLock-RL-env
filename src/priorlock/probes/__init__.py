@@ -29,7 +29,33 @@ __all__ = [
     "gap_score", "composite_reward",
     "infer_categories", "select_probes", "load_calibration", "save_calibration",
     "calibration_path", "probe_table",
+    "all_probes_by_id", "all_probes_list",
 ]
+
+
+# ── cartridge-aware probe lookups ────────────────────────────────────────────
+#
+# The original ALL_PROBES / BY_ID contain only the 13 coding-domain archetypes.
+# These helpers extend lookup to every registered cartridge, so inject.py and
+# env.py can resolve probe IDs from any domain without importing cartridges
+# directly.
+
+def all_probes_list(domains: list[str] | None = None) -> list[Probe]:
+    """All probes from the cartridge registry, optionally filtered by domain.
+
+    Falls back to the original coding-only ``ALL_PROBES`` if the cartridge
+    system is not importable (defensive — shouldn't happen in practice).
+    """
+    try:
+        from ..cartridges import all_probes
+        return all_probes(domains)
+    except ImportError:
+        return list(ALL_PROBES)
+
+
+def all_probes_by_id(domains: list[str] | None = None) -> dict[str, Probe]:
+    """ID → Probe mapping across all cartridges (or filtered domains)."""
+    return {p.id: p for p in all_probes_list(domains)}
 
 _CALIBRATION = Path(__file__).with_name("calibration.json")
 
@@ -218,27 +244,55 @@ def save_calibration(data: dict) -> None:
 
 # ── human-readable listing ───────────────────────────────────────────────────
 
-def probe_table(family: str | None = None, category: str | None = None) -> str:
+def probe_table(family: str | None = None, category: str | None = None,
+                domain: str | None = None) -> str:
+    """Human-readable probe listing, optionally filtered.
+
+    When *domain* is given, shows probes from that cartridge (or all cartridges
+    if ``domain="all"``). Without *domain*, shows only the original coding
+    archetypes for backward compatibility.
+    """
     calib = load_calibration().get("probes", {})
+
+    if domain == "all":
+        source = all_probes_list()
+    elif domain:
+        source = all_probes_list([domain])
+    else:
+        source = list(ALL_PROBES)
+
     rows = [
-        p for p in ALL_PROBES
+        p for p in source
         if (family is None or p.family == family)
         and (category is None or p.category == category)
     ]
     if not rows:
         return "no probes match that filter"
+
+    show_domain = domain == "all" or (domain is None and len({p.domain for p in rows}) > 1)
     w_id = max(len(p.id) for p in rows)
     w_fam = max(len(p.family) for p in rows)
     w_cat = max(len(p.category) for p in rows)
-    out = [
-        f"{'ID'.ljust(w_id)}  {'FAMILY'.ljust(w_fam)}  {'CATEGORY'.ljust(w_cat)}  CONF   SUMMARY",
-        f"{'-' * w_id}  {'-' * w_fam}  {'-' * w_cat}  ----   -------",
-    ]
+    w_dom = max(len(p.domain) for p in rows) if show_domain else 0
+
+    header = f"{'ID'.ljust(w_id)}  {'FAMILY'.ljust(w_fam)}  {'CATEGORY'.ljust(w_cat)}"
+    sep = f"{'-' * w_id}  {'-' * w_fam}  {'-' * w_cat}"
+    if show_domain:
+        header = f"{'DOMAIN'.ljust(w_dom)}  " + header
+        sep = f"{'-' * w_dom}  " + sep
+    header += "  L   CONF   SUMMARY"
+    sep += "  --  ----   -------"
+    out = [header, sep]
+
     for p in rows:
         conf = calib.get(p.id, {}).get("discrimination")
         conf_s = f"{conf:.2f}" if isinstance(conf, (int, float)) else "  — "
-        out.append(
+        line = ""
+        if show_domain:
+            line += f"{p.domain.ljust(w_dom)}  "
+        line += (
             f"{p.id.ljust(w_id)}  {p.family.ljust(w_fam)}  {p.category.ljust(w_cat)}  "
-            f"{conf_s}   {p.summary}"
+            f"L{p.level}  {conf_s}   {p.summary}"
         )
+        out.append(line)
     return "\n".join(out)

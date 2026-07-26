@@ -1,8 +1,8 @@
 const stats = [
+  { value: "48", label: "Probes across 7 domains · L1–L3 difficulty" },
   { value: "0.40", label: "Prior-locked baseline — structural, not calibrated" },
-  { value: "0/104", label: "False accepts · Wilson95 upper 0.036" },
   { value: "12", label: "Stage-0 offline gates" },
-  { value: "0", label: "Lines a task author has to write" },
+  { value: "7", label: "Domain cartridges · coding to finance" },
 ];
 
 export default function Stats() {

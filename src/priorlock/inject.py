@@ -48,6 +48,7 @@ from pathlib import Path
 
 from . import templates as T
 from .probes import ALL_PROBES, BY_ID, infer_categories, select_probes
+from .probes import all_probes_by_id
 from .probes.base import Probe
 
 MANIFEST = "priorlock.toml"
@@ -316,12 +317,22 @@ def wrap_task(
     *,
     count: int = 3,
     probe_ids: list[str] | None = None,
+    domains: list[str] | None = None,
+    level: int = 1,
     w_task: float = 0.5,
     w_gap: float = 0.5,
     force: bool = False,
     seed_suffix: str = "",
     repo_dir: str | None = None,
 ) -> WrapResult:
+    """Inject probes into an existing Harbor task.
+
+    Args:
+        domains: restrict or expand probe selection to specific cartridge
+            domains (e.g. ``["coding", "sql"]``). When set, uses the
+            cross-cartridge selector for domain-interleaved selection.
+        level: maximum probe difficulty level (L1–L4). Default 1 (atomic).
+    """
     layout = detect_layout(task_dir, repo_dir=repo_dir)
     root = layout.root
 
@@ -335,10 +346,22 @@ def wrap_task(
 
     # ── choose probes ────────────────────────────────────────────────────────
     if probe_ids:
-        unknown = [p for p in probe_ids if p not in BY_ID]
+        # Resolve from all cartridges, not just the coding catalog
+        extended = all_probes_by_id(domains)
+        # Fall back to original BY_ID for coding-only probes
+        merged = {**BY_ID, **extended}
+        unknown = [p for p in probe_ids if p not in merged]
         if unknown:
             raise KeyError(f"unknown probe id(s): {', '.join(unknown)}")
-        probes = [BY_ID[p] for p in probe_ids]
+        probes = [merged[p] for p in probe_ids]
+    elif domains:
+        from .cartridges import select_probes_cross
+        probes = select_probes_cross(
+            task_id=layout.task_id + seed_suffix,
+            domains=domains,
+            count=count,
+            level=level,
+        )
     else:
         probes = select_probes(
             layout.task_id + seed_suffix,

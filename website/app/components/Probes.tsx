@@ -4,7 +4,7 @@ const families = [
   {
     id: "default_flip",
     label: "default_flip",
-    count: 6,
+    count: 26,
     mechanism: "A keyword argument's default value was inverted.",
     signal: "call arguments",
     color: "var(--accent)",
@@ -19,7 +19,7 @@ dedupe(items, "sku", keep="first") # 1.00 read the docs`,
   {
     id: "value_remap",
     label: "value_remap",
-    count: 4,
+    count: 12,
     mechanism: "An accepted value's meaning was reassigned.",
     signal: "call arguments",
     color: "var(--yellow)",
@@ -34,7 +34,7 @@ on_conflict="keep_left" # 1.00 base wins`,
   {
     id: "result_shape",
     label: "result_shape",
-    count: 3,
+    count: 10,
     mechanism: "The return shape changed; don't sanity-correct it.",
     signal: "output values",
     color: "var(--green)",
@@ -177,9 +177,9 @@ export default function Probes() {
         Three probe <span>families</span>
       </h2>
       <p className="section-lead">
-        Thirteen archetypes across five categories. Selection enforces one probe from each
-        family — an agent that learns to always pass keyword arguments explicitly defeats
-        <code> default_flip</code> and still fails <code>result_shape</code>.
+        48 probes across 7 domains at three difficulty levels (L1–L3). Selection enforces
+        one probe from each family — an agent that learns to always pass keyword arguments
+        explicitly defeats <code> default_flip</code> and still fails <code>result_shape</code>.
       </p>
 
       <div className="mb-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

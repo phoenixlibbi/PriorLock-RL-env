@@ -114,27 +114,44 @@ def cmd_info(args, root: str) -> int:
     if not wrapped and not domains:
         print("No wrapped tasks or authored domains found here.\n")
 
-    print(f"{BOLD}Probe catalog{RESET}: {len(ALL_PROBES)} archetypes "
+    print(f"{BOLD}Probe catalog{RESET}: {len(ALL_PROBES)} coding archetypes "
           f"({DIM}priorlock probes{RESET})")
+
+    try:
+        from priorlock.cartridges import list_domains as _ld, get as _cget
+        cart_domains = _ld()
+        total = sum(_cget(d).probe_count for d in cart_domains)
+        print(f"{BOLD}Cartridges{RESET}: {len(cart_domains)} domains, {total} probes total "
+              f"({DIM}priorlock cartridge list{RESET})")
+    except ImportError:
+        pass
+
     print()
     print("Wrap any task:  priorlock wrap <task-dir>")
+    print("Cross-domain:   priorlock wrap <task-dir> --domain sql --domain linux")
     print("Offline gates:  priorlock stage0 <task-dir>")
     print("Harbor run:     harbor run -p <task-dir>")
     return 0
 
 
 def cmd_probes(args, root: str) -> int:
-    from priorlock.probes import BY_ID, probe_table
+    from priorlock.probes import BY_ID, probe_table, all_probes_by_id
 
     if args.show:
-        p = BY_ID.get(args.show)
+        extended = all_probes_by_id()
+        merged = {**BY_ID, **extended}
+        p = merged.get(args.show)
         if not p:
             print(f"{RED}unknown probe: {args.show}{RESET}", file=sys.stderr)
             return 1
-        print(f"{BOLD}{p.id}{RESET}  {DIM}{p.family} · {p.category}{RESET}\n")
+        print(f"{BOLD}{p.id}{RESET}  {DIM}{p.family} · {p.category} · {p.domain} · L{p.level}{RESET}\n")
         print(f"  {p.summary}\n")
         print(f"  {BOLD}signature{RESET}     {p.signature}")
         print(f"  {BOLD}output key{RESET}    {p.output_key}")
+        print(f"  {BOLD}domain{RESET}        {p.domain}")
+        print(f"  {BOLD}level{RESET}         L{p.level}")
+        if p.dependencies:
+            print(f"  {BOLD}dependencies{RESET}  {', '.join(p.dependencies)}")
         print(f"  {BOLD}familiar (1.x){RESET} {p.familiar_behaviour}")
         print(f"  {BOLD}installed (2.x){RESET} {p.installed_behaviour}")
         if p.param:
@@ -148,10 +165,80 @@ def cmd_probes(args, root: str) -> int:
         print(f"  {BOLD}familiar output{RESET}\n    {json.dumps(p.familiar_output, ensure_ascii=False)}")
         return 0
 
-    print(probe_table(family=args.family, category=args.category))
+    domain = getattr(args, "domain", None)
+    print(probe_table(family=args.family, category=args.category, domain=domain))
     print()
     print(f"{DIM}priorlock probes --show <id>   full detail for one probe{RESET}")
     return 0
+
+
+def cmd_cartridge(args, root: str) -> int:
+    """Cartridge management: list, show, generate."""
+    from priorlock.cartridges import get, list_domains
+    from priorlock.cartridges.generator import cartridge_table
+
+    action = args.cartridge_action
+
+    if action == "list":
+        domains = list_domains()
+        print(f"{BOLD}Registered cartridges{RESET} ({len(domains)})\n")
+        for d in domains:
+            spec = get(d)
+            print(f"  {BOLD}{d:<12s}{RESET}  {spec.display_name:<20s}  "
+                  f"{spec.probe_count} probes (L1–L{spec.max_level})  "
+                  f"{DIM}{spec.description[:60]}{RESET}")
+        total = sum(get(d).probe_count for d in domains)
+        print(f"\n{DIM}{total} total probes across {len(domains)} domains{RESET}")
+        return 0
+
+    if action == "show":
+        try:
+            spec = get(args.domain_name)
+        except KeyError as e:
+            print(f"{RED}{e}{RESET}", file=sys.stderr)
+            return 1
+        print(cartridge_table(spec))
+        return 0
+
+    if action == "generate":
+        print(f"{BOLD}Auto-cartridge generator{RESET}\n")
+        print("Usage: define ProbeTemplate objects in Python and call")
+        print("  generate_cartridge(domain, display_name, description, templates, categories)")
+        print()
+        print("Example:")
+        print(f"  {DIM}from priorlock.cartridges.generator import ProbeTemplate, generate_cartridge")
+        print()
+        print("  template = ProbeTemplate(")
+        print("      domain='my_api',")
+        print("      fn_name='process',")
+        print("      family='default_flip',")
+        print("      category='processing',")
+        print("      param_name='mode',")
+        print("      old_default='sync',")
+        print("      new_default='async',")
+        print("      description='Processing mode changed',")
+        print("      implementation='def process(data, mode=\"async\"): ...',")
+        print("      example_input={'data': [1, 2, 3]},")
+        print("      gold_value='sync',")
+        print("      gold_output=[1, 2, 3],")
+        print("      familiar_output=[3, 2, 1],")
+        print("  )")
+        print()
+        print("  cartridge = generate_cartridge(")
+        print("      'my_api', 'My API', 'Custom domain', [template], ('processing',)")
+        print(f"  ){RESET}")
+        print()
+
+        # Also show spec-based analysis usage
+        print(f"{BOLD}API spec analysis{RESET} (no API key required):\n")
+        print(f"  {DIM}from priorlock.cartridges.generator import APIFunction, generate_from_spec")
+        print()
+        print("  fns = [APIFunction(name='foo', parameters=[")
+        print("      {'name': 'mode', 'type': 'str', 'default': 'fast'}])]")
+        print(f"  candidates = generate_from_spec('my_api', 'My API', fns){RESET}")
+        return 0
+
+    return 1
 
 
 def cmd_preflight(args, root: str) -> int:
@@ -247,10 +334,14 @@ def cmd_wrap(args, root: str) -> int:
                 print(f"{YELLOW}!{RESET} {target}: {warn.id} {warn.name} — {warn.detail}")
 
         try:
+            domains = args.domain if hasattr(args, "domain") and args.domain else None
+            level = args.level if hasattr(args, "level") else 1
             result = wrap_task(
                 target,
                 count=args.count,
                 probe_ids=args.probe or None,
+                domains=domains,
+                level=level,
                 w_task=args.weight_task,
                 w_gap=args.weight_gap,
                 force=args.force,
@@ -267,7 +358,7 @@ def cmd_wrap(args, root: str) -> int:
               f"(workdir {result.layout.workdir}){RESET}")
         print(f"  library  {result.lib}")
         print(f"  probes   " + ", ".join(
-            f"{p.id} {DIM}({p.family}){RESET}" for p in result.probes))
+            f"{p.id} {DIM}({p.family} · {p.domain}){RESET}" for p in result.probes))
         print(f"  weights  task={args.weight_task} gap={args.weight_gap}")
 
         # ── capture the pre-wrap oracle reward ───────────────────────────────
@@ -574,8 +665,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 other:
   priorlock wrap tasks/ --recursive         migrate an entire suite
+  priorlock wrap tasks/t --domain sql       inject SQL-domain probes
   priorlock verify tasks/my-task --reference familiar
-  priorlock probes --family default_flip    browse the catalog
+  priorlock probes --domain all             browse all cartridge probes
+  priorlock cartridge list                  show registered cartridges
+  priorlock cartridge show sql              detailed view of one cartridge
   priorlock calibrate ingest trials/ --model claude-opus-5
 """,
     )
@@ -586,8 +680,9 @@ other:
 
     p_probes = sub.add_parser("probes", help="browse the pre-calibrated probe catalog")
     p_probes.add_argument("--family", choices=["default_flip", "value_remap", "result_shape"])
-    p_probes.add_argument("--category", choices=["collection", "numeric", "text",
-                                                 "temporal", "mapping"])
+    p_probes.add_argument("--category")
+    p_probes.add_argument("--domain", metavar="DOMAIN",
+                          help='filter by cartridge domain (use "all" for every domain)')
     p_probes.add_argument("--show", metavar="ID", help="full detail for one probe")
 
     p_wrap = sub.add_parser("wrap", help="inject probes into an existing Harbor task")
@@ -598,6 +693,11 @@ other:
                         help="number of probes to inject (default 3)")
     p_wrap.add_argument("--probe", action="append", metavar="ID",
                         help="pin a specific probe (repeatable; overrides auto-selection)")
+    p_wrap.add_argument("--domain", action="append", metavar="DOMAIN",
+                        help="select probes from this cartridge domain (repeatable; "
+                             "e.g. --domain sql --domain linux)")
+    p_wrap.add_argument("--level", type=int, default=1, choices=[1, 2, 3, 4],
+                        help="max probe difficulty level (default 1)")
     p_wrap.add_argument("--weight-task", type=float, default=0.5,
                         help="weight of the native task reward (default 0.5)")
     p_wrap.add_argument("--weight-gap", type=float, default=0.5,
@@ -663,6 +763,14 @@ other:
     p_nd = sub.add_parser("new-domain", help="scaffold a bespoke authored domain")
     p_nd.add_argument("name")
 
+    # ── cartridge management ────────────────────────────────────────────────
+    p_cart = sub.add_parser("cartridge", help="manage domain cartridges")
+    cart_sub = p_cart.add_subparsers(dest="cartridge_action", metavar="<action>")
+    cart_sub.add_parser("list", help="show all registered cartridges")
+    p_cart_show = cart_sub.add_parser("show", help="detailed view of one cartridge")
+    p_cart_show.add_argument("domain_name", help="cartridge domain slug")
+    cart_sub.add_parser("generate", help="usage guide for the auto-cartridge generator")
+
     return parser
 
 
@@ -679,6 +787,7 @@ DISPATCH = {
     "cheats": cmd_cheats,
     "calibrate": cmd_calibrate,
     "new-domain": cmd_new_domain,
+    "cartridge": cmd_cartridge,
 }
 
 

@@ -54,6 +54,7 @@ from pathlib import Path
 
 from . import templates as T
 from .probes import ALL_PROBES, BY_ID, select_probes
+from .probes import all_probes_by_id, all_probes_list
 from .probes.base import FAMILIAR_BASELINE, Probe, gap_score
 
 DEFAULT_INSTANCES = 200
@@ -136,20 +137,44 @@ Reply with the function in a single ```python code block. No other output.
 def build_instances(num_instances: int = DEFAULT_INSTANCES,
                     probes_per_instance: int = DEFAULT_PROBES,
                     seed_prefix: str = "plx",
-                    probe_ids: list[str] | None = None) -> list[dict]:
+                    probe_ids: list[str] | None = None,
+                    domains: list[str] | None = None,
+                    level: int = 1) -> list[dict]:
     """Generate deterministic environment instances.
 
     Each instance is a distinct synthetic library with a distinct probe mix, so
     instances are disjoint by construction. Seeding on the instance id
     means the same id always yields the same instance, in any process, forever.
+
+    Args:
+        domains: when set, instances draw probes from these cartridge domains
+            using the cross-domain selector. Disjoint from ``probe_ids``.
+        level: maximum probe difficulty level (L1–L4). Default 1.
     """
-    pool = [BY_ID[p] for p in probe_ids] if probe_ids else None
+    if probe_ids:
+        extended = all_probes_by_id(domains)
+        merged = {**BY_ID, **extended}
+        pool = [merged[p] for p in probe_ids]
+    else:
+        pool = None
+
     rows: list[dict] = []
 
     for i in range(num_instances):
         task_id = f"{seed_prefix}-{i:05d}"
-        probes = (pool[: probes_per_instance] if pool
-                  else select_probes(task_id, text="", count=probes_per_instance))
+        if pool:
+            probes = pool[: probes_per_instance]
+        elif domains:
+            from .cartridges import select_probes_cross
+            probes = select_probes_cross(
+                task_id=task_id,
+                domains=domains,
+                count=probes_per_instance,
+                level=level,
+            )
+        else:
+            probes = select_probes(task_id, text="", count=probes_per_instance)
+
         idx = int(hashlib.sha256(("lib:" + task_id).encode()).hexdigest()[:8], 16)
         lib = T.LIB_NAMES[idx % len(T.LIB_NAMES)]
 
@@ -246,7 +271,9 @@ def grade(completion: str, info: dict) -> dict:
     the solution *explicitly supplied* are recovered via ``Signature.bind``.
     Nothing the completion writes participates in scoring.
     """
-    probes = [BY_ID[p["id"]] for p in info["probes"] if p["id"] in BY_ID]
+    extended = all_probes_by_id()
+    merged = {**BY_ID, **extended}
+    probes = [merged[p["id"]] for p in info["probes"] if p["id"] in merged]
     lib = info["library"]
 
     tmp = Path(tempfile.mkdtemp(prefix="plx-env-"))
@@ -337,6 +364,8 @@ def load_environment(
     num_instances: int = DEFAULT_INSTANCES,
     probes_per_instance: int = DEFAULT_PROBES,
     probe_ids: list[str] | None = None,
+    domains: list[str] | None = None,
+    level: int = 1,
     seed_prefix: str = "plx",
     eval_fraction: float = 0.2,
     **kwargs,
@@ -348,6 +377,10 @@ def load_environment(
         probes_per_instance: probes per instance; selection enforces one per
             family, so 3 gives full family coverage.
         probe_ids: pin a specific probe set instead of auto-selecting.
+        domains: restrict probes to specific cartridge domains (e.g.
+            ``["coding", "sql", "linux"]``). When set, uses the cross-domain
+            selector so each instance samples across domains.
+        level: maximum probe difficulty level (L1–L4). Default 1.
         seed_prefix: namespaces the seeds. Train and eval use disjoint
             prefixes so the splits cannot overlap.
         eval_fraction: share held out for evaluation.
@@ -372,9 +405,11 @@ def load_environment(
 
     n_eval = max(1, int(num_instances * eval_fraction))
     train_rows = build_instances(num_instances, probes_per_instance,
-                                 f"{seed_prefix}-train", probe_ids)
+                                 f"{seed_prefix}-train", probe_ids,
+                                 domains=domains, level=level)
     eval_rows = build_instances(n_eval, probes_per_instance,
-                                f"{seed_prefix}-eval", probe_ids)
+                                f"{seed_prefix}-eval", probe_ids,
+                                domains=domains, level=level)
 
     rubric = vf.Rubric(
         funcs=[prior_override_reward, called_library_reward],
