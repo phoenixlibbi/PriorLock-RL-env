@@ -12,7 +12,7 @@ const links = [
   { id: "quickstart", label: "Quickstart" },
 ];
 
-const pages = [{ href: "/implementation", label: "Architecture" }];
+const pages = [{ href: "/implementation", label: "Implementation" }];
 
 export default function Nav() {
   const [open, setOpen] = useState(false);

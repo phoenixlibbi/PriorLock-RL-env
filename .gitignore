@@ -23,6 +23,10 @@ __pycache__/
 venv/
 .env
 .env.*
+# Local model/key switcher (never commit real keys)
+harbortasks/model.env
+# Research capture packs (large job mirrors)
+harbortasks/research-runs/
 dist/
 build/
 *.egg

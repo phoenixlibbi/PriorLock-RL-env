@@ -1,6 +1,204 @@
 {
-  "schema": 1,
-  "note": "Empirical familiar-rates per probe per model family. 'discrimination' is the fraction of runs where a probe produced a non-ambiguous verdict (override or prior_locked). 'familiar_rate' is the fraction of those that were prior_locked. The 0.40 baseline itself is structural and does not depend on these numbers — calibration only tells you how INFORMATIVE a probe is for a given model. Populate with: priorlock calibrate ingest <trials-dir> --model <name>",
-  "models": {},
-  "probes": {}
+  "models": {
+    "gemini-2.0-flash": {
+      "merge_precedence_remap": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 5,
+        "prior_locked": 0,
+        "runs": 5
+      },
+      "null_key_policy": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 3,
+        "prior_locked": 0,
+        "runs": 3
+      },
+      "range_end_inclusive": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 2,
+        "prior_locked": 0,
+        "runs": 2
+      },
+      "sentinel_on_empty": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 1,
+        "prior_locked": 0,
+        "runs": 1
+      },
+      "tie_inclusive_topk": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 4,
+        "prior_locked": 0,
+        "runs": 4
+      }
+    },
+    "gemini-3.5-flash": {
+      "merge_precedence_remap": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 5,
+        "prior_locked": 0,
+        "runs": 5
+      },
+      "null_key_policy": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 3,
+        "prior_locked": 0,
+        "runs": 3
+      },
+      "range_end_inclusive": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 2,
+        "prior_locked": 0,
+        "runs": 2
+      },
+      "sentinel_on_empty": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 1,
+        "prior_locked": 0,
+        "runs": 1
+      },
+      "tie_inclusive_topk": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 4,
+        "prior_locked": 0,
+        "runs": 4
+      }
+    },
+    "gemini-3.5-flash-lite": {
+      "merge_precedence_remap": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 1,
+        "prior_locked": 0,
+        "runs": 1
+      },
+      "range_end_inclusive": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 1,
+        "prior_locked": 0,
+        "runs": 1
+      },
+      "tie_inclusive_topk": {
+        "bypassed": 0,
+        "discrimination": 1.0,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 0,
+        "override": 1,
+        "prior_locked": 0,
+        "runs": 1
+      }
+    }
+  },
+  "note": "Empirical familiar-rates per probe per model family. 'discrimination' is the fraction of runs where a probe produced a non-ambiguous verdict (override or prior_locked). 'familiar_rate' is the fraction of those that were prior_locked. The 0.40 baseline itself is structural and does not depend on these numbers \u2014 calibration only tells you how INFORMATIVE a probe is for a given model. Populate with: priorlock calibrate ingest <trials-dir> --model <name>",
+  "probes": {
+    "merge_precedence_remap": {
+      "bypassed": 0,
+      "category": "mapping",
+      "discrimination": 1.0,
+      "familiar_rate": 0.0,
+      "family": "value_remap",
+      "incorrect": 0,
+      "other": 0,
+      "override": 11,
+      "prior_locked": 0,
+      "runs": 11
+    },
+    "null_key_policy": {
+      "bypassed": 0,
+      "category": "collection",
+      "discrimination": 1.0,
+      "familiar_rate": 0.0,
+      "family": "default_flip",
+      "incorrect": 0,
+      "other": 0,
+      "override": 6,
+      "prior_locked": 0,
+      "runs": 6
+    },
+    "range_end_inclusive": {
+      "bypassed": 0,
+      "category": "collection",
+      "discrimination": 1.0,
+      "familiar_rate": 0.0,
+      "family": "default_flip",
+      "incorrect": 0,
+      "other": 0,
+      "override": 5,
+      "prior_locked": 0,
+      "runs": 5
+    },
+    "sentinel_on_empty": {
+      "bypassed": 0,
+      "category": "numeric",
+      "discrimination": 1.0,
+      "familiar_rate": 0.0,
+      "family": "result_shape",
+      "incorrect": 0,
+      "other": 0,
+      "override": 2,
+      "prior_locked": 0,
+      "runs": 2
+    },
+    "tie_inclusive_topk": {
+      "bypassed": 0,
+      "category": "collection",
+      "discrimination": 1.0,
+      "familiar_rate": 0.0,
+      "family": "result_shape",
+      "incorrect": 0,
+      "other": 0,
+      "override": 9,
+      "prior_locked": 0,
+      "runs": 9
+    }
+  },
+  "schema": 1
 }

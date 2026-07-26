@@ -63,6 +63,13 @@ const domains = [
     status: "active" as const,
   },
   {
+    tag: "Fundamentals",
+    name: "fundamentals",
+    count: 10,
+    blurb: "Universal concepts (indexing, slicing, truthiness, division) that even small models have strong priors about.",
+    status: "active" as const,
+  },
+  {
     tag: "Extend",
     name: "your domain",
     count: null as number | null,
@@ -78,7 +85,7 @@ export default function Domains() {
       <p className="section-label">Cartridges</p>
       <h2 className="section-title">Domains</h2>
       <p className="section-lead">
-        Nine active cartridges plug into the same engine. We publish coverage and
+        Ten active cartridges plug into the same engine. We publish coverage and
         difficulty bands — not what each probe checks. Agents learn installed behaviour
         from the docs inside the task container.
       </p>

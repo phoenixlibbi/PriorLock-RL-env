@@ -124,7 +124,7 @@ export default function Probes() {
         Probe <span>catalog</span>
       </h2>
       <p className="section-lead">
-        Sixty-one probes across nine domains. We publish scale and difficulty bands —
+        Seventy-one probes across ten domains. We publish scale and difficulty bands —
         not IDs or pass/fail recipes. For the <em>idea</em>, see the labeled toy example
         in{" "}
         <a href="/#research" style={{ color: "var(--accent)" }}>
@@ -135,8 +135,8 @@ export default function Probes() {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         {[
-          { label: "Domains", value: "9", hint: "coding → frameworks" },
-          { label: "Probes", value: "61", hint: "private catalog" },
+          { label: "Domains", value: "10", hint: "coding → fundamentals" },
+          { label: "Probes", value: "71", hint: "private catalog" },
           { label: "Selection", value: "seeded", hint: "rotates per task" },
         ].map((c) => (
           <div
