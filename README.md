@@ -19,25 +19,33 @@ it, and **convert** it. Keeping those steps separate is what lets you tell a
 broken task apart from a broken probe.
 
 ```bash
-# install the CLI (package only — no need to clone the monorepo)
-pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+# Install the CLI (Harbor-style — no clone needed)
+uv tool install "priorlock @ git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+# or:  pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+
+priorlock --help
 priorlock info
 
-# 1-3  build + validate as a normal Harbor task (oracle should score 1.0)
+# 1) Prove your Harbor task is sound (expect Mean 1.000)
 harbor run -p tasks/my-task -a oracle
 
-# 4    is it wrap-ready?
+# 2) Wrap it — inject prior-override probes
 priorlock preflight tasks/my-task
-
-# 5    migrate, pinning the pre-wrap oracle reward
 priorlock wrap tasks/my-task --baseline-from jobs/
 
-# 6    12 offline gates — no Docker, no API key
+# 3) Offline gates (no Docker, no API key)
 priorlock stage0 tasks/my-task
 
-# 7-8  re-run, then prove wrapping did no harm
+# 4) Re-run oracle + doctor
 harbor run -p tasks/my-task -a oracle
 priorlock doctor tasks/my-task
+```
+
+Once published to PyPI the install becomes simply:
+
+```bash
+uv tool install priorlock
+# or:  pip install priorlock
 ```
 
 Contributors who need the full tree: `git clone` then `pip install -e ".[dev]"`.

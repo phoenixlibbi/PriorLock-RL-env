@@ -23,6 +23,9 @@ __pycache__/
 venv/
 .env
 .env.*
+dist/
+build/
+*.egg
 
 # Node / Next (website)
 node_modules/

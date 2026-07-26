@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,8 +10,8 @@ authors = [{name = "Muhammad Labeeb Tariq", email = "labeebjutt80@gmail.com"}]
 maintainers = [{name = "Muhammad Labeeb Tariq", email = "labeebjutt80@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
-keywords = ["benchmark", "rl", "harbor", "ai", "agents", "evaluation"]
+license = "MIT"
+keywords = ["benchmark", "rl", "harbor", "ai", "agents", "evaluation", "prior-override"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -20,12 +20,14 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
+# Core CLI needs nothing beyond the stdlib + what's vendored in-tree.
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=7", "pyyaml>=6"]
-# The RL (training) packaging. Evaluation via Harbor needs none of this.
+dev = ["pytest>=7", "pyyaml>=6", "build", "twine"]
+# RL (training) packaging. Evaluation via Harbor needs none of this.
 rl = ["verifiers>=0.1.14", "datasets>=2.14"]
 
 [project.scripts]
@@ -37,12 +39,17 @@ priorlock = "priorlock.cli:main"
 priorlock = "priorlock.env:load_environment"
 
 [project.urls]
-Homepage = "https://phoenixlibbi.github.io/PriorLock-RL-env"
+Homepage = "https://prior-lock-rl-env.vercel.app"
+Documentation = "https://prior-lock-rl-env.vercel.app"
 Repository = "https://github.com/phoenixlibbi/PriorLock-RL-env"
 Issues = "https://github.com/phoenixlibbi/PriorLock-RL-env/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["priorlock*"]
 
 [tool.setuptools.package-data]
-priorlock = ["domains/**/*", "probes/calibration.json"]
+priorlock = [
+    "probes/calibration.json",
+    "domains/**/*",
+]

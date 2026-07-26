@@ -3,14 +3,22 @@ import CodeBlock from "./CodeBlock";
 const steps = [
   {
     n: 1,
-    label: "Install the package",
-    code: `pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+    label: "Install the CLI (Harbor-style)",
+    code: `# recommended — isolated tool, like: uv tool install harbor
+uv tool install "priorlock @ git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
 
-priorlock info      # what's wrapped, what's authored, catalog size
+# or with pip:
+# pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+
+priorlock --help
+priorlock info
+
+# after PyPI publish this becomes simply:
+#   uv tool install priorlock
+#   pip install priorlock
 
 # contributors only — full tree for local development:
-# git clone https://github.com/phoenixlibbi/PriorLock-RL-env
-# cd PriorLock-RL-env && pip install -e ".[dev]"`,
+# git clone … && pip install -e ".[dev]"`,
   },
   {
     n: 2,
