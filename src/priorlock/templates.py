@@ -184,8 +184,18 @@ def _type_name(value) -> str:
 def render_visible_test(lib: str, probes: Iterable[Probe], solution: str,
                         input_rel: str) -> str:
     probes = list(probes)
+    def _type_check(p: Probe) -> str:
+        gt = _type_name(p.gold_output)
+        ft = _type_name(p.familiar_output)
+        if gt == ft:
+            return gt
+        # result_shape probes: gold and familiar return different types.
+        # Visible test must be non-discriminating (G5), so accept either.
+        types = sorted({gt, ft})
+        return f"({', '.join(types)})"
+
     checks = "\n".join(
-        f'    assert isinstance(out[{p.output_key!r}], {_type_name(p.gold_output)}), '
+        f'    assert isinstance(out[{p.output_key!r}], {_type_check(p)}), '
         f'"{p.output_key} has the wrong type"'
         for p in probes
     )
@@ -766,7 +776,13 @@ def _call_expr(lib: str, probe: Probe, variant: str) -> str:
         return (f"[len({lib}.tokenize(line, payload['sep']))\n"
                 f"             for line in payload['lines']]")
 
-    args = payload_args[p.fn]
+    args = payload_args.get(p.fn)
+    if args is None:
+        # Auto-generate from input_payload keys for non-coding cartridges
+        if isinstance(p.input_payload, dict):
+            args = [f"payload[{k!r}]" for k in p.input_payload]
+        else:
+            args = ["payload"]
     parts = list(args)
     if kwargs_src:
         parts.append(kwargs_src)
@@ -790,6 +806,13 @@ def _post_expr(lib: str, probe: Probe, variant: str) -> str:
     if pid == "preserve_empty_tokens" and variant == "familiar":
         return (f"[len([t for t in {lib}.tokenize(line, payload['sep']) if t])\n"
                 f"             for line in payload['lines']]")
+    # ── fundamentals result_shape probes ─────────────────────────────────────
+    if pid == "string_concat_result" and variant == "familiar":
+        # familiar expects a single joined string, not the progressive list
+        return f"({raw})[-1]"
+    if pid == "zero_is_value" and variant == "familiar":
+        # familiar treats 0 as sentinel (falsy), returns None instead
+        return f"(lambda v: None if v == 0 else v)({raw})"
     return raw
 
 
