@@ -27,7 +27,7 @@ def _exec_impl(impl_src: str, fn_name: str) -> Any:
 # ─── Verifiers ───────────────────────────────────────────────────────────────
 
 def verify_range_start_index(agent_output: Any) -> tuple[bool, str]:
-    """Execute make_range with both param sets and compare."""
+    """Execute arange with both param sets and compare."""
     from .fundamentals import RANGE_START_INDEX as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -44,14 +44,14 @@ def verify_range_start_index(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_slice_end_mode(agent_output: Any) -> tuple[bool, str]:
-    """Execute take_slice with both param sets and compare."""
+    """Execute getslice with both param sets and compare."""
     from .fundamentals import SLICE_END_MODE as P
 
     fn = _exec_impl(P.impl, P.fn)
     inp = P.input_payload
 
-    gold = fn(inp["items"], inp["start"], inp["end"], **P.gold_kwargs)
-    familiar = fn(inp["items"], inp["start"], inp["end"])
+    gold = fn(inp["items"], inp["start"], inp["stop"], **P.gold_kwargs)
+    familiar = fn(inp["items"], inp["start"], inp["stop"])
 
     if agent_output == gold:
         return True, f"matches executed gold: {gold}"
@@ -61,7 +61,7 @@ def verify_slice_end_mode(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_empty_string_truthy(agent_output: Any) -> tuple[bool, str]:
-    """Execute check_truthy with both param sets and compare."""
+    """Execute is_truthy with both param sets and compare."""
     from .fundamentals import EMPTY_STRING_TRUTHY as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -78,7 +78,7 @@ def verify_empty_string_truthy(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_int_division_mode(agent_output: Any) -> tuple[bool, str]:
-    """Execute int_divide with both param sets and compare."""
+    """Execute intdiv with both param sets and compare."""
     from .fundamentals import INT_DIVISION_MODE as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -95,7 +95,7 @@ def verify_int_division_mode(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_sort_stability(agent_output: Any) -> tuple[bool, str]:
-    """Execute stable_sort with both param sets and compare."""
+    """Execute sorted_by with both param sets and compare."""
     from .fundamentals import SORT_STABILITY as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -112,7 +112,7 @@ def verify_sort_stability(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_dict_merge_winner(agent_output: Any) -> tuple[bool, str]:
-    """Execute dict_merge with both param sets and compare."""
+    """Execute update with both param sets and compare."""
     from .fundamentals import DICT_MERGE_WINNER as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -129,7 +129,7 @@ def verify_dict_merge_winner(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_modulo_sign(agent_output: Any) -> tuple[bool, str]:
-    """Execute safe_mod with both param sets and compare."""
+    """Execute mod with both param sets and compare."""
     from .fundamentals import MODULO_SIGN as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -146,7 +146,7 @@ def verify_modulo_sign(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_mutable_default(agent_output: Any) -> tuple[bool, str]:
-    """Execute make_list with both param sets and compare."""
+    """Execute filled with both param sets and compare."""
     from .fundamentals import MUTABLE_DEFAULT as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -163,7 +163,7 @@ def verify_mutable_default(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_zero_is_value(agent_output: Any) -> tuple[bool, str]:
-    """Execute find_first and compare result shape."""
+    """Execute first and compare result shape."""
     from .fundamentals import ZERO_IS_VALUE as P
 
     fn = _exec_impl(P.impl, P.fn)
@@ -180,7 +180,7 @@ def verify_zero_is_value(agent_output: Any) -> tuple[bool, str]:
 
 
 def verify_string_concat_result(agent_output: Any) -> tuple[bool, str]:
-    """Execute join_strings and compare result shape."""
+    """Execute join and compare result shape."""
     from .fundamentals import STRING_CONCAT_RESULT as P
 
     fn = _exec_impl(P.impl, P.fn)

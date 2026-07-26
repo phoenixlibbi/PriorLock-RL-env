@@ -392,6 +392,11 @@ def wrap_task(
     _write(layout.repo / "tests" / "test_probe_visible.py",
            T.render_visible_test(lib, probes, SOLUTION_NAME, INPUT_REL), created, root)
 
+    # ── context priming (1.x-style usage to reinforce model priors) ─────────
+    context_files = T.render_context_files(lib, probes)
+    for rel_path, content in context_files.items():
+        _write(layout.repo / rel_path, content, created, root)
+
     # ── instruction addendum ─────────────────────────────────────────────────
     # Use container-absolute paths whenever the injected surface is not the
     # agent's working directory.
@@ -617,6 +622,8 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
     rm(layout.repo / INPUT_REL)
     rm(layout.repo / "tests" / "test_probe_visible.py")
     rm(layout.repo / SOLUTION_NAME)
+    # context priming files (utils/helpers.py, utils/transforms.py)
+    rm(layout.repo / "utils")
     rm(layout.tests / PRISTINE_DIR)
     rm(layout.tests / REFERENCE_DIR)
     rm(layout.tests / "probe_grade.py")

@@ -86,6 +86,68 @@ __all__ = [
 
 
 # ═════════════════════════════════════════════════════════════════════════════
+#  Context priming — plant 1.x-style usage in the repo to reinforce priors
+# ═════════════════════════════════════════════════════════════════════════════
+
+def render_context_files(lib: str, probes: Iterable[Probe]) -> dict[str, str]:
+    """Generate helper/utility files with 1.x-style library usage.
+
+    Returns a dict of {relative_path: file_content}.  Each file shows
+    realistic code using the library functions with familiar (1.x) defaults —
+    reinforcing the model's training priors before it reads the 2.x docs.
+    """
+    probes = list(probes)
+
+    # Try to import context snippets from the domain cartridge
+    snippets: dict[str, str] = {}
+    for p in probes:
+        try:
+            from priorlock.cartridges.fundamentals import CONTEXT_SNIPPETS
+            if p.id in CONTEXT_SNIPPETS:
+                snippets[p.id] = CONTEXT_SNIPPETS[p.id].replace("{lib}", lib)
+        except ImportError:
+            pass
+
+    if not snippets:
+        return {}
+
+    files: dict[str, str] = {}
+
+    # Split snippets across two realistic-looking files
+    ids = list(snippets.keys())
+    half = len(ids) // 2
+    group_a = ids[:half]
+    group_b = ids[half:]
+
+    if group_a:
+        lines = [
+            f'"""Utility helpers built on {lib}."""',
+            f"import {lib}",
+            "",
+        ]
+        for pid in group_a:
+            lines.append(snippets[pid].strip())
+            lines.append("")
+        files[f"utils/helpers.py"] = "\n".join(lines) + "\n"
+
+    if group_b:
+        lines = [
+            f'"""Data processing routines using {lib}."""',
+            f"import {lib}",
+            "",
+        ]
+        for pid in group_b:
+            lines.append(snippets[pid].strip())
+            lines.append("")
+        files[f"utils/transforms.py"] = "\n".join(lines) + "\n"
+
+    # __init__ so utils is importable
+    files["utils/__init__.py"] = f'"""Internal utilities (uses {lib})."""\n'
+
+    return files
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 #  In-container documentation (authoritative; reading it is sufficient to win)
 # ═════════════════════════════════════════════════════════════════════════════
 
