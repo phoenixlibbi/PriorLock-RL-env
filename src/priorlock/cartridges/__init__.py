@@ -258,10 +258,16 @@ def _ensure_builtins() -> None:
     # Try loading external cartridges via entry points
     try:
         from importlib.metadata import entry_points
-        eps = entry_points()
-        group = eps.get("priorlock.cartridges", [])
-        if hasattr(eps, "select"):
-            group = eps.select(group="priorlock.cartridges")
+        if hasattr(entry_points, "__call__"):
+            try:
+                # Python 3.12+ / 3.9+ with select() support
+                group = entry_points(group="priorlock.cartridges")
+            except TypeError:
+                # Python 3.9–3.11 fallback
+                eps = entry_points()
+                group = eps.get("priorlock.cartridges", [])
+        else:
+            group = []
         for ep in group:
             try:
                 ep.load()

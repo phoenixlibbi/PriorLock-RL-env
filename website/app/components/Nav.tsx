@@ -9,6 +9,10 @@ export default function Nav() {
     { id: "quickstart", label: "Quickstart" },
   ];
 
+  const pages = [
+    { href: "/implementation", label: "Implementation" },
+  ];
+
   return (
     <nav
       className="sticky top-0 z-50 border-b"
@@ -31,6 +35,11 @@ export default function Nav() {
           {links.map((link) => (
             <a key={link.id} href={`#${link.id}`} className="nav-link hidden md:inline">
               {link.label}
+            </a>
+          ))}
+          {pages.map((p) => (
+            <a key={p.href} href={p.href} className="nav-link hidden md:inline" style={{ color: "var(--accent)" }}>
+              {p.label}
             </a>
           ))}
 
