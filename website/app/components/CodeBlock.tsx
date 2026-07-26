@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type CodeBlockProps = {
   code: string;
@@ -10,6 +10,34 @@ type CodeBlockProps = {
   variant?: "block" | "inline";
 };
 
+/** Sync copy — must run in the click call stack (preserves user activation). */
+function fallbackCopy(text: string): boolean {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.setAttribute("aria-hidden", "true");
+  // Keep in viewport; some engines reject offscreen/opacity-0 targets.
+  ta.style.cssText =
+    "position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:none;box-shadow:none;background:transparent;opacity:0.01;z-index:2147483647;";
+  document.body.appendChild(ta);
+
+  const prevActive = document.activeElement as HTMLElement | null;
+  ta.focus({ preventScroll: true });
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);
+
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+
+  document.body.removeChild(ta);
+  prevActive?.focus?.({ preventScroll: true });
+  return ok;
+}
+
 export default function CodeBlock({
   code,
   className = "",
@@ -17,24 +45,35 @@ export default function CodeBlock({
   variant = "block",
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const copyGenRef = useRef(0);
 
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(code);
+  function handleCopy() {
+    const gen = ++copyGenRef.current;
+
+    // Sync-copy first. Async clipboard.writeText can take seconds then reject
+    // with "Document is not focused", and by then user activation is gone.
+    if (fallbackCopy(code)) {
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = code;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
+      window.setTimeout(() => {
+        if (gen === copyGenRef.current) setCopied(false);
+      }, 1600);
+      return;
     }
+
+    if (!navigator.clipboard?.writeText) return;
+
+    void navigator.clipboard.writeText(code).then(
+      () => {
+        if (gen !== copyGenRef.current) return;
+        setCopied(true);
+        window.setTimeout(() => {
+          if (gen === copyGenRef.current) setCopied(false);
+        }, 1600);
+      },
+      () => {
+        /* ignore — sync path already failed */
+      },
+    );
   }
 
   const btn = (

@@ -124,15 +124,19 @@ export default function Probes() {
         Probe <span>catalog</span>
       </h2>
       <p className="section-lead">
-        Dozens of probes across multiple domains and difficulty levels. Exact mechanisms,
-        IDs, and pass/fail recipes are intentionally unpublished — the only authoritative
-        specification is the documentation inside each wrapped task.
+        Sixty-one probes across nine domains. We publish scale and difficulty bands —
+        not IDs or pass/fail recipes. For the <em>idea</em>, see the labeled toy example
+        in{" "}
+        <a href="/#research" style={{ color: "var(--accent)" }}>
+          Research
+        </a>
+        ; for live tasks, the container docs are authoritative.
       </p>
 
-      <div className="mb-12 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         {[
           { label: "Domains", value: "9", hint: "coding → frameworks" },
-          { label: "Probes", value: "61", hint: "L1 · L2 · L3" },
+          { label: "Probes", value: "61", hint: "private catalog" },
           { label: "Selection", value: "seeded", hint: "rotates per task" },
         ].map((c) => (
           <div
@@ -148,6 +152,39 @@ export default function Probes() {
             </p>
             <p className="mt-1 text-xs" style={{ color: "var(--muted)" }}>
               {c.hint}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-12 grid gap-3 sm:grid-cols-3">
+        {[
+          {
+            lvl: "L1",
+            title: "Atomic",
+            body: "Single-surface units. Isolates one prior-vs-docs conflict.",
+          },
+          {
+            lvl: "L2",
+            title: "Coupled",
+            body: "Composition across related calls — still domain-local.",
+          },
+          {
+            lvl: "L3",
+            title: "Workflow",
+            body: "Multi-step paths where skipping docs compounds error.",
+          },
+        ].map((l) => (
+          <div
+            key={l.lvl}
+            className="rounded-[var(--radius)] border p-5"
+            style={{ background: "var(--bg3)", borderColor: "var(--border)" }}
+          >
+            <p className="font-mono text-xs font-bold" style={{ color: "var(--accent)" }}>
+              {l.lvl} · {l.title}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+              {l.body}
             </p>
           </div>
         ))}

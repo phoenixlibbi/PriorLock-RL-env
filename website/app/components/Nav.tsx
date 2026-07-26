@@ -1,17 +1,44 @@
-export default function Nav() {
-  const links = [
-    { id: "how-it-works", label: "How it works" },
-    { id: "probes", label: "Probes" },
-    { id: "soundness", label: "Soundness" },
-    { id: "research", label: "Research" },
-    { id: "leaderboard", label: "Leaderboard" },
-    { id: "contribute", label: "Contribute" },
-    { id: "quickstart", label: "Quickstart" },
-  ];
+"use client";
 
-  const pages = [
-    { href: "/implementation", label: "Implementation" },
-  ];
+import { useEffect, useState } from "react";
+
+const links = [
+  { id: "how-it-works", label: "How it works" },
+  { id: "probes", label: "Probes" },
+  { id: "soundness", label: "Soundness" },
+  { id: "research", label: "Research" },
+  { id: "leaderboard", label: "Leaderboard" },
+  { id: "contribute", label: "Contribute" },
+  { id: "quickstart", label: "Quickstart" },
+];
+
+const pages = [{ href: "/implementation", label: "Architecture" }];
+
+export default function Nav() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onResize = () => {
+      if (window.matchMedia("(min-width: 768px)").matches) setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  function close() {
+    setOpen(false);
+  }
 
   return (
     <nav
@@ -24,24 +51,35 @@ export default function Nav() {
       }}
     >
       <div
-        className="mx-auto flex h-full items-center gap-6 px-6 sm:px-8"
+        className="mx-auto flex h-full items-center gap-4 px-6 sm:px-8"
         style={{ maxWidth: "var(--max)" }}
       >
-        <a href="#" className="font-mono text-[15px] font-bold tracking-tight">
+        <a
+          href="/"
+          className="font-mono text-[15px] font-bold tracking-tight"
+          onClick={close}
+        >
           Prior<span style={{ color: "var(--accent)" }}>Lock</span>
         </a>
 
-        <div className="ml-auto flex items-center gap-5 sm:gap-7">
-          {links.map((link) => (
-            <a key={link.id} href={`#${link.id}`} className="nav-link hidden md:inline">
-              {link.label}
-            </a>
-          ))}
-          {pages.map((p) => (
-            <a key={p.href} href={p.href} className="nav-link hidden md:inline" style={{ color: "var(--accent)" }}>
-              {p.label}
-            </a>
-          ))}
+        <div className="ml-auto flex items-center gap-3 sm:gap-5">
+          <div className="hidden items-center gap-5 md:flex md:gap-7">
+            {links.map((link) => (
+              <a key={link.id} href={`/#${link.id}`} className="nav-link">
+                {link.label}
+              </a>
+            ))}
+            {pages.map((p) => (
+              <a
+                key={p.href}
+                href={p.href}
+                className="nav-link"
+                style={{ color: "var(--accent)" }}
+              >
+                {p.label}
+              </a>
+            ))}
+          </div>
 
           <a
             href="https://github.com/phoenixlibbi/PriorLock-RL-env"
@@ -52,9 +90,91 @@ export default function Nav() {
             <GithubIcon />
             GitHub
           </a>
+
+          <button
+            type="button"
+            className="nav-menu-btn md:hidden"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? <CloseIcon /> : <MenuIcon />}
+          </button>
         </div>
       </div>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            className="nav-menu-backdrop md:hidden"
+            aria-label="Close menu"
+            onClick={close}
+          />
+          <div id="mobile-nav" className="nav-menu-panel md:hidden" role="dialog" aria-modal="true">
+            <div className="flex flex-col gap-1 px-4 py-3">
+              {links.map((link) => (
+                <a
+                  key={link.id}
+                  href={`/#${link.id}`}
+                  className="nav-menu-link"
+                  onClick={close}
+                >
+                  {link.label}
+                </a>
+              ))}
+              {pages.map((p) => (
+                <a
+                  key={p.href}
+                  href={p.href}
+                  className="nav-menu-link"
+                  style={{ color: "var(--accent)" }}
+                  onClick={close}
+                >
+                  {p.label}
+                </a>
+              ))}
+              <a
+                href="https://github.com/phoenixlibbi/PriorLock-RL-env"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="nav-menu-link"
+                onClick={close}
+              >
+                GitHub ↗
+              </a>
+            </div>
+          </div>
+        </>
+      )}
     </nav>
+  );
+}
+
+function MenuIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 7h16M4 12h16M4 17h16"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 

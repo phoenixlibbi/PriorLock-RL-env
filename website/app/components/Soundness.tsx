@@ -21,17 +21,32 @@ const receipt = [
 ];
 
 const vectors = [
-  ["cat", "18 candidate oracle paths"],
-  ["find", "8 needles + the _plx_* glob, whole filesystem"],
-  ["import", "the verifier modules by name"],
-  ["sys.path", "what the interpreter would resolve"],
-  ["pip list", "the generated library as an installed dist"],
-  ["walk", "filesystem walks from 6 bases"],
-  ["env", "full os.environ, canary-grepped"],
-  ["git", "log and show — history outlives a deleted file"],
-  ["ps", "oracle process names in the process table"],
-  ["canary", "grep the reachable filesystem for the planted string"],
-  ["network", "egress attempts to 3 hosts — A7 as a fact"],
+  ["cat", "candidate oracle / grader paths an agent might read"],
+  ["find", "known verifier filenames + generated-artefact patterns"],
+  ["import", "whether verifier modules resolve by name"],
+  ["sys.path", "what the interpreter would import from"],
+  ["pip list", "whether verifier packages appear installed"],
+  ["walk", "filesystem walks from multiple bases"],
+  ["env", "environment variables, canary-grepped"],
+  ["git", "history that can outlive a deleted file"],
+  ["ps", "oracle / grader process names"],
+  ["canary", "planted random string on the agent surface"],
+  ["network", "egress reachability — measured, not assumed"],
+];
+
+const pillars = [
+  {
+    title: "Adversarial cheat suite",
+    body: "Eight cheat classes with execution markers. False-accept rate uses a Wilson 95% interval — never a bare zero from n=8.",
+  },
+  {
+    title: "Runtime leakprobe",
+    body: "Same image agents get. Positive control must fire or the run is INCONCLUSIVE (scores 0). Absences only count when the instrument works.",
+  },
+  {
+    title: "Host drift ≈ 0",
+    body: "Wrapping adds gap_score without perturbing the original Harbor task_score. Proven on a hard multi-module production task.",
+  },
 ];
 
 export default function Soundness() {
@@ -42,10 +57,25 @@ export default function Soundness() {
         The soundness <span>receipt</span>
       </h2>
       <p className="section-lead">
-        A verifier nobody attacked is untested, not sound. Eight cheat classes are
-        thrown at every wrapped task, and the false-accept rate is reported with a
-        95% Wilson interval — never a bare zero.
+        A verifier nobody attacked is untested, not sound. PriorLock publishes the{" "}
+        <em>threat model, statistics, and isolation proofs</em> — not the live probe
+        catalog. That is how you can see the rigor without getting a cheat sheet.
       </p>
+
+      <div className="mb-12 grid gap-3 sm:grid-cols-3">
+        {pillars.map((p) => (
+          <div
+            key={p.title}
+            className="rounded-[var(--radius)] border p-5"
+            style={{ background: "var(--bg2)", borderColor: "var(--border)" }}
+          >
+            <p className="mb-2 text-sm font-semibold tracking-tight">{p.title}</p>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+              {p.body}
+            </p>
+          </div>
+        ))}
+      </div>
 
       {/* the receipt */}
       <div
@@ -247,11 +277,10 @@ priorlock cheats <task> --suite -o receipt.json`}
               A probe that never fires proves nothing
             </p>
             <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-              Run against a deliberately leaky container, it flagged four vectors a
-              clean one did not — <code>find probe_grade.py</code>,{" "}
-              <code>find gold.py</code>, <code>find _plx_*</code> and the filesystem
-              walk. The negative result is only worth reading because the positive one
-              was checked first.
+              Run against a deliberately leaky container, it flagged multiple vectors a
+              clean one did not (verifier artefacts discoverable by name and walk). The
+              negative result is only worth reading because the positive control was
+              checked first.
             </p>
           </div>
 
