@@ -7,6 +7,7 @@ task that anyone can run, inspect, or vendor without installing this package.
 from __future__ import annotations
 
 import json
+import re
 from typing import Iterable
 
 from .probes.base import Probe
@@ -56,7 +57,57 @@ def count_by(records, key):
 #  The synthetic library
 # ═════════════════════════════════════════════════════════════════════════════
 
-def render_library(lib: str, probes: Iterable[Probe], version: str = "2.0.0") -> str:
+def _hide_impl_defaults(probe: Probe) -> str:
+    """Return impl with the discriminating parameter's default hidden behind None.
+
+    The function signature shows ``param=None`` instead of the real 2.x default.
+    A resolution line is inserted after the docstring so runtime behavior is
+    unchanged.  The ``(default)`` annotation in the docstring is removed so no
+    value is singled out — the model must consult the CHANGELOG to learn which
+    value is the current default.
+    """
+    if not probe.param:
+        return probe.impl  # result_shape probes — nothing to hide
+
+    impl = probe.impl
+    param = probe.param
+
+    # 1. Replace the default value in the function signature with None
+    sig_pat = re.compile(rf'({re.escape(param)}\s*=\s*)("[^"]*"|\'[^\']*\')')
+    match = sig_pat.search(impl)
+    if not match:
+        return impl
+    default_val = match.group(2)          # e.g. '"keep_right"'
+    impl = sig_pat.sub(r'\1None', impl, count=1)
+
+    # 2. Remove "(default)" markers from docstring
+    impl = re.sub(r'\s*\(default\)', '', impl)
+
+    # 3. Insert None-resolution after the docstring closing """
+    first_q = impl.find('"""')
+    if first_q < 0:
+        return impl
+    second_q = impl.find('"""', first_q + 3)
+    if second_q < 0:
+        return impl
+    insert_at = second_q + 3
+
+    resolution = f'\n    if {param} is None:\n        {param} = {default_val}'
+    impl = impl[:insert_at] + resolution + impl[insert_at:]
+
+    return impl
+
+
+def render_library(lib: str, probes: Iterable[Probe], version: str = "2.0.0",
+                   hide_defaults: bool = False) -> str:
+    """Generate the ``__init__.py`` for the synthetic library.
+
+    When *hide_defaults* is True the agent-visible source replaces every
+    discriminating parameter's default with ``None`` and strips the
+    ``(default)`` docstring annotation.  The library behaves identically at
+    runtime — the model just can't learn the 2.x defaults from reading the
+    source code alone.
+    """
     probes = list(probes)
     head = f'''"""{lib} {version} — record and sequence utilities.
 
@@ -74,7 +125,10 @@ __all__ = [
 ]
 
 '''
-    body = "\n".join(p.impl.strip("\n") + "\n" for p in probes)
+    if hide_defaults:
+        body = "\n".join(_hide_impl_defaults(p).strip("\n") + "\n" for p in probes)
+    else:
+        body = "\n".join(p.impl.strip("\n") + "\n" for p in probes)
     return head + "\n" + body + FILLER
 
 

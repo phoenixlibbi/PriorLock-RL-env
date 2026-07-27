@@ -142,6 +142,8 @@ def select_probes(
     require_family_diversity: bool = True,
     exclude: set[str] | None = None,
     min_confidence: float = 0.0,
+    min_discrimination: float = 0.0,
+    difficulty_range: tuple[float, float] | None = None,
 ) -> list[Probe]:
     """Pick ``count`` probes for a task. Deterministic for a given ``task_id``.
 
@@ -155,7 +157,14 @@ def select_probes(
        highest for this task's description.
     3. **Calibration confidence** — prefer probes with a measured discrimination
        rate at or above ``min_confidence``.
-    4. **Stable hash rotation** — deterministic per task, but different tasks
+    4. **Difficulty range** — when set, only probes whose a-priori difficulty
+       falls within ``[lo, hi]`` are eligible. Match easy probes to small
+       models (avoid floor effects) and hard probes to frontier models (avoid
+       ceiling effects). See PSN-IRT (AAAI 2026) for the theory.
+    5. **IRT discrimination filter** — drop probes whose empirical
+       discrimination (from ``priorlock calibrate``) is below
+       ``min_discrimination``. Low-discrimination probes add noise, not signal.
+    6. **Stable hash rotation** — deterministic per task, but different tasks
        get different probes, so a leaked answer for one task is worthless for
        the next.
     """
@@ -169,10 +178,23 @@ def select_probes(
 
     pool = [
         p for p in ALL_PROBES
-        if p.id not in exclude and confidence(p) >= min_confidence
+        if p.id not in exclude
+        and confidence(p) >= min_confidence
+        and confidence(p) >= min_discrimination
+        and not p.is_counterfactual
     ]
+
+    # Apply difficulty range filter
+    if difficulty_range is not None:
+        lo, hi = difficulty_range
+        filtered = [p for p in pool if lo <= p.difficulty <= hi]
+        if filtered:
+            pool = filtered
+        # else: fall through to full pool rather than selecting nothing
+
     if not pool:
-        pool = [p for p in ALL_PROBES if p.id not in exclude]
+        pool = [p for p in ALL_PROBES if p.id not in exclude
+                and not p.is_counterfactual]
 
     rot = _seed(task_id)
 
@@ -211,7 +233,7 @@ def calibration_path() -> Path:
 
 
 _EMPTY_CALIBRATION = {
-    "schema": 1,
+    "schema": 2,
     "note": (
         "Empirical familiar-rates per probe per model family. 'discrimination' is "
         "the fraction of runs where a probe produced a non-ambiguous verdict "
@@ -219,6 +241,14 @@ _EMPTY_CALIBRATION = {
         "were prior_locked. The 0.40 baseline itself is structural and does not "
         "depend on these numbers — calibration only tells you how INFORMATIVE a "
         "probe is for a given model."
+    ),
+    "irt_note": (
+        "IRT parameters follow a 2-parameter logistic model (2PL). "
+        "'irt_discrimination' (a) measures how sharply the probe separates "
+        "capable from incapable agents. 'irt_difficulty' (b) is the ability "
+        "level at which an agent has a 50% chance of overriding the prior. "
+        "Probes with discrimination < 0.3 should be excluded from high-stakes "
+        "evaluation (PSN-IRT, AAAI 2026)."
     ),
     "probes": {},
     "models": {},

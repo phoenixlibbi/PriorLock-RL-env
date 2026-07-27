@@ -71,6 +71,7 @@ def dedupe(items, key, keep="last"):
     gold_output=[{"sku": "A", "qty": 1}, {"sku": "B", "qty": 2}, {"sku": "C", "qty": 3}],
     familiar_output=[{"sku": "A", "qty": 9}, {"sku": "B", "qty": 7}, {"sku": "C", "qty": 3}],
     tags=("dedupe", "records", "etl"),
+    difficulty=0.4,  # keep="first" vs "last" is a common API pattern
 )
 
 
@@ -115,6 +116,7 @@ def rank(items, key, order="desc"):
     gold_output=["y", "z", "x"],
     familiar_output=["x", "z", "y"],
     tags=("sort", "ordering"),
+    difficulty=0.3,  # asc vs desc is very familiar; models have strong priors
 )
 
 
@@ -154,6 +156,7 @@ def span(seq, start, end, end_mode="inclusive"):
     gold_output=[30, 40, 50],
     familiar_output=[30, 40, 50, 60],
     tags=("slice", "range", "off-by-one"),
+    difficulty=0.6,  # inclusive vs exclusive end — models have strong Python slice priors
 )
 
 
@@ -195,6 +198,7 @@ def quantize(value, places=2, mode="half_even"):
     gold_output=[2.35, 2.36, 0.13, 1.01],
     familiar_output=[2.34, 2.36, 0.12, 1.0],
     tags=("rounding", "decimal", "finance"),
+    difficulty=0.7,  # half-even vs half-up is subtle; many devs assume half-up
 )
 
 
@@ -252,6 +256,7 @@ def bucket(records, key, nulls="collect"):
     gold_output={"eu": 2, "us": 1},
     familiar_output={"eu": 2, "__unset__": 2, "us": 1},
     tags=("groupby", "nulls", "aggregation"),
+    difficulty=0.5,  # null handling varies across languages; moderate prior strength
 )
 
 
@@ -301,6 +306,7 @@ def chunk(seq, size, remainder="pad"):
     gold_output=[[1, 2, 3], [4, 5, 6], [7]],
     familiar_output=[[1, 2, 3], [4, 5, 6], [7, None, None]],
     tags=("batching", "chunk", "padding"),
+    difficulty=0.4,  # padding vs keep is a visible difference
 )
 
 
@@ -358,6 +364,7 @@ def merge(base, patch, on_conflict="keep_right"):
     gold_output={"a": 1, "b": 2, "c": 3},
     familiar_output={"a": 1, "b": 99, "c": 3},
     tags=("merge", "config", "precedence"),
+    difficulty=0.8,  # "keep" redefinition is a trap; strong dict.update priors
 )
 
 
@@ -413,6 +420,7 @@ def pad(values, width, fill=" ", align="edge"):
     gold_output=["ab....", "c.....", "defg.."],
     familiar_output=["..ab..", "..c...", ".defg."],
     tags=("padding", "alignment", "formatting"),
+    difficulty=0.6,  # "edge" redefinition from left-align to centered
 )
 
 
@@ -469,6 +477,7 @@ def parse_dates(values, layout="short"):
     gold_output=["2024-03-04", "2023-11-12", "2022-07-08"],
     familiar_output=["2024-04-03", "2023-12-11", "2022-08-07"],
     tags=("dates", "parsing", "locale"),
+    difficulty=0.7,  # date format ambiguity is a classic source of bugs
 )
 
 
@@ -522,6 +531,7 @@ def normalize_keys(mapping, case="lower"):
     gold_output={"straße": 1, "id": 2, "Ünïcode": 3},
     familiar_output={"strasse": 1, "id": 2, "ünïcode": 3},
     tags=("unicode", "casing", "keys"),
+    difficulty=0.9,  # casefold vs lower is a subtle Unicode distinction
 )
 
 
@@ -588,6 +598,7 @@ def top_k(records, k, key):
     gold_output=[3, 4, 5, 7],
     familiar_output=[3, 4, 5],
     tags=("topk", "ties", "ranking"),
+    difficulty=0.5,  # tie-inclusive is a common design choice; moderate
 )
 
 
@@ -644,6 +655,7 @@ def summarize(values):
         "b": {"n": 1, "total": 5.0, "mean": 5.0, "max": 5.0},
     },
     tags=("statistics", "empty", "sentinel"),
+    difficulty=0.6,  # None vs 0 for empty series — subtle semantic difference
 )
 
 
@@ -685,6 +697,7 @@ def tokenize(text, sep=","):
     gold_output=[3, 3, 3, 3],
     familiar_output=[3, 2, 1, 2],
     tags=("tokenize", "csv", "empty-fields"),
+    difficulty=0.5,  # empty token handling varies; str.split() priors are strong
 )
 
 

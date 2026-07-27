@@ -336,6 +336,16 @@ def cmd_wrap(args, root: str) -> int:
         try:
             domains = args.domain if hasattr(args, "domain") and args.domain else None
             level = args.level if hasattr(args, "level") else 1
+            # Parse difficulty range
+            difficulty_range = None
+            if args.difficulty:
+                try:
+                    lo, hi = args.difficulty.split("-")
+                    difficulty_range = (float(lo), float(hi))
+                except (ValueError, AttributeError):
+                    print(f"{RED}✗{RESET} --difficulty must be LO-HI, e.g. 0.6-1.0")
+                    failures += 1
+                    continue
             result = wrap_task(
                 target,
                 count=args.count,
@@ -346,6 +356,8 @@ def cmd_wrap(args, root: str) -> int:
                 w_gap=args.weight_gap,
                 force=args.force,
                 repo_dir=args.repo_dir,
+                difficulty_range=difficulty_range,
+                min_discrimination=args.min_discrimination,
             )
         except Exception as exc:
             print(f"{RED}✗{RESET} {target}: {exc}")
@@ -698,6 +710,12 @@ other:
                              "e.g. --domain sql --domain linux)")
     p_wrap.add_argument("--level", type=int, default=1, choices=[1, 2, 3, 4],
                         help="max probe difficulty level (default 1)")
+    p_wrap.add_argument("--difficulty", type=str, default=None, metavar="LO-HI",
+                        help="difficulty range, e.g. 0.6-1.0 for hard probes only "
+                             "(IRT-informed model-adaptive selection)")
+    p_wrap.add_argument("--min-discrimination", type=float, default=0.0,
+                        help="drop probes with IRT discrimination below this threshold "
+                             "(recommended 0.3 for high-stakes evals)")
     p_wrap.add_argument("--weight-task", type=float, default=0.5,
                         help="weight of the native task reward (default 0.5)")
     p_wrap.add_argument("--weight-gap", type=float, default=0.5,

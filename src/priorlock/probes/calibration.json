@@ -107,6 +107,16 @@
     "gemini-3.5-flash-lite": {
       "merge_precedence_remap": {
         "bypassed": 0,
+        "discrimination": 0.6667,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 1,
+        "override": 2,
+        "prior_locked": 0,
+        "runs": 3
+      },
+      "null_key_policy": {
+        "bypassed": 0,
         "discrimination": 1.0,
         "familiar_rate": 0.0,
         "incorrect": 0,
@@ -117,23 +127,23 @@
       },
       "range_end_inclusive": {
         "bypassed": 0,
-        "discrimination": 1.0,
+        "discrimination": 0.5,
         "familiar_rate": 0.0,
         "incorrect": 0,
-        "other": 0,
+        "other": 1,
         "override": 1,
         "prior_locked": 0,
-        "runs": 1
+        "runs": 2
       },
       "tie_inclusive_topk": {
         "bypassed": 0,
-        "discrimination": 1.0,
+        "discrimination": 0.6667,
         "familiar_rate": 0.0,
         "incorrect": 0,
-        "other": 0,
-        "override": 1,
+        "other": 1,
+        "override": 2,
         "prior_locked": 0,
-        "runs": 1
+        "runs": 3
       }
     }
   },
@@ -142,14 +152,14 @@
     "merge_precedence_remap": {
       "bypassed": 0,
       "category": "mapping",
-      "discrimination": 1.0,
+      "discrimination": 0.9231,
       "familiar_rate": 0.0,
       "family": "value_remap",
       "incorrect": 0,
-      "other": 0,
-      "override": 11,
+      "other": 1,
+      "override": 12,
       "prior_locked": 0,
-      "runs": 11
+      "runs": 13
     },
     "null_key_policy": {
       "bypassed": 0,
@@ -159,21 +169,21 @@
       "family": "default_flip",
       "incorrect": 0,
       "other": 0,
-      "override": 6,
+      "override": 7,
       "prior_locked": 0,
-      "runs": 6
+      "runs": 7
     },
     "range_end_inclusive": {
       "bypassed": 0,
       "category": "collection",
-      "discrimination": 1.0,
+      "discrimination": 0.8333,
       "familiar_rate": 0.0,
       "family": "default_flip",
       "incorrect": 0,
-      "other": 0,
+      "other": 1,
       "override": 5,
       "prior_locked": 0,
-      "runs": 5
+      "runs": 6
     },
     "sentinel_on_empty": {
       "bypassed": 0,
@@ -190,14 +200,14 @@
     "tie_inclusive_topk": {
       "bypassed": 0,
       "category": "collection",
-      "discrimination": 1.0,
+      "discrimination": 0.9091,
       "familiar_rate": 0.0,
       "family": "result_shape",
       "incorrect": 0,
-      "other": 0,
-      "override": 9,
+      "other": 1,
+      "override": 10,
       "prior_locked": 0,
-      "runs": 9
+      "runs": 11
     }
   },
   "schema": 1

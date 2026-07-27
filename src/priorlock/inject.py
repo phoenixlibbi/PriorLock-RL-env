@@ -324,6 +324,8 @@ def wrap_task(
     force: bool = False,
     seed_suffix: str = "",
     repo_dir: str | None = None,
+    difficulty_range: tuple[float, float] | None = None,
+    min_discrimination: float = 0.0,
 ) -> WrapResult:
     """Inject probes into an existing Harbor task.
 
@@ -332,6 +334,10 @@ def wrap_task(
             domains (e.g. ``["coding", "sql"]``). When set, uses the
             cross-cartridge selector for domain-interleaved selection.
         level: maximum probe difficulty level (L1–L4). Default 1 (atomic).
+        difficulty_range: ``(lo, hi)`` bounds for a-priori difficulty.
+            Match easy probes to small models, hard probes to frontier models.
+        min_discrimination: drop probes with IRT discrimination below this
+            threshold (recommended 0.3 for high-stakes evaluation).
     """
     layout = detect_layout(task_dir, repo_dir=repo_dir)
     root = layout.root
@@ -367,6 +373,8 @@ def wrap_task(
             layout.task_id + seed_suffix,
             text=describe_task(layout),
             count=count,
+            difficulty_range=difficulty_range,
+            min_discrimination=min_discrimination,
         )
     if not probes:
         raise RuntimeError("no probes selected")
@@ -382,8 +390,13 @@ def wrap_task(
     modified: list[str] = []
 
     # ── agent-visible surface ────────────────────────────────────────────────
-    lib_source = T.render_library(lib, probes)
-    _write(layout.repo / lib / "__init__.py", lib_source, created, root)
+    # Agent copy hides defaults: function signatures show `param=None` so the
+    # model cannot extract 2.x defaults from reading the source code.
+    # The pristine copy (grader-side) keeps real defaults for correct
+    # argument binding via inspect.Signature.bind().
+    agent_lib_source = T.render_library(lib, probes, hide_defaults=True)
+    pristine_lib_source = T.render_library(lib, probes, hide_defaults=False)
+    _write(layout.repo / lib / "__init__.py", agent_lib_source, created, root)
     _write(layout.repo / "docs" / f"{lib}-CHANGELOG.md",
            T.render_changelog(lib, probes), created, root)
     _write(layout.repo / "docs" / f"{lib}-api.md",
@@ -424,9 +437,10 @@ def wrap_task(
     modified.append(str(instruction.relative_to(root)))
 
     # ── verifier-only surface ────────────────────────────────────────────────
-    lib_sha = hashlib.sha256(lib_source.encode()).hexdigest()
+    lib_sha = hashlib.sha256(agent_lib_source.encode()).hexdigest()
 
-    _write(layout.tests / PRISTINE_DIR / lib / "__init__.py", lib_source, created, root)
+    _write(layout.tests / PRISTINE_DIR / lib / "__init__.py",
+           pristine_lib_source, created, root)
     _write(layout.tests / "probe_grade.py",
            T.render_grader(lib, probes, lib_sha, SOLUTION_NAME, INPUT_REL)
            + f"\n# oracle canary — verifier-side only: {canary}\n",
@@ -642,21 +656,25 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
         if "PriorLock composite verifier" in text:
             rm(layout.verifier_entry)
 
-    # restore the instruction file
+    # restore the instruction file — strip ALL priorlock blocks (there may be
+    # more than one if previous unwraps failed or the file was re-wrapped without
+    # a clean unwrap in between).
     if layout.instruction and layout.instruction.is_file() and MARKER_BEGIN in (
             text := layout.instruction.read_text()):
-        head, _, rest = text.partition(MARKER_BEGIN)
-        _, _, tail = rest.partition(MARKER_END)
+        import re
+        cleaned = re.sub(
+            re.escape(MARKER_BEGIN) + r".*?" + re.escape(MARKER_END) + r"\n?",
+            "", text, flags=re.DOTALL,
+        )
+        cleaned = cleaned.rstrip() + "\n"
 
-        if saved_instruction is not None and head.rstrip() == saved_instruction.rstrip() \
-                and not tail.strip():
+        if saved_instruction is not None and cleaned.rstrip() == saved_instruction.rstrip():
             # Untouched since wrapping — restore the original bytes exactly.
             layout.instruction.write_text(saved_instruction, encoding="utf-8")
             removed.append(str(layout.instruction.relative_to(root)) + " (restored verbatim)")
         else:
-            # The author edited it while wrapped; keep their text, drop our block.
-            layout.instruction.write_text(head.rstrip() + "\n" + tail.lstrip("\n"),
-                                          encoding="utf-8")
+            # The author edited it while wrapped; keep their text, drop our block(s).
+            layout.instruction.write_text(cleaned, encoding="utf-8")
             removed.append(str(layout.instruction.relative_to(root)) + " (block stripped)")
 
     # restore the oracle

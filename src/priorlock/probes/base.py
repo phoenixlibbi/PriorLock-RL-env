@@ -112,6 +112,13 @@ class Probe:
     level: int = 1                      # L1=atomic, L2=coupled, L3=workflow, L4=evolving
     dependencies: tuple[str, ...] = ()  # ids of probes that must co-occur (L2+)
 
+    # ── IRT-based difficulty tiering ─────────────────────────────────────────
+    # Estimated a priori. Updated empirically by `priorlock calibrate ingest`.
+    # Used by select_probes() for model-adaptive selection.
+    difficulty: float = 0.5             # 0=easy, 1=hard. Easy probes test obvious
+                                        # changes; hard probes test subtle ones
+    is_counterfactual: bool = False     # True for no-change control probes
+
     # ── validation ────────────────────────────────────────────────────────────
     def __post_init__(self) -> None:
         if self.family not in FAMILIES:
