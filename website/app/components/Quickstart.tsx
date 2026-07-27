@@ -85,7 +85,20 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
   },
   {
     n: 7,
-    label: "Run an agent (Harbor + Docker + API key)",
+    label: "Or run the full lifecycle in one command (with / without oracle)",
+    code: `# Keys + AGENT/MODEL live in harbortasks/model.env
+# CLI flags override LIFECYCLE_ORACLE=with|without
+
+# Full path — baseline + post-wrap + leakprobe via harbor -a oracle
+bash harbortasks/run-lifecycle.sh --with-oracle tasks/my-task
+
+# Fast path — skip all oracle Harbor runs; wrap + gates + model
+# (needs an existing jobs/ oracle trial for --baseline-from)
+bash harbortasks/run-lifecycle.sh --without-oracle tasks/my-task`,
+  },
+  {
+    n: 8,
+    label: "Run an agent directly (Harbor + Docker + API key)",
     code: `export ANTHROPIC_API_KEY=sk-...
 harbor run -p tasks/my-task \\
   -a claude-code -m anthropic/claude-sonnet-5
@@ -94,7 +107,7 @@ harbor run -p tasks/my-task \\
 # priorlock_summary.json   task_score + gap_score + per-probe verdicts`,
   },
   {
-    n: 8,
+    n: 9,
     label: "Measure how informative each probe is for that model",
     code: `priorlock calibrate ingest trials/ --model claude-sonnet-5
 priorlock calibrate report --model claude-sonnet-5
@@ -121,7 +134,9 @@ export default function Quickstart() {
           Harbor
         </a>{" "}
         + Docker (oracle smoke — expect reward 1.0). Steps 3–6 need no API key.
-        Step 7 adds a live model.
+        Step 7 is the one-command lifecycle (<code className="font-mono text-[13px]">--with-oracle</code>{" "}
+        or <code className="font-mono text-[13px]">--without-oracle</code>). Steps 8–9 add a live model
+        and calibration.
       </p>
 
       <div className="flex flex-col gap-5">

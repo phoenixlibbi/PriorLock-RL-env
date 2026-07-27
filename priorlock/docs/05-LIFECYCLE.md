@@ -59,6 +59,55 @@ take about five seconds.
 
 ---
 
+## One-command script — with or without oracle
+
+`harbortasks/run-lifecycle.sh` runs the full conversion + model path. It has
+**two modes** so you are not forced to re-pay Docker oracle time on every re-wrap:
+
+```bash
+cd PriorLock-RL-env
+# edit harbortasks/model.env  (AGENT / MODEL / API keys)
+
+# Full path — harbor -a oracle for baseline, post-wrap re-run, and leakprobe
+bash harbortasks/run-lifecycle.sh --with-oracle \
+  harbortasks/pipeline-drift-calibration-hard
+
+# Fast path — skip every harbor -a oracle step; reuse jobs/ for baseline pin
+bash harbortasks/run-lifecycle.sh --without-oracle \
+  harbortasks/pipeline-drift-calibration-hard
+```
+
+| | `--with-oracle` | `--without-oracle` |
+|---|---|---|
+| Baseline `harbor … -a oracle` | runs | skipped (reuse `jobs/`) |
+| Post-wrap oracle re-run | runs | skipped |
+| Leakprobe container (`-a oracle`) | runs | skipped (scaffold still generated) |
+| Unwrap → preflight → wrap → stage0 | runs | runs |
+| Reference solutions + doctor + cheats | runs | runs |
+| Model benchmark + calibrate | runs | runs |
+
+**When to use which**
+
+- `--with-oracle` — first conversion of a task, or whenever you need doctor drift
+  proven against a fresh post-wrap oracle score.
+- `--without-oracle` — probes / wrap changed and you already trust the host
+  oracle; you want gates + a model rollout without another 10–20 minutes of
+  oracle Docker.
+
+CLI flags override env. Defaults can also be set in `harbortasks/model.env`:
+
+```bash
+export LIFECYCLE_ORACLE=with      # or without
+# legacy alias still works if LIFECYCLE_ORACLE is unset:
+# export SKIP_BASELINE_ORACLE=1   # → without-oracle
+```
+
+`--without-oracle` still requires at least one prior oracle trial under `jobs/`
+so `wrap --baseline-from` can pin a baseline reward. If none exists, run once
+with `--with-oracle` (or `harbor run -p <task> -a oracle`).
+
+---
+
 ## Step 4 — preflight
 
 Runs before wrapping. Offline, no Docker. Answers *"is this host task actually

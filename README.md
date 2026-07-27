@@ -41,6 +41,21 @@ harbor run -p tasks/my-task -a oracle
 priorlock doctor tasks/my-task
 ```
 
+### One-command lifecycle (with or without oracle)
+
+```bash
+# Full path — baseline + post-wrap + leakprobe via harbor -a oracle
+bash harbortasks/run-lifecycle.sh --with-oracle harbortasks/pipeline-drift-calibration-hard
+
+# Fast path — skip all oracle Harbor runs; wrap + gates + model only
+# (needs an existing jobs/ oracle trial for --baseline-from)
+bash harbortasks/run-lifecycle.sh --without-oracle harbortasks/pipeline-drift-calibration-hard
+```
+
+Set `AGENT` / `MODEL` / keys in `harbortasks/model.env`. Default mode can also be
+`LIFECYCLE_ORACLE=with|without` (CLI flags override). Details:
+[`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md).
+
 Once published to PyPI the install becomes simply:
 
 ```bash
