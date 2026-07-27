@@ -355,8 +355,8 @@ def render_instruction_block(lib: str, probes: Iterable[Probe], solution: str,
 
 ## Data processing checks
 
-This project includes a local utility library (`{lib}`). Create
-`{solution}` exposing exactly:
+This project uses a local utility library (`{lib}`) — see existing usage in
+`utils/` for reference. Create `{solution}` exposing exactly:
 
 ```python
 def run(data_path, out_path):
