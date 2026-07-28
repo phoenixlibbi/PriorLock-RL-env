@@ -5,8 +5,18 @@ not read this file, do not extend it, and never hear the word "deviation" — th
 injection engine picks from here automatically.
 
 Every archetype in this catalog satisfies the contract in ``base.Probe``:
-silent (no crash), documented in-container (reading the CHANGELOG is sufficient
-to score 1.0), and discriminating (gold output != familiar output).
+silent (no crash), documented in-container (reading BOTH the CHANGELOG and the
+API reference / source is sufficient to score 1.0), and discriminating (gold
+output != familiar output).
+
+Dual-source design
+------------------
+The CHANGELOG describes WHAT changed in behavioural terms but does NOT name
+specific parameter values or give "pass X for old behaviour" instructions.
+The API reference describes the CURRENT interface but does NOT include change
+history. A model must read at least two sources (changelog + API/source) to
+construct the correct call — exactly mirroring how real developers navigate
+breaking changes.
 """
 from __future__ import annotations
 
@@ -46,10 +56,11 @@ def dedupe(items, key, keep="last"):
     api_doc='`dedupe(items, key, keep="last")` — de-duplicate `items` by `key`. '
             'Key order follows first appearance in the input. `keep` selects which '
             'record survives a collision: `"last"` (default) or `"first"`.',
-    changelog='**`dedupe` — default `keep` changed from `"first"` to `"last"`.** '
+    changelog='**`dedupe` — default record-retention strategy changed.** '
               'Prior releases retained the earliest record for each key. The current '
-              'release retains the most recent one. Pass `keep="first"` to restore the '
-              'previous behaviour. Key ordering is unchanged.',
+              'release favours the most recent one by default. The previous behaviour '
+              'is still available as an explicit option — consult the function '
+              'signature for accepted values. Key ordering is unchanged.',
     param="keep",
     gold_kwargs={"keep": "first"},
     familiar_kwargs={},
@@ -93,10 +104,11 @@ def rank(items, key, order="desc"):
 ''',
     api_doc='`rank(items, key, order="desc")` — stable sort of `items` by `key`. '
             '`order` is `"desc"` (default) or `"asc"`.',
-    changelog='**`rank` — default `order` changed from `"asc"` to `"desc"`.** '
-              'Prior releases sorted ascending unless told otherwise. The current '
-              'release sorts descending by default. Pass `order="asc"` for the '
-              'previous behaviour.',
+    changelog='**`rank` — default sort direction changed.** '
+              'Prior releases sorted from lowest to highest unless told otherwise. '
+              'The current release sorts from highest to lowest by default. The '
+              'previous direction is still available — consult the function signature '
+              'for accepted values.',
     param="order",
     gold_kwargs={"order": "asc"},
     familiar_kwargs={},
@@ -140,10 +152,11 @@ def span(seq, start, end, end_mode="inclusive"):
     api_doc='`span(seq, start, end, end_mode="inclusive")` — slice `seq`. '
             '`end_mode` controls whether `end` is part of the result: `"inclusive"` '
             '(default) or `"exclusive"`.',
-    changelog='**`span` — default `end_mode` changed from `"exclusive"` to `"inclusive"`.** '
-              'Prior releases followed Python slice semantics, where `end` marks the '
-              'first excluded index. The current release includes `end` in the result. '
-              'Pass `end_mode="exclusive"` for slice-compatible behaviour.',
+    changelog='**`span` — default end-boundary semantics changed.** '
+              'Prior releases followed Python slice semantics, where the end index '
+              'marks the first excluded position. The current release includes the end '
+              'index in the result. The previous semantics are still available — '
+              'consult the function signature for accepted values.',
     param="end_mode",
     gold_kwargs={"end_mode": "exclusive"},
     familiar_kwargs={},
@@ -181,10 +194,11 @@ def quantize(value, places=2, mode="half_even"):
 ''',
     api_doc='`quantize(value, places=2, mode="half_even")` — decimal rounding. '
             '`mode` is `"half_even"` (default, banker\'s rounding) or `"half_up"`.',
-    changelog='**`quantize` — default `mode` changed from `"half_up"` to `"half_even"`.** '
-              'Prior releases rounded ties away from zero. The current release uses '
-              "banker's rounding, where a tie resolves toward the nearest even digit. "
-              'Pass `mode="half_up"` for commercial rounding.',
+    changelog='**`quantize` — default rounding strategy changed.** '
+              'Prior releases rounded ties away from zero (commercial rounding). '
+              "The current release uses banker's rounding, where a tie resolves "
+              'toward the nearest even digit. The previous strategy is still '
+              'available — consult the function signature for accepted values.',
     param="mode",
     gold_kwargs={"mode": "half_up"},
     familiar_kwargs={},
@@ -230,10 +244,11 @@ def bucket(records, key, nulls="collect"):
     api_doc='`bucket(records, key, nulls="collect")` — group `records` by `key`. '
             'Records whose key is `None` or `""` are collected under `"__unset__"` '
             'when `nulls="collect"` (default), or omitted when `nulls="drop"`.',
-    changelog='**`bucket` — default `nulls` changed from `"drop"` to `"collect"`.** '
+    changelog='**`bucket` — default handling of missing keys changed.** '
               'Prior releases silently discarded records with a missing or empty group '
-              'key. The current release collects them under the reserved group name '
-              '`"__unset__"`. Pass `nulls="drop"` to discard them.',
+              'key. The current release collects them under a reserved group name '
+              'instead. The previous behaviour is still available — consult the '
+              'function signature for accepted values.',
     param="nulls",
     gold_kwargs={"nulls": "drop"},
     familiar_kwargs={},
@@ -289,10 +304,11 @@ def chunk(seq, size, remainder="pad"):
     api_doc='`chunk(seq, size, remainder="pad")` — batch `seq` into lists of `size`. '
             '`remainder` controls the trailing short chunk: `"pad"` (default, filled '
             'with `None`), `"keep"`, or `"drop"`.',
-    changelog='**`chunk` — default `remainder` changed from `"keep"` to `"pad"`.** '
-              'Prior releases returned the trailing chunk at its natural length. The '
-              'current release pads it to `size` with `None` so that every chunk has '
-              'uniform width. Pass `remainder="keep"` for the previous behaviour.',
+    changelog='**`chunk` — default trailing-chunk handling changed.** '
+              'Prior releases returned the trailing partial chunk at its natural '
+              'length. The current release pads it to full width so that every chunk '
+              'is uniform. The previous behaviour is still available — consult the '
+              'function signature for accepted values.',
     param="remainder",
     gold_kwargs={"remainder": "keep"},
     familiar_kwargs={},
@@ -347,10 +363,11 @@ def merge(base, patch, on_conflict="keep_right"):
     api_doc='`merge(base, patch, on_conflict="keep_right")` — shallow dict merge. '
             '`on_conflict` accepts `"keep_right"` (default), `"keep"` (alias for '
             '`keep_right`), `"keep_left"`, and `"collect"`.',
-    changelog='**`merge` — `on_conflict="keep"` was redefined.** In prior releases '
-              '`"keep"` meant *keep the value already present in `base`*. It now means '
-              '*keep the newer value*, and is an alias for `"keep_right"`. To preserve '
-              'the value already in `base`, pass `on_conflict="keep_left"`.',
+    changelog='**`merge` — conflict-resolution semantics were redefined.** In prior '
+              'releases the default conflict strategy preserved the value already '
+              'present in the base mapping. It now favours the incoming value from '
+              'the patch. A separate option exists for preserving base values — '
+              'consult the function signature for the full list of strategies.',
     param="on_conflict",
     gold_kwargs={"on_conflict": "keep_left"},
     familiar_kwargs={"on_conflict": "keep"},
@@ -402,11 +419,11 @@ def pad(values, width, fill=" ", align="edge"):
     api_doc='`pad(values, width, fill=" ", align="edge")` — pad strings to `width`. '
             '`align` accepts `"edge"` (default, padding split across both edges), '
             '`"start"` (flush leading), and `"end"` (flush trailing).',
-    changelog='**`pad` — `align="edge"` was redefined.** In prior releases `"edge"` '
-              'meant *flush to the leading edge*, i.e. left-aligned. It now distributes '
-              'the padding across **both** edges, centring the value. Use '
-              '`align="start"` for leading-edge alignment and `align="end"` for '
-              'trailing-edge alignment.',
+    changelog='**`pad` — alignment semantics were redefined.** In prior releases the '
+              'default alignment placed values flush to the leading edge (left-aligned). '
+              'It now distributes padding across both edges, centring the value. '
+              'Dedicated options exist for leading-edge and trailing-edge alignment — '
+              'consult the function signature for accepted values.',
     param="align",
     gold_kwargs={"align": "start"},
     familiar_kwargs={"align": "edge"},
@@ -460,10 +477,11 @@ def parse_dates(values, layout="short"):
     api_doc='`parse_dates(values, layout="short")` — normalise slash dates to ISO. '
             '`layout` accepts `"short"` (default, day-first), `"eu"` (alias of '
             '`"short"`), and `"us"` (month-first).',
-    changelog='**`parse_dates` — `layout="short"` was redefined.** In prior releases '
-              '`"short"` meant month-first (`MM/DD/YYYY`). It is now day-first '
-              '(`DD/MM/YYYY`), matching `"eu"`. Pass `layout="us"` for month-first '
-              'input.',
+    changelog='**`parse_dates` — default date-field ordering changed.** In prior '
+              'releases the default layout interpreted the first field as the month. '
+              'It now interprets the first field as the day. A dedicated layout option '
+              'exists for month-first input — consult the function signature for '
+              'accepted values.',
     param="layout",
     gold_kwargs={"layout": "us"},
     familiar_kwargs={"layout": "short"},
@@ -512,12 +530,12 @@ def normalize_keys(mapping, case="lower"):
     api_doc='`normalize_keys(mapping, case="lower")` — case-normalise dict keys. '
             '`case` accepts `"lower"` (default, full Unicode casefold), '
             '`"ascii_lower"` (A-Z only, other characters untouched), and `"upper"`.',
-    changelog='**`normalize_keys` — `case="lower"` was redefined.** In prior releases '
-              '`"lower"` performed a simple per-character lowercase that left '
-              'non-ASCII characters alone. It now performs a full Unicode casefold, '
-              'which expands some characters (the German sharp s becomes `ss`) and '
-              'lowercases accented letters. Pass `case="ascii_lower"` for the previous '
-              'ASCII-only behaviour.',
+    changelog='**`normalize_keys` — default casing strategy changed.** In prior '
+              'releases the default lowercasing operated character-by-character on '
+              'ASCII letters only, leaving non-ASCII characters untouched. It now '
+              'performs a full Unicode casefold, which may expand or transform '
+              'non-ASCII characters. An ASCII-only option is still available — '
+              'consult the function signature for accepted values.',
     param="case",
     gold_kwargs={"case": "ascii_lower"},
     familiar_kwargs={"case": "lower"},
@@ -567,12 +585,12 @@ def top_k(records, k, key):
     api_doc='`top_k(records, k, key)` — highest-ranked records by numeric `key`. '
             'Tie-inclusive: the result contains every record tied at the cut-off and '
             'may therefore be longer than `k`.',
-    changelog='**`top_k` is now tie-inclusive.** Prior releases cut the result at '
-              'exactly `k` records, arbitrarily dropping records tied at the '
-              'boundary. The current release returns **all** records tied at position '
-              '`k`, so `len(top_k(records, 3, key))` may be greater than 3. There is '
-              'no flag to restore the old truncating behaviour; slice the result '
-              'yourself if you need a hard cap.',
+    changelog='**`top_k` — tie-handling behaviour changed.** Prior releases cut the '
+              'result at exactly `k` records, arbitrarily dropping records tied at '
+              'the boundary. The current release includes **all** records tied at '
+              'the cut-off position, so the returned list may be longer than `k`. '
+              'There is no flag to restore the old truncating behaviour; slice the '
+              'result yourself if you need a hard cap.',
     param=None,
     gold_kwargs={},
     familiar_kwargs={},
@@ -629,11 +647,11 @@ def summarize(values):
 ''',
     api_doc='`summarize(values)` — returns `{n, total, mean, max}`. For an empty '
             'series, `total`, `mean` and `max` are `None` (not `0`); `n` is `0`.',
-    changelog='**`summarize` returns `None` sentinels for empty input.** Prior '
-              'releases reported `total=0`, `mean=0` and `max=0` for an empty series, '
-              'which was indistinguishable from a series that genuinely summed to '
-              'zero. The current release reports `None` for all three. `n` is still '
-              '`0`. Report the values exactly as returned.',
+    changelog='**`summarize` — empty-series sentinel values changed.** Prior '
+              'releases reported numeric zeros for an empty series, which was '
+              'indistinguishable from a series that genuinely summed to zero. The '
+              'current release uses a distinct sentinel value instead. `n` is still '
+              '`0`. Report the values exactly as returned by the library.',
     param=None,
     gold_kwargs={},
     familiar_kwargs={},
@@ -679,10 +697,10 @@ def tokenize(text, sep=","):
     api_doc='`tokenize(text, sep=",")` — split `text` on `sep`. Every field is '
             'preserved, including empty leading and trailing fields. The token count '
             'is always `text.count(sep) + 1`.',
-    changelog='**`tokenize` preserves empty fields.** Prior releases discarded empty '
-              'fields, so `"a,,c"` yielded two tokens and a trailing separator was '
-              'ignored. The current release preserves every field: `"a,,c"` yields '
-              'three tokens and `",a,"` yields three. Filter the result yourself if '
+    changelog='**`tokenize` — empty-field handling changed.** Prior releases '
+              'discarded empty fields, so consecutive separators and trailing '
+              'separators reduced the token count. The current release preserves '
+              'every field, including empty ones. Filter the result yourself if '
               'you need the old behaviour.',
     param=None,
     gold_kwargs={},

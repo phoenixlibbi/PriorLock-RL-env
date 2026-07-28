@@ -248,7 +248,8 @@ def render_context_files(lib: str, probes: Iterable[Probe]) -> dict[str, str]:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  In-container documentation (authoritative; reading it is sufficient to win)
+#  In-container documentation (dual-source: CHANGELOG + API/source together
+#  are sufficient to win; neither alone gives the complete picture)
 # ═════════════════════════════════════════════════════════════════════════════
 
 def render_changelog(lib: str, probes: Iterable[Probe], version: str = "2.0.0") -> str:
@@ -294,9 +295,6 @@ def render_api(lib: str, probes: Iterable[Probe], version: str = "2.0.0") -> str
             f"### `{p.signature}`",
             "",
             p.api_doc,
-            "",
-            f"> Changed in 2.0: {p.installed_behaviour}. "
-            f"In 1.x: {p.familiar_behaviour}.",
             "",
         ]
     parts += [
@@ -966,7 +964,7 @@ def render_reference_solution(lib: str, probes: Iterable[Probe], variant: str) -
     """
     probes = list(probes)
     label = {
-        "gold": "reads docs/*-CHANGELOG.md and acts on it — must score 1.0",
+        "gold": "reads CHANGELOG + API/source and acts on both — must score 1.0",
         "familiar": "applies memorized 1.x priors — must score exactly 0.40",
     }[variant]
     lines = [
@@ -1049,9 +1047,15 @@ def render_bypass_solution(probes: Iterable[Probe]) -> str:
     probes = list(probes)
     body = json.dumps({p.output_key: p.familiar_output for p in probes}, indent=8,
                       ensure_ascii=False)
+    # json.dumps emits null / true / false — alias them in Python scope
     return f'''"""Reference bypass solution — reimplements familiar behaviour without
 importing the library at all. Must score 0.0 (verdict: bypassed)."""
 import json
+
+# JSON literal aliases
+null = None
+true = True
+false = False
 
 
 def run(data_path, out_path):
