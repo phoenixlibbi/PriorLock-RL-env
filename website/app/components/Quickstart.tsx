@@ -39,6 +39,9 @@ harbor run -p tasks/my-task -a oracle
     code: `priorlock preflight tasks/my-task
 priorlock wrap tasks/my-task --baseline-from jobs/
 
+# Multi-domain trial conditions (avoid single-scenario overfitting):
+# priorlock wrap tasks/my-task --preset diverse
+
 # ✓ my-task wrapped
 #   library  <synthetic>
 #   probes   <selected from catalog>

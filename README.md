@@ -32,6 +32,7 @@ harbor run -p tasks/my-task -a oracle
 # 2) Wrap it — inject prior-override probes
 priorlock preflight tasks/my-task
 priorlock wrap tasks/my-task --baseline-from jobs/
+# priorlock wrap tasks/my-task --preset diverse   # multi-domain trial conditions
 
 # 3) Offline gates (no Docker, no API key)
 priorlock stage0 tasks/my-task
@@ -339,6 +340,7 @@ A probe going stale degrades *resolution*, not *validity*.
 ```
 priorlock preflight <task>     is this Harbor task healthy and wrap-ready?
 priorlock wrap <task>          migrate it — inject probes
+priorlock wrap <task> --preset diverse   multi-domain trial conditions
 priorlock wrap <dir> -r        migrate an entire task suite
 priorlock stage0 <task>        12 offline gates
 priorlock cheats <task>        8-class cheat battery + soundness receipt
@@ -386,6 +388,7 @@ same thing the bespoke path does.
 | [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md) | **build → validate → migrate → gate → doctor** |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | three ways to contribute |
 | [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | install + pin seeds + offline validate |
+| [`ENVIRONMENT-DIVERSITY.md`](ENVIRONMENT-DIVERSITY.md) | presets + tunable trial conditions |
 
 ---
 

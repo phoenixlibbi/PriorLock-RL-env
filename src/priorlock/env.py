@@ -40,6 +40,8 @@ Usage
     # or
     from priorlock.env import load_environment
     env = load_environment(num_instances=200, probes_per_instance=3)
+    # Multi-domain trial conditions (see ENVIRONMENT-DIVERSITY.md):
+    # env = load_environment(preset="diverse")
 """
 from __future__ import annotations
 
@@ -139,7 +141,11 @@ def build_instances(num_instances: int = DEFAULT_INSTANCES,
                     seed_prefix: str = "plx",
                     probe_ids: list[str] | None = None,
                     domains: list[str] | None = None,
-                    level: int = 1) -> list[dict]:
+                    level: int = 1,
+                    difficulty_range: tuple[float, float] | None = None,
+                    min_discrimination: float = 0.0,
+                    require_family_diversity: bool = True,
+                    exclude: set[str] | list[str] | None = None) -> list[dict]:
     """Generate deterministic environment instances.
 
     Each instance is a distinct synthetic library with a distinct probe mix, so
@@ -150,11 +156,18 @@ def build_instances(num_instances: int = DEFAULT_INSTANCES,
         domains: when set, instances draw probes from these cartridge domains
             using the cross-domain selector. Disjoint from ``probe_ids``.
         level: maximum probe difficulty level (L1–L4). Default 1.
+        difficulty_range: optional ``(lo, hi)`` a-priori difficulty band.
+        min_discrimination: drop probes below this empirical discrimination.
+        require_family_diversity: prefer one probe per family before doubling.
+        exclude: probe ids to skip.
     """
+    exclude_set = set(exclude or ())
     if probe_ids:
         extended = all_probes_by_id(domains)
         merged = {**BY_ID, **extended}
-        pool = [merged[p] for p in probe_ids]
+        pool = [merged[p] for p in probe_ids if p in merged and p not in exclude_set]
+        if not pool:
+            raise KeyError(f"no resolvable probe_ids from {probe_ids}")
     else:
         pool = None
 
@@ -163,7 +176,11 @@ def build_instances(num_instances: int = DEFAULT_INSTANCES,
     for i in range(num_instances):
         task_id = f"{seed_prefix}-{i:05d}"
         if pool:
-            probes = pool[: probes_per_instance]
+            # Deterministic rotation per task_id so pinned pools still vary
+            # across instances when len(pool) > probes_per_instance.
+            start = int(hashlib.sha256(task_id.encode()).hexdigest()[:8], 16) % len(pool)
+            rotated = pool[start:] + pool[:start]
+            probes = rotated[:probes_per_instance]
         elif domains:
             from .cartridges import select_probes_cross
             probes = select_probes_cross(
@@ -171,9 +188,21 @@ def build_instances(num_instances: int = DEFAULT_INSTANCES,
                 domains=domains,
                 count=probes_per_instance,
                 level=level,
+                require_family_diversity=require_family_diversity,
+                difficulty_range=difficulty_range,
+                min_discrimination=min_discrimination,
+                exclude=exclude_set or None,
             )
         else:
-            probes = select_probes(task_id, text="", count=probes_per_instance)
+            probes = select_probes(
+                task_id,
+                text="",
+                count=probes_per_instance,
+                require_family_diversity=require_family_diversity,
+                exclude=exclude_set or None,
+                difficulty_range=difficulty_range,
+                min_discrimination=min_discrimination,
+            )
 
         idx = int(hashlib.sha256(("lib:" + task_id).encode()).hexdigest()[:8], 16)
         lib = T.LIB_NAMES[idx % len(T.LIB_NAMES)]
@@ -361,13 +390,18 @@ def called_library_reward(completion, info, **kwargs) -> float:
 
 
 def load_environment(
-    num_instances: int = DEFAULT_INSTANCES,
-    probes_per_instance: int = DEFAULT_PROBES,
+    num_instances: int | None = None,
+    probes_per_instance: int | None = None,
     probe_ids: list[str] | None = None,
     domains: list[str] | None = None,
-    level: int = 1,
-    seed_prefix: str = "plx",
-    eval_fraction: float = 0.2,
+    level: int | None = None,
+    seed_prefix: str | None = None,
+    eval_fraction: float | None = None,
+    difficulty_range: tuple[float, float] | list[float] | None = None,
+    min_discrimination: float | None = None,
+    require_family_diversity: bool | None = None,
+    exclude: set[str] | list[str] | None = None,
+    preset: str | None = None,
     **kwargs,
 ):
     """Return a `verifiers` environment measuring prior-override capability.
@@ -384,11 +418,36 @@ def load_environment(
         seed_prefix: namespaces the seeds. Train and eval use disjoint
             prefixes so the splits cannot overlap.
         eval_fraction: share held out for evaluation.
+        difficulty_range: optional ``(lo, hi)`` a-priori difficulty band.
+        min_discrimination: IRT discrimination floor.
+        require_family_diversity: prefer one probe per family.
+        exclude: probe ids to skip.
+        preset: named diversity preset (``coding`` / ``diverse`` / ``hard``).
+            Explicit kwargs override the preset. See ``priorlock.diversity``.
 
     The reward is the {0.00, 0.40, 1.00} ladder from ``probes.base``:
     1.00 read the docs, 0.40 applied the memorised default, 0.00 never called
     the library.
     """
+    from .diversity import resolve_diversity
+
+    if isinstance(difficulty_range, list):
+        difficulty_range = (float(difficulty_range[0]), float(difficulty_range[1]))
+
+    cfg = resolve_diversity(
+        preset,
+        num_instances=num_instances,
+        probes_per_instance=probes_per_instance,
+        eval_fraction=eval_fraction,
+        seed_prefix=seed_prefix,
+        domains=domains,
+        level=level,
+        difficulty_range=difficulty_range,
+        min_discrimination=min_discrimination,
+        require_family_diversity=require_family_diversity,
+        exclude=list(exclude) if exclude is not None else None,
+    )
+
     try:
         import verifiers as vf
     except ImportError as exc:                                # pragma: no cover
@@ -403,13 +462,23 @@ def load_environment(
     except ImportError as exc:                                # pragma: no cover
         raise ImportError("pip install 'priorlock[rl]' (needs `datasets`)") from exc
 
-    n_eval = max(1, int(num_instances * eval_fraction))
-    train_rows = build_instances(num_instances, probes_per_instance,
-                                 f"{seed_prefix}-train", probe_ids,
-                                 domains=domains, level=level)
-    eval_rows = build_instances(n_eval, probes_per_instance,
-                                f"{seed_prefix}-eval", probe_ids,
-                                domains=domains, level=level)
+    n_eval = max(1, int(cfg.num_instances * cfg.eval_fraction))
+    common = dict(
+        probes_per_instance=cfg.probes_per_instance,
+        probe_ids=probe_ids,
+        domains=cfg.domains,
+        level=cfg.level,
+        difficulty_range=cfg.difficulty_range,
+        min_discrimination=cfg.min_discrimination,
+        require_family_diversity=cfg.require_family_diversity,
+        exclude=cfg.exclude_set(),
+    )
+    train_rows = build_instances(
+        cfg.num_instances, seed_prefix=f"{cfg.seed_prefix}-train", **common,
+    )
+    eval_rows = build_instances(
+        n_eval, seed_prefix=f"{cfg.seed_prefix}-eval", **common,
+    )
 
     rubric = vf.Rubric(
         funcs=[prior_override_reward, called_library_reward],

@@ -334,30 +334,38 @@ def cmd_wrap(args, root: str) -> int:
                 print(f"{YELLOW}!{RESET} {target}: {warn.id} {warn.name} — {warn.detail}")
 
         try:
-            domains = args.domain if hasattr(args, "domain") and args.domain else None
-            level = args.level if hasattr(args, "level") else 1
-            # Parse difficulty range
-            difficulty_range = None
-            if args.difficulty:
-                try:
-                    lo, hi = args.difficulty.split("-")
-                    difficulty_range = (float(lo), float(hi))
-                except (ValueError, AttributeError):
-                    print(f"{RED}✗{RESET} --difficulty must be LO-HI, e.g. 0.6-1.0")
-                    failures += 1
-                    continue
+            from priorlock.diversity import parse_difficulty, resolve_diversity
+
+            try:
+                difficulty_range = (
+                    parse_difficulty(args.difficulty) if args.difficulty else None
+                )
+            except ValueError as exc:
+                print(f"{RED}✗{RESET} {exc}")
+                failures += 1
+                continue
+
+            cfg = resolve_diversity(
+                getattr(args, "preset", None),
+                domains=args.domain if args.domain else None,
+                level=args.level,
+                difficulty_range=difficulty_range,
+                min_discrimination=args.min_discrimination,
+            )
+            count = args.count if args.count is not None else cfg.probes_per_instance
             result = wrap_task(
                 target,
-                count=args.count,
+                count=count,
                 probe_ids=args.probe or None,
-                domains=domains,
-                level=level,
+                domains=cfg.domains,
+                level=cfg.level,
                 w_task=args.weight_task,
                 w_gap=args.weight_gap,
                 force=args.force,
+                seed_suffix=args.seed_suffix or "",
                 repo_dir=args.repo_dir,
-                difficulty_range=difficulty_range,
-                min_discrimination=args.min_discrimination,
+                difficulty_range=cfg.difficulty_range,
+                min_discrimination=cfg.min_discrimination,
             )
         except Exception as exc:
             print(f"{RED}✗{RESET} {target}: {exc}")
@@ -365,6 +373,8 @@ def cmd_wrap(args, root: str) -> int:
             continue
 
         print(f"{GREEN}✓{RESET} {BOLD}{result.layout.task_id}{RESET} wrapped")
+        if cfg.preset:
+            print(f"  preset   {cfg.preset}")
         rel = result.layout.repo.relative_to(result.layout.root)
         print(f"  surface  {rel}  {DIM}→ {result.layout.container_repo} "
               f"(workdir {result.layout.workdir}){RESET}")
@@ -733,14 +743,28 @@ def cmd_run(args, root: str) -> int:
     # ── generate mode ───────────────────────────────────────────────────────
     output = Path(args.output or f"priorlock-task-{os.urandom(3).hex()}")
     try:
-        domains = args.domain if hasattr(args, "domain") and args.domain else None
+        from priorlock.diversity import parse_difficulty, resolve_diversity
+
+        difficulty_range = (
+            parse_difficulty(args.difficulty) if args.difficulty else None
+        )
+        cfg = resolve_diversity(
+            getattr(args, "preset", None),
+            domains=args.domain if args.domain else None,
+            level=args.level,
+            difficulty_range=difficulty_range,
+            min_discrimination=args.min_discrimination,
+        )
+        count = args.count if args.count is not None else cfg.probes_per_instance
         result = generate(
             output,
-            count=args.count,
-            domains=domains,
+            count=count,
+            domains=cfg.domains,
             probe_ids=args.probe or None,
-            level=args.level,
+            level=cfg.level,
             seed=args.seed or "",
+            difficulty_range=cfg.difficulty_range,
+            min_discrimination=cfg.min_discrimination,
         )
     except Exception as exc:
         print(f"{RED}generation failed: {exc}{RESET}", file=sys.stderr)
@@ -861,21 +885,26 @@ other:
     p_wrap.add_argument("paths", nargs="+", help="task directory (or a tree, with -r)")
     p_wrap.add_argument("-r", "--recursive", action="store_true",
                         help="wrap every task.toml found beneath each path")
-    p_wrap.add_argument("-n", "--count", type=int, default=3,
-                        help="number of probes to inject (default 3)")
+    p_wrap.add_argument("-n", "--count", type=int, default=None,
+                        help="number of probes to inject (default 3, or preset value)")
     p_wrap.add_argument("--probe", action="append", metavar="ID",
                         help="pin a specific probe (repeatable; overrides auto-selection)")
     p_wrap.add_argument("--domain", action="append", metavar="DOMAIN",
                         help="select probes from this cartridge domain (repeatable; "
-                             "e.g. --domain sql --domain linux)")
-    p_wrap.add_argument("--level", type=int, default=1, choices=[1, 2, 3, 4],
+                             "e.g. --domain sql --domain linux; use 'all' for every domain)")
+    p_wrap.add_argument("--preset", choices=["coding", "diverse", "hard"],
+                        help="diversity preset (domains/level/difficulty); explicit "
+                             "flags override")
+    p_wrap.add_argument("--level", type=int, default=None, choices=[1, 2, 3, 4],
                         help="max probe difficulty level (default 1)")
     p_wrap.add_argument("--difficulty", type=str, default=None, metavar="LO-HI",
                         help="difficulty range, e.g. 0.6-1.0 for hard probes only "
                              "(IRT-informed model-adaptive selection)")
-    p_wrap.add_argument("--min-discrimination", type=float, default=0.0,
+    p_wrap.add_argument("--min-discrimination", type=float, default=None,
                         help="drop probes with IRT discrimination below this threshold "
                              "(recommended 0.3 for high-stakes evals)")
+    p_wrap.add_argument("--seed-suffix", default="", metavar="SUFFIX",
+                        help="appended to task_id for reproducible probe selection")
     p_wrap.add_argument("--weight-task", type=float, default=0.5,
                         help="weight of the native task reward (default 0.5)")
     p_wrap.add_argument("--weight-gap", type=float, default=0.5,
@@ -986,14 +1015,21 @@ other:
     p_run_gen = p_run.add_argument_group("generate options")
     p_run_gen.add_argument("-o", "--output", metavar="DIR",
                            help="output directory for the generated task")
-    p_run_gen.add_argument("-n", "--count", type=int, default=3,
-                           help="number of probes (default 3)")
+    p_run_gen.add_argument("-n", "--count", type=int, default=None,
+                           help="number of probes (default 3, or preset value)")
     p_run_gen.add_argument("--domain", action="append", metavar="DOMAIN",
-                           help="restrict probes to this domain (repeatable)")
+                           help="restrict probes to this domain (repeatable; "
+                                "use 'all' for every domain)")
+    p_run_gen.add_argument("--preset", choices=["coding", "diverse", "hard"],
+                           help="diversity preset; explicit flags override")
     p_run_gen.add_argument("--probe", action="append", metavar="ID",
                            help="pin a specific probe (repeatable)")
-    p_run_gen.add_argument("--level", type=int, default=1, choices=[1, 2, 3, 4],
+    p_run_gen.add_argument("--level", type=int, default=None, choices=[1, 2, 3, 4],
                            help="max probe level (default 1)")
+    p_run_gen.add_argument("--difficulty", type=str, default=None, metavar="LO-HI",
+                           help="difficulty range, e.g. 0.6-1.0")
+    p_run_gen.add_argument("--min-discrimination", type=float, default=None,
+                           help="IRT discrimination floor")
     p_run_gen.add_argument("--seed", type=str, default="",
                            help="seed for reproducible probe selection")
     # grade options

@@ -50,11 +50,16 @@ wrapping is transparent to the runner.
 ```bash
 priorlock wrap tasks/ --recursive              # wrap an entire suite
 priorlock wrap tasks/t -n 5                    # 5 probes instead of 3
+priorlock wrap tasks/t --preset diverse        # multi-domain trial conditions
+priorlock wrap tasks/t --difficulty 0.6-1.0    # hard band (works with --domain too)
 priorlock wrap tasks/t --probe dedupe_keep_policy --probe tie_inclusive_topk
 priorlock wrap tasks/t --weight-task 0.7 --weight-gap 0.3
 priorlock wrap tasks/t --force                 # regenerate with a new probe mix
 priorlock unwrap tasks/t                       # remove everything wrap added
 ```
+
+See [ENVIRONMENT-DIVERSITY.md](ENVIRONMENT-DIVERSITY.md) for presets
+(`coding` / `diverse` / `hard`) and RL `load_environment(preset=...)`.
 
 ### Inspecting the result
 

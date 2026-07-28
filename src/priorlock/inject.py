@@ -371,6 +371,8 @@ def wrap_task(
             domains=domains,
             count=count,
             level=level,
+            difficulty_range=difficulty_range,
+            min_discrimination=min_discrimination,
         )
     else:
         probes = select_probes(

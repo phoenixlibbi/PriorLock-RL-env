@@ -27,7 +27,8 @@ from .catalog import ALL_PROBES, BY_ID
 __all__ = [
     "ALL_PROBES", "BY_ID", "Probe", "CATEGORIES", "FAMILIES", "FAMILIAR_BASELINE",
     "gap_score", "composite_reward",
-    "infer_categories", "select_probes", "load_calibration", "save_calibration",
+    "infer_categories", "select_probes", "filter_probe_pool", "probe_discrimination",
+    "load_calibration", "save_calibration",
     "calibration_path", "probe_table",
     "all_probes_by_id", "all_probes_list",
 ]
@@ -135,6 +136,60 @@ def _seed(task_id: str) -> int:
     return int(hashlib.sha256(task_id.encode()).hexdigest()[:12], 16)
 
 
+def probe_discrimination(p: Probe, calib: dict | None = None) -> float:
+    """Empirical discrimination for *p* from calibration.json (0.0 if unknown)."""
+    store = calib if calib is not None else load_calibration()
+    entry = store.get("probes", {}).get(p.id, {})
+    return float(entry.get("discrimination", 0.0))
+
+
+def filter_probe_pool(
+    pool: list[Probe],
+    *,
+    exclude: set[str] | None = None,
+    min_confidence: float = 0.0,
+    min_discrimination: float = 0.0,
+    difficulty_range: tuple[float, float] | None = None,
+    drop_counterfactual: bool = True,
+    fallback: list[Probe] | None = None,
+) -> list[Probe]:
+    """Apply shared diversity filters; fall back rather than return empty.
+
+    Used by both coding ``select_probes`` and cross-domain ``select_probes_cross``
+    so wrap ``--difficulty`` / ``--min-discrimination`` behave the same on either
+    path.
+    """
+    exclude = exclude or set()
+    calib = load_calibration()
+    filtered = [
+        p for p in pool
+        if p.id not in exclude
+        and (not drop_counterfactual or not p.is_counterfactual)
+        and probe_discrimination(p, calib) >= min_confidence
+        and probe_discrimination(p, calib) >= min_discrimination
+    ]
+    if difficulty_range is not None:
+        lo, hi = difficulty_range
+        band = [p for p in filtered if lo <= p.difficulty <= hi]
+        if band:
+            filtered = band
+        # else: keep discrimination-filtered pool rather than selecting nothing
+
+    if filtered:
+        return filtered
+    if fallback is not None:
+        return [
+            p for p in fallback
+            if p.id not in exclude
+            and (not drop_counterfactual or not p.is_counterfactual)
+        ]
+    return [
+        p for p in pool
+        if p.id not in exclude
+        and (not drop_counterfactual or not p.is_counterfactual)
+    ]
+
+
 def select_probes(
     task_id: str,
     text: str = "",
@@ -172,37 +227,23 @@ def select_probes(
     ranked = {cat: i for i, (cat, _) in enumerate(infer_categories(text))}
     calib = load_calibration()
 
-    def confidence(p: Probe) -> float:
-        entry = calib.get("probes", {}).get(p.id, {})
-        return float(entry.get("discrimination", 0.0))
-
-    pool = [
-        p for p in ALL_PROBES
-        if p.id not in exclude
-        and confidence(p) >= min_confidence
-        and confidence(p) >= min_discrimination
-        and not p.is_counterfactual
-    ]
-
-    # Apply difficulty range filter
-    if difficulty_range is not None:
-        lo, hi = difficulty_range
-        filtered = [p for p in pool if lo <= p.difficulty <= hi]
-        if filtered:
-            pool = filtered
-        # else: fall through to full pool rather than selecting nothing
-
-    if not pool:
-        pool = [p for p in ALL_PROBES if p.id not in exclude
-                and not p.is_counterfactual]
+    pool = filter_probe_pool(
+        list(ALL_PROBES),
+        exclude=exclude,
+        min_confidence=min_confidence,
+        min_discrimination=min_discrimination,
+        difficulty_range=difficulty_range,
+        fallback=list(ALL_PROBES),
+    )
 
     rot = _seed(task_id)
 
     def sort_key(p: Probe) -> tuple:
         # lower is better
         cat_rank = ranked.get(p.category, len(CATEGORIES))
+        conf = probe_discrimination(p, calib)
         jitter = (int(hashlib.sha256(f"{task_id}:{p.id}".encode()).hexdigest()[:8], 16)) % 1000
-        return (cat_rank, -confidence(p), jitter)
+        return (cat_rank, -conf, jitter)
 
     chosen: list[Probe] = []
     if require_family_diversity:

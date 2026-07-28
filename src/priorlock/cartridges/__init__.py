@@ -222,18 +222,37 @@ def select_probes_cross(
     count: int = 3,
     level: int = 1,
     require_family_diversity: bool = True,
+    difficulty_range: tuple[float, float] | None = None,
+    min_discrimination: float = 0.0,
+    exclude: set[str] | None = None,
 ) -> list[Probe]:
     """Select probes across one or more domain cartridges.
 
     When *domains* spans multiple cartridges, probes are interleaved by domain
     to ensure cross-domain coverage. Family diversity is still enforced within
-    the combined pool.
+    the combined pool. ``difficulty_range`` / ``min_discrimination`` match the
+    coding-path ``select_probes`` filters (wrap ``--difficulty`` no longer
+    no-ops when ``--domain`` is set).
     """
+    from ..probes import filter_probe_pool
+
     _ensure_builtins()
-    pool = [
+    level_pool = [
         p for p in all_probes(domains)
         if p.level <= level
     ]
+    if not level_pool:
+        raise RuntimeError(
+            f"no probes at level <= {level} in domains {domains or 'all'}"
+        )
+
+    pool = filter_probe_pool(
+        level_pool,
+        exclude=exclude,
+        min_discrimination=min_discrimination,
+        difficulty_range=difficulty_range,
+        fallback=level_pool,
+    )
     if not pool:
         raise RuntimeError(
             f"no probes at level <= {level} in domains {domains or 'all'}"
@@ -241,13 +260,22 @@ def select_probes_cross(
 
     rot = int(hashlib.sha256(task_id.encode()).hexdigest()[:12], 16)
 
+    # Rotate domain preference by task_id so multi-domain pools actually
+    # diversify across instances (Python's hash(domain) is constant under
+    # PYTHONHASHSEED=0 and was collapsing everything onto one domain).
+    domains_present = sorted({p.domain for p in pool})
+    if domains_present:
+        dshift = rot % len(domains_present)
+        domain_order = domains_present[dshift:] + domains_present[:dshift]
+        domain_rank = {d: i for i, d in enumerate(domain_order)}
+    else:
+        domain_rank = {}
+
     def sort_key(p: Probe) -> tuple:
         jitter = int(hashlib.sha256(
             f"{task_id}:{p.id}".encode()
         ).hexdigest()[:8], 16) % 1000
-        # prefer probes whose domain matches the task_id hash
-        domain_rank = hash(p.domain) % 100
-        return (domain_rank, jitter)
+        return (domain_rank.get(p.domain, 99), jitter)
 
     chosen: list[Probe] = []
 
@@ -265,9 +293,16 @@ def select_probes_cross(
             if candidates:
                 chosen.append(candidates[0])
 
+    # Prefer domains not yet represented when filling the remainder.
+    chosen_domains = {c.domain for c in chosen}
+
+    def fill_key(p: Probe) -> tuple:
+        unseen = 0 if p.domain not in chosen_domains else 1
+        return (unseen, *sort_key(p))
+
     remaining = sorted(
         (p for p in pool if p not in chosen),
-        key=sort_key,
+        key=fill_key,
     )
     for p in remaining:
         if len(chosen) >= count:
@@ -282,9 +317,11 @@ def select_probes_cross(
                 missing = [by_id[d] for d in dep_ids - chosen_ids if d in by_id]
                 if len(chosen) + len(missing) + 1 <= count:
                     chosen.extend(missing)
+                    chosen_domains.update(m.domain for m in missing)
                 else:
                     continue  # skip this probe — not enough room for deps
         chosen.append(p)
+        chosen_domains.add(p.domain)
 
     return chosen[:count]
 

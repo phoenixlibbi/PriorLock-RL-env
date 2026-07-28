@@ -105,6 +105,8 @@ def generate(
         from .cartridges import select_probes_cross
         probes = select_probes_cross(
             task_id=task_id, domains=domains, count=count, level=level,
+            difficulty_range=difficulty_range,
+            min_discrimination=min_discrimination,
         )
     else:
         from .probes import select_probes
