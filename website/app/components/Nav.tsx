@@ -52,21 +52,27 @@ export default function Nav() {
       }}
     >
       <div
-        className="mx-auto flex h-full items-center gap-4 px-6 sm:px-8"
+        className="relative mx-auto flex h-full items-center px-6 sm:px-8"
         style={{ maxWidth: "var(--max)" }}
       >
+        {/* Left — brand */}
         <a
           href="/"
-          className="font-mono text-[15px] font-bold tracking-tight"
+          className="relative z-10 shrink-0 font-mono text-[15px] font-bold tracking-tight"
           onClick={close}
         >
           Prior<span style={{ color: "var(--accent)" }}>Lock</span>
         </a>
 
-        <div className="ml-auto flex items-center gap-3 sm:gap-5">
-          <div className="hidden items-center gap-5 md:flex md:gap-7">
+        {/* Center — section links (true viewport center of the bar) */}
+        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
+          <div className="pointer-events-auto flex items-center justify-center gap-x-4 lg:gap-x-6">
             {links.map((link) => (
-              <a key={link.id} href={`/#${link.id}`} className="nav-link">
+              <a
+                key={link.id}
+                href={`/#${link.id}`}
+                className="nav-link whitespace-nowrap"
+              >
                 {link.label}
               </a>
             ))}
@@ -74,14 +80,17 @@ export default function Nav() {
               <a
                 key={p.href}
                 href={p.href}
-                className="nav-link"
+                className="nav-link whitespace-nowrap"
                 style={{ color: "var(--accent)" }}
               >
                 {p.label}
               </a>
             ))}
           </div>
+        </div>
 
+        {/* Right — GitHub + mobile menu */}
+        <div className="relative z-10 ml-auto flex shrink-0 items-center gap-3">
           <a
             href="https://github.com/phoenixlibbi/PriorLock-RL-env"
             target="_blank"
