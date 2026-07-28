@@ -11,7 +11,7 @@ Django CSRF enforcement, and FastAPI dependency injection scope.
 from __future__ import annotations
 
 from ..probes.base import Probe
-from . import CartridgeSpec, register
+from . import CartridgeSpec, register, SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  FAMILY 1 — default_flip
@@ -594,6 +594,7 @@ CARTRIDGE = CartridgeSpec(
     probes=BACKEND_PROBES,
     categories=CATEGORIES,
     lexicon=LEXICON,
+    information_sources=(SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE),
     max_level=1,
 )
 

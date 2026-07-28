@@ -257,22 +257,21 @@ def render_changelog(lib: str, probes: Iterable[Probe], version: str = "2.0.0") 
     parts = [
         f"# {lib} changelog",
         "",
-        f"## {version} — installed",
+        f"## {version}",
         "",
-        "Behavioural changes from the 1.x line. **None of these changed a function",
-        "signature**, so 1.x call sites still run without error and return values of",
-        "the expected type — they simply return different results. Read this section",
-        "before writing any code against the functions listed below.",
+        "Breaking behavioural changes from the 1.x line. Function signatures are",
+        "the same, so old call sites still compile and return the right types, but",
+        "some defaults have changed and a few outputs differ.",
         "",
     ]
     for p in probes:
         parts += [f"### `{p.fn}`", "", p.changelog, ""]
     parts += [
-        "## 1.4.3 — previous",
+        "## 1.4.3",
         "",
-        "Documentation fixes only. No behavioural change.",
+        "Doc fixes only.",
         "",
-        "## 1.4.0 — previous",
+        "## 1.4.0",
         "",
         "Added `count_by` and `pluck`.",
         "",
@@ -283,11 +282,9 @@ def render_changelog(lib: str, probes: Iterable[Probe], version: str = "2.0.0") 
 def render_api(lib: str, probes: Iterable[Probe], version: str = "2.0.0") -> str:
     probes = list(probes)
     parts = [
-        f"# {lib} {version} — API reference",
+        f"# {lib} v{version} API",
         "",
         f"`import {lib}`",
-        "",
-        "## Functions",
         "",
     ]
     for p in probes:
@@ -298,23 +295,23 @@ def render_api(lib: str, probes: Iterable[Probe], version: str = "2.0.0") -> str
             "",
         ]
     parts += [
-        "## Unchanged utilities",
+        "---",
         "",
         "### `version()`",
         "",
-        "Return the installed version string.",
+        "Returns the installed version string.",
         "",
         "### `flatten(nested)`",
         "",
-        "Flatten one level of nesting.",
+        "Flattens one level of nesting.",
         "",
         "### `pluck(records, field, default=None)`",
         "",
-        "Extract `field` from every record.",
+        "Extracts `field` from every record.",
         "",
         "### `count_by(records, key)`",
         "",
-        "Map each distinct `key` value to its occurrence count.",
+        "Maps each distinct `key` value to its occurrence count.",
         "",
     ]
     return "\n".join(parts)
@@ -434,7 +431,13 @@ def test_output_types():
 def render_instruction_block(lib: str, probes: Iterable[Probe], solution: str,
                              input_rel: str, output_rel: str,
                              version: str = "2.0.0",
-                             container_repo: str = "") -> str:
+                             container_repo: str = "",
+                             information_sources: tuple[str, ...] | None = None) -> str:
+    from .cartridges import SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE, SOURCES
+
+    if information_sources is None:
+        information_sources = SOURCES
+
     probes = list(probes)
     checks = "\n".join(
         f"{i}. **`{p.output_key}`** — {p.task_clause}"
@@ -451,38 +454,51 @@ def render_instruction_block(lib: str, probes: Iterable[Probe], solution: str,
         input_rel = f"{base}/{input_rel}"
         output_rel = f"{base}/{output_rel}"
         tests_path = f"{base}/tests/test_probe_visible.py"
+        docs_base = f"{base}/docs"
     else:
         tests_path = "tests/test_probe_visible.py"
+        docs_base = "docs"
+
+    # Build a casual mention of where the docs live, like a dev would
+    # write in a project README. No "Refer to X and Y" enumeration —
+    # just note the docs/ folder exists. The model discovers the files
+    # naturally, the way a real developer would.
+    has_docs = (SOURCE_CHANGELOG in information_sources
+                or SOURCE_API_DOC in information_sources)
+
+    if has_docs:
+        docs_note = f"  There are docs in `{docs_base}/` and usage examples in `utils/`."
+    else:
+        docs_note = "  There are usage examples in `utils/`."
 
     return f"""
 
 ---
 
-## Data processing checks
+## Data-processing checks
 
-This project uses a local utility library (`{lib}`) — see existing usage in
-`utils/` for reference. Create `{solution}` exposing exactly:
+The project ships a utility library, `{lib}` (v2).{docs_note}
+Write `{solution}` with one public entry point:
 
 ```python
 def run(data_path, out_path):
     ...
 ```
 
-- `data_path` is the path to `{input_rel}`, a JSON object with one key per check.
-- Perform every check below using {fn_list}. **Do not reimplement these
-  functions** — call the bundled library.
-- Write a single JSON object to `out_path` with one key per check, using the key
-  names given below.
+`data_path` points to `{input_rel}` (JSON, one key per check).
+Use {fn_list} from the library for the checks below — don't rewrite them
+by hand. Write your results as a single JSON object to `out_path`, keyed
+exactly as listed.
 
 ### Checks
 
 {checks}
 
-### Verifying your work
+### Smoke test
 
-`{tests_path}` checks that your solution runs and emits the right container type
-under each key. It does **not** check any value — passing it means the plumbing
-works, not that the results are correct.
+`{tests_path}` verifies that your solution runs and that each output key
+has the right container type. It doesn't check values, so passing it just
+means the plumbing works.
 """
 
 

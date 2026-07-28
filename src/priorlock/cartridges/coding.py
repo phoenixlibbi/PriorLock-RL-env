@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from ..probes.catalog import ALL_PROBES
 from ..probes.base import Probe
-from . import CartridgeSpec, register
+from . import CartridgeSpec, register, SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE
 
 # Re-tag existing probes with domain="coding" (they default to it, but be explicit)
 CODING_PROBES = tuple(
@@ -71,6 +71,7 @@ CARTRIDGE = CartridgeSpec(
     probes=CODING_PROBES,
     categories=CATEGORIES,
     lexicon=LEXICON,
+    information_sources=(SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE),
     max_level=1,
 )
 

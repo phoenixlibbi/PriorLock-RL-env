@@ -10,7 +10,7 @@ overwrite policy, and the shape of `wc`-style counting output.
 from __future__ import annotations
 
 from ..probes.base import Probe
-from . import CartridgeSpec, register
+from . import CartridgeSpec, register, SOURCE_CHANGELOG, SOURCE_CODE
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  FAMILY 1 — default_flip
@@ -380,6 +380,8 @@ CARTRIDGE = CartridgeSpec(
     probes=LINUX_PROBES,
     categories=CATEGORIES,
     lexicon=LEXICON,
+    # CLI wrappers use changelog + source; no separate API reference.
+    information_sources=(SOURCE_CHANGELOG, SOURCE_CODE),
     max_level=1,
 )
 

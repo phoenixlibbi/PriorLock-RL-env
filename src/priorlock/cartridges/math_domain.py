@@ -7,7 +7,7 @@ matrix multiplication, degrees as the default angle unit, Euclidean norm as
 from __future__ import annotations
 
 from ..probes.base import Probe
-from . import CartridgeSpec, register
+from . import CartridgeSpec, register, SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  FAMILY 1 — default_flip
@@ -282,6 +282,7 @@ CARTRIDGE = CartridgeSpec(
     probes=MATH_PROBES,
     categories=CATEGORIES,
     lexicon=LEXICON,
+    information_sources=(SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE),
     max_level=1,
 )
 

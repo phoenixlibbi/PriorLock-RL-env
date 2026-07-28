@@ -35,7 +35,20 @@ from ..probes.base import FAMILIES, Probe
 __all__ = [
     "CartridgeSpec", "register", "get", "list_domains",
     "select_probes_cross", "all_probes",
+    "SOURCES", "SOURCE_CHANGELOG", "SOURCE_API_DOC", "SOURCE_CODE",
 ]
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Information source constants
+# ═════════════════════════════════════════════════════════════════════════════
+
+SOURCE_CHANGELOG = "changelog"
+SOURCE_API_DOC = "api_doc"
+SOURCE_CODE = "source_code"
+
+SOURCES = (SOURCE_CHANGELOG, SOURCE_API_DOC, SOURCE_CODE)
+"""All recognised information source types."""
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -49,6 +62,33 @@ class CartridgeSpec:
     The engine's core loop (inject → gate → grade) is identical regardless of
     domain.  The cartridge defines *what* gets injected and *how* the familiar
     prior differs from the documented truth.
+
+    Information sources
+    -------------------
+    ``information_sources`` declares which information layers the domain emits
+    into the agent container.  The injection engine adapts: it only writes the
+    files for sources the cartridge declares, and the instruction block only
+    references files that exist.
+
+    * 3 sources (all three) — strongest dual-source split; the model must
+      cross-reference CHANGELOG + API/source to construct the correct call.
+    * 2 sources — still requires dual-source reading; the information split is
+      across whichever two are present.
+    * 1 source — dual-source gating is not possible; probes still measure
+      prior-override via the structural {0.00, 0.40, 1.00} ladder, but without
+      the "did you read multiple files" signal.
+
+    Domains map to natural source pairs:
+
+    ==================  ================  ==================  ==================
+    Domain              Source A          Source B            Source C (optional)
+    ==================  ================  ==================  ==================
+    Coding              changelog         source_code         api_doc
+    SQL                 changelog         source_code         —
+    CLI / Linux         changelog         source_code         —
+    Config              changelog         api_doc             —
+    Infrastructure      changelog         source_code         api_doc
+    ==================  ================  ==================  ==================
     """
 
     # ── identity ─────────────────────────────────────────────────────────────
@@ -63,6 +103,9 @@ class CartridgeSpec:
     categories: tuple[str, ...]          # domain-specific category names
     lexicon: dict[str, dict[str, float]] # keyword → weight, per category
 
+    # ── information sources ──────────────────────────────────────────────────
+    information_sources: tuple[str, ...] = SOURCES  # which layers get emitted
+
     # ── optional overrides ───────────────────────────────────────────────────
     system_prompt_override: str = ""     # if set, replaces the default system prompt
     max_level: int = 1                   # highest L-level any probe in this cartridge reaches
@@ -72,6 +115,15 @@ class CartridgeSpec:
             raise ValueError("domain must be non-empty")
         if not self.probes:
             raise ValueError(f"{self.domain}: cartridge has no probes")
+        # Validate information_sources
+        if not self.information_sources:
+            raise ValueError(f"{self.domain}: information_sources must be non-empty")
+        for src in self.information_sources:
+            if src not in SOURCES:
+                raise ValueError(
+                    f"{self.domain}: unknown information source {src!r}. "
+                    f"Valid: {SOURCES!r}"
+                )
         for p in self.probes:
             if p.domain != self.domain:
                 raise ValueError(
@@ -94,6 +146,29 @@ class CartridgeSpec:
     @property
     def probe_count(self) -> int:
         return len(self.probes)
+
+    # ── information source helpers ───────────────────────────────────────────
+
+    @property
+    def has_changelog(self) -> bool:
+        return SOURCE_CHANGELOG in self.information_sources
+
+    @property
+    def has_api_doc(self) -> bool:
+        return SOURCE_API_DOC in self.information_sources
+
+    @property
+    def has_source_code(self) -> bool:
+        return SOURCE_CODE in self.information_sources
+
+    @property
+    def source_count(self) -> int:
+        return len(self.information_sources)
+
+    @property
+    def is_dual_source(self) -> bool:
+        """True if ≥2 sources are available — dual-source gating applies."""
+        return self.source_count >= 2
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -254,6 +329,7 @@ def _ensure_builtins() -> None:
                     probes=spec.probes + (probe,),
                     categories=spec.categories,
                     lexicon=spec.lexicon,
+                    information_sources=spec.information_sources,
                     system_prompt_override=spec.system_prompt_override,
                     max_level=max(spec.max_level, probe.level),
                 )

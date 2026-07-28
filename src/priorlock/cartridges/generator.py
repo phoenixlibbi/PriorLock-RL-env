@@ -241,13 +241,19 @@ def generate_cartridge(
     templates: list[ProbeTemplate],
     categories: tuple[str, ...],
     lexicon: dict[str, dict[str, float]] | None = None,
+    information_sources: tuple[str, ...] | None = None,
     auto_register: bool = True,
 ) -> CartridgeSpec:
     """Generate and optionally register a complete CartridgeSpec from templates.
 
     Every template is validated individually. If any fails, the entire
     cartridge generation is aborted with a clear error.
+
+    *information_sources* declares which information layers (changelog,
+    api_doc, source_code) the domain emits.  Defaults to all three.
     """
+    from . import SOURCES
+
     probes: list[Probe] = []
     errors: list[str] = []
 
@@ -275,6 +281,7 @@ def generate_cartridge(
         probes=tuple(probes),
         categories=categories,
         lexicon=lexicon,
+        information_sources=information_sources or SOURCES,
         max_level=max(p.level for p in probes) if probes else 1,
     )
 

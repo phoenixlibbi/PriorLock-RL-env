@@ -8,7 +8,7 @@ of DISTINCT, and the NULL-vs-empty-string distinction in COALESCE.
 from __future__ import annotations
 
 from ..probes.base import Probe
-from . import CartridgeSpec, register
+from . import CartridgeSpec, register, SOURCE_CHANGELOG, SOURCE_CODE
 
 # ═════════════════════════════════════════════════════════════════════════════
 #  FAMILY 1 — default_flip
@@ -353,6 +353,9 @@ CARTRIDGE = CartridgeSpec(
     probes=SQL_PROBES,
     categories=CATEGORIES,
     lexicon=LEXICON,
+    # SQL domains don't naturally have separate API reference docs — the source
+    # code signatures ARE the API. Two-source split: changelog + source.
+    information_sources=(SOURCE_CHANGELOG, SOURCE_CODE),
     max_level=1,
 )
 
