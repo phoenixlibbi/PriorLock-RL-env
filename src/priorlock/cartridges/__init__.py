@@ -88,6 +88,7 @@ class CartridgeSpec:
     CLI / Linux         changelog         source_code         —
     Config              changelog         api_doc             —
     Infrastructure      changelog         source_code         api_doc
+    Developer Toolkit   source_code       —                   —
     ==================  ================  ==================  ==================
     """
 
@@ -312,6 +313,7 @@ def _ensure_builtins() -> None:
     from . import frontend      # noqa: F401
     from . import backend       # noqa: F401
     from . import fundamentals  # noqa: F401
+    from . import devtools      # noqa: F401
 
     # Load L2 coupled probes and L3 workflow probes, merge into parent cartridges
     from .coupled import ALL_L2_PROBES

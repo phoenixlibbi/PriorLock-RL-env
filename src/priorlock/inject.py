@@ -416,11 +416,15 @@ def wrap_task(
     is_dual_source = len(info_sources) >= 2
 
     # ── agent-visible surface ────────────────────────────────────────────────
-    # Agent copy hides defaults: function signatures show `param=None` so the
-    # model cannot extract 2.x defaults from reading the source code.
-    # The pristine copy (grader-side) keeps real defaults for correct
+    # When changelog or API docs exist, hide defaults: function signatures
+    # show `param=None` so the model cannot extract 2.x defaults from the
+    # source code — it must read the docs.
+    # For source-code-only domains (no changelog, no API docs), defaults
+    # are left visible because the source IS the only information source.
+    # The pristine copy (grader-side) always keeps real defaults for correct
     # argument binding via inspect.Signature.bind().
-    agent_lib_source = T.render_library(lib, probes, hide_defaults=True)
+    hide = has_changelog or has_api_doc
+    agent_lib_source = T.render_library(lib, probes, hide_defaults=hide)
     pristine_lib_source = T.render_library(lib, probes, hide_defaults=False)
 
     # Source code is always written (the library must exist for the agent to

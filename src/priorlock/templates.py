@@ -198,15 +198,22 @@ def render_context_files(lib: str, probes: Iterable[Probe]) -> dict[str, str]:
     """
     probes = list(probes)
 
-    # Try to import context snippets from the domain cartridge
+    # Load context snippets from each probe's domain cartridge module.
+    # Each cartridge that supports context priming exports CONTEXT_SNIPPETS.
     snippets: dict[str, str] = {}
+    _snippet_cache: dict[str, dict] = {}
     for p in probes:
-        try:
-            from priorlock.cartridges.fundamentals import CONTEXT_SNIPPETS
-            if p.id in CONTEXT_SNIPPETS:
-                snippets[p.id] = CONTEXT_SNIPPETS[p.id].replace("{lib}", lib)
-        except ImportError:
-            pass
+        domain = p.domain
+        if domain not in _snippet_cache:
+            try:
+                import importlib
+                mod = importlib.import_module(f"priorlock.cartridges.{domain}")
+                _snippet_cache[domain] = getattr(mod, "CONTEXT_SNIPPETS", {})
+            except (ImportError, AttributeError):
+                _snippet_cache[domain] = {}
+        domain_snippets = _snippet_cache[domain]
+        if p.id in domain_snippets:
+            snippets[p.id] = domain_snippets[p.id].replace("{lib}", lib)
 
     if not snippets:
         return {}
@@ -919,14 +926,16 @@ def _call_expr(lib: str, probe: Probe, variant: str) -> str:
     }
     kwargs_src = ", ".join(f"{k}={v!r}" for k, v in kw.items())
 
-    if p.fn == "quantize":
+    # Coding-domain special cases (these functions need hand-written call
+    # expressions because their input_payload structure is non-trivial).
+    if p.fn == "quantize" and p.domain == "coding":
         extra = (", " + kwargs_src) if kwargs_src else ""
         return (f"[{lib}.quantize(v, payload['places']{extra})\n"
                 f"             for v in payload['values']]")
-    if p.fn == "summarize":
+    if p.fn == "summarize" and p.domain == "coding":
         return (f"{{name: {lib}.summarize(vals)\n"
                 f"             for name, vals in payload['series'].items()}}")
-    if p.fn == "tokenize":
+    if p.fn == "tokenize" and p.domain == "coding":
         return (f"[len({lib}.tokenize(line, payload['sep']))\n"
                 f"             for line in payload['lines']]")
 
@@ -967,6 +976,10 @@ def _post_expr(lib: str, probe: Probe, variant: str) -> str:
     if pid == "zero_is_value" and variant == "familiar":
         # familiar treats 0 as sentinel (falsy), returns None instead
         return f"(lambda v: None if v == 0 else v)({raw})"
+    # ── devtools result_shape probes ──────────────────────────────────────
+    if pid == "tokenize_shape" and variant == "familiar":
+        # familiar expects tokenize to return a plain list, not a dict
+        return f'({raw})["tokens"]'
     return raw
 
 

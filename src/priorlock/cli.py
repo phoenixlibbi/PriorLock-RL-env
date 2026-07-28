@@ -639,6 +639,82 @@ Next steps (fill in the TODOs):
     return 0
 
 
+def cmd_run(args, root: str) -> int:
+    """Generate or grade a standalone PriorLock task (no Harbor needed)."""
+    from priorlock.standalone import generate, grade, is_standalone
+
+    # ── grade mode ──────────────────────────────────────────────────────────
+    if args.grade:
+        task = Path(args.grade).resolve()
+        if not is_standalone(task):
+            print(f"{RED}{task} is not a standalone PriorLock task{RESET}",
+                  file=sys.stderr)
+            return 1
+
+        try:
+            result = grade(
+                task,
+                solution=args.solution,
+                reference=args.reference,
+            )
+        except Exception as exc:
+            print(f"{RED}grading failed: {exc}{RESET}", file=sys.stderr)
+            return 1
+
+        if args.json:
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0
+
+        gap = result.get("gap_score", 0.0)
+        variant = args.reference or "custom"
+        print(f"{BOLD}gap_score {gap}{RESET}  {DIM}({variant}){RESET}\n")
+        for p in result.get("probes", []):
+            verdict = p["verdict"]
+            colour = GREEN if verdict == "override" else RED if p["score"] == 0 else YELLOW
+            print(f"  {p['id']:<28} {colour}{verdict:<24}{RESET} {p['score']:.2f}")
+            supplied = p.get("detail", {}).get("supplied", [])
+            if supplied:
+                print(f"    {DIM}supplied: {json.dumps(supplied, ensure_ascii=False)}{RESET}")
+        if result.get("flags"):
+            print(f"\n  {RED}flags: {', '.join(result['flags'])}{RESET}")
+        return 0
+
+    # ── generate mode ───────────────────────────────────────────────────────
+    output = Path(args.output or f"priorlock-task-{os.urandom(3).hex()}")
+    try:
+        domains = args.domain if hasattr(args, "domain") and args.domain else None
+        result = generate(
+            output,
+            count=args.count,
+            domains=domains,
+            probe_ids=args.probe or None,
+            level=args.level,
+            seed=args.seed or "",
+        )
+    except Exception as exc:
+        print(f"{RED}generation failed: {exc}{RESET}", file=sys.stderr)
+        return 1
+
+    print(f"{GREEN}✓{RESET} {BOLD}standalone task generated{RESET}")
+    print(f"  path     {result.path}")
+    print(f"  library  {result.lib}")
+    print(f"  sources  {', '.join(result.information_sources)}")
+    print(f"  probes   " + ", ".join(
+        f"{p.id} {DIM}({p.family} · {p.domain}){RESET}" for p in result.probes))
+    print(f"  files    {len(result.created)} created")
+
+    from priorlock.inject import SOLUTION_NAME as _SOL
+    print(f"\n{BOLD}Next steps:{RESET}")
+    print(f"  1. Give {result.path}/instruction.md to a model")
+    print(f"  2. The model writes {result.path}/{_SOL}")
+    print(f"  3. Grade it:  {BOLD}priorlock run --grade {result.path}{RESET}")
+    print(f"\n  {DIM}Quick test:  priorlock run --grade {result.path} "
+          f"--reference gold     (expect 1.0)")
+    print(f"              priorlock run --grade {result.path} "
+          f"--reference familiar (expect 0.40){RESET}")
+    return 0
+
+
 def cmd_version(args, root: str) -> int:
     from priorlock import __version__
     print(f"priorlock {__version__}")
@@ -674,6 +750,12 @@ def build_parser() -> argparse.ArgumentParser:
   5  priorlock stage0 tasks/my-task                    10 offline gates
   6  harbor run -p tasks/my-task -a oracle     re-run
   7  priorlock doctor tasks/my-task                    did wrapping break it?
+
+standalone (no Harbor):
+  priorlock run --output ./my-task          generate a standalone task
+  priorlock run --output ./my-task --domain devtools
+  priorlock run --grade ./my-task           grade a solution
+  priorlock run --grade ./my-task --reference gold
 
 other:
   priorlock wrap tasks/ --recursive         migrate an entire suite
@@ -781,6 +863,37 @@ other:
     p_nd = sub.add_parser("new-domain", help="scaffold a bespoke authored domain")
     p_nd.add_argument("name")
 
+    # ── standalone run ─────────────────────────────────────────────────────
+    p_run = sub.add_parser("run",
+                           help="generate or grade a standalone PriorLock task "
+                                "(no Harbor needed)")
+    p_run_mode = p_run.add_argument_group("mode (pick one)")
+    p_run_mode.add_argument("--grade", metavar="DIR",
+                            help="grade a solution in a standalone task directory")
+    # generate options
+    p_run_gen = p_run.add_argument_group("generate options")
+    p_run_gen.add_argument("-o", "--output", metavar="DIR",
+                           help="output directory for the generated task")
+    p_run_gen.add_argument("-n", "--count", type=int, default=3,
+                           help="number of probes (default 3)")
+    p_run_gen.add_argument("--domain", action="append", metavar="DOMAIN",
+                           help="restrict probes to this domain (repeatable)")
+    p_run_gen.add_argument("--probe", action="append", metavar="ID",
+                           help="pin a specific probe (repeatable)")
+    p_run_gen.add_argument("--level", type=int, default=1, choices=[1, 2, 3, 4],
+                           help="max probe level (default 1)")
+    p_run_gen.add_argument("--seed", type=str, default="",
+                           help="seed for reproducible probe selection")
+    # grade options
+    p_run_grade = p_run.add_argument_group("grade options")
+    p_run_grade.add_argument("-s", "--solution", metavar="FILE",
+                             help="path to a probe_solution.py to grade")
+    p_run_grade.add_argument("--reference",
+                             choices=["gold", "familiar", "stub", "bypass"],
+                             help="grade a built-in reference solution")
+    p_run_grade.add_argument("--json", action="store_true",
+                             help="output JSON report")
+
     # ── cartridge management ────────────────────────────────────────────────
     p_cart = sub.add_parser("cartridge", help="manage domain cartridges")
     cart_sub = p_cart.add_subparsers(dest="cartridge_action", metavar="<action>")
@@ -801,6 +914,7 @@ DISPATCH = {
     "unwrap": cmd_unwrap,
     "stage0": cmd_stage0,
     "verify": cmd_verify,
+    "run": cmd_run,
     "leakprobe": cmd_leakprobe,
     "cheats": cmd_cheats,
     "calibrate": cmd_calibrate,
