@@ -41,6 +41,9 @@ priorlock evaluate tasks/my-task --reference gold          # expect gap 1.0
 priorlock evaluate tasks/my-task --reference familiar      # expect gap 0.40
 # priorlock evaluate tasks/my-task -s ./probe_solution.py --json -o report.json
 
+# Reproduce offline: see REPRODUCIBILITY.md
+# export PYTHONHASHSEED=0 && pytest -q && priorlock repro
+
 # 4) Re-run oracle + doctor
 harbor run -p tasks/my-task -a oracle
 priorlock doctor tasks/my-task
@@ -382,6 +385,7 @@ same thing the bespoke path does.
 | [`04-PROBE-SPEC.md`](priorlock/docs/04-PROBE-SPEC.md) | **probe architecture — start here** |
 | [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md) | **build → validate → migrate → gate → doctor** |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | three ways to contribute |
+| [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | install + pin seeds + offline validate |
 
 ---
 

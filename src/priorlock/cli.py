@@ -766,6 +766,33 @@ def cmd_run(args, root: str) -> int:
     return 0
 
 
+def cmd_repro(args, root: str) -> int:
+    """Write a run fingerprint under logs/repro/ and print the re-run one-liner."""
+    from priorlock.repro import build_fingerprint, rerun_one_liner, write_fingerprint
+
+    out_dir = Path(args.out) if args.out else Path(root) / "logs" / "repro"
+    fp = build_fingerprint(task_id=args.task_id, wrap_seed=args.seed)
+    path = write_fingerprint(fp, out_dir=out_dir)
+    print(f"{BOLD}repro fingerprint{RESET}  {path}")
+    for key in (
+        "priorlock_version",
+        "python_version",
+        "PYTHONHASHSEED",
+        "platform",
+        "git_commit",
+        "probe_catalog_hash",
+        "task_id",
+        "wrap_seed",
+    ):
+        if key in fp and fp[key] is not None:
+            print(f"  {key:<22} {fp[key]}")
+    print(f"\n{DIM}re-run offline checks:{RESET}")
+    print(f"  {rerun_one_liner()}")
+    if args.json:
+        print(json.dumps(fp, indent=2))
+    return 0
+
+
 def cmd_version(args, root: str) -> int:
     from priorlock import __version__
     print(f"priorlock {__version__}")
@@ -936,6 +963,18 @@ other:
     p_nd = sub.add_parser("new-domain", help="scaffold a bespoke authored domain")
     p_nd.add_argument("name")
 
+    p_repro = sub.add_parser(
+        "repro",
+        help="write a run fingerprint log for reproducible offline validation",
+    )
+    p_repro.add_argument(
+        "-o", "--out", metavar="DIR",
+        help="directory for fingerprint JSON (default: logs/repro/)",
+    )
+    p_repro.add_argument("--task-id", metavar="ID", help="optional task id to record")
+    p_repro.add_argument("--seed", metavar="SEED", help="optional wrap seed to record")
+    p_repro.add_argument("--json", action="store_true", help="also print fingerprint JSON")
+
     # ── standalone run ─────────────────────────────────────────────────────
     p_run = sub.add_parser("run",
                            help="generate or grade a standalone PriorLock task "
@@ -993,6 +1032,7 @@ DISPATCH = {
     "cheats": cmd_cheats,
     "calibrate": cmd_calibrate,
     "new-domain": cmd_new_domain,
+    "repro": cmd_repro,
     "cartridge": cmd_cartridge,
 }
 

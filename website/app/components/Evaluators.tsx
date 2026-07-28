@@ -71,6 +71,10 @@ priorlock evaluate tasks/my-task --reference gold
 priorlock evaluate tasks/my-task -s ./probe_solution.py \\
   --json -o evaluator_report.json
 
+# Reproducibility checklist (pytest + fingerprint log):
+# export PYTHONHASHSEED=0 && pytest -q && priorlock repro
+# → REPRODUCIBILITY.md
+
 # Host task_score still comes from Harbor:
 # harbor run -p tasks/my-task -a terminus-2 -m …`}
       />

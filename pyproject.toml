@@ -53,3 +53,8 @@ priorlock = [
     "probes/calibration.json",
     "domains/**/*",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+

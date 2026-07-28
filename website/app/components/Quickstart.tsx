@@ -65,7 +65,11 @@ priorlock evaluate tasks/my-task --reference familiar
 # gap_score 0.40 · prior_locked (still deterministic)
 
 priorlock evaluate tasks/my-task -s ./probe_solution.py \\
-  --json -o evaluator_report.json`,
+  --json -o evaluator_report.json
+
+# Reproducibility: pin hash seed, run unit tests, capture fingerprint
+# export PYTHONHASHSEED=0 && pytest -q && priorlock repro
+# See REPRODUCIBILITY.md`,
   },
   {
     n: 6,

@@ -177,7 +177,18 @@ archetype helps every task anyone ever wraps.
 
 ## CI
 
-Every PR runs, via `.github/workflows/stage0.yml`:
+Offline unit tests (and Stage-0 when configured) run on every PR:
+
+```bash
+pip install -e ".[dev]"
+export PYTHONHASHSEED=0
+pytest -q
+```
+
+See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full third-party validate
+recipe (`priorlock evaluate`, `stage0`, `priorlock repro`).
+
+Historical Stage-0 workflow notes (when present under `.github/workflows/`):
 
 1. **Catalog gates** — all 13 archetypes wrapped individually and put through all
    12 gates
