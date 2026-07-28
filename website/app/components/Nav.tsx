@@ -24,7 +24,7 @@ export default function Nav() {
       if (e.key === "Escape") setOpen(false);
     };
     const onResize = () => {
-      if (window.matchMedia("(min-width: 768px)").matches) setOpen(false);
+      if (window.matchMedia("(min-width: 960px)").matches) setOpen(false);
     };
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
@@ -42,55 +42,31 @@ export default function Nav() {
   }
 
   return (
-    <nav
-      className="sticky top-0 z-50 border-b"
-      style={{
-        height: "var(--nav-h)",
-        background: "rgba(7, 9, 13, 0.82)",
-        backdropFilter: "blur(14px)",
-        borderColor: "var(--border)",
-      }}
-    >
-      <div
-        className="relative mx-auto flex h-full items-center px-6 sm:px-8"
-        style={{ maxWidth: "var(--max)" }}
-      >
-        {/* Left — brand */}
-        <a
-          href="/"
-          className="relative z-10 shrink-0 font-mono text-[15px] font-bold tracking-tight"
-          onClick={close}
-        >
+    <nav className="nav-bar">
+      <div className="nav-inner">
+        <a href="/" className="nav-brand" onClick={close}>
           Prior<span style={{ color: "var(--accent)" }}>Lock</span>
         </a>
 
-        {/* Center — section links (true viewport center of the bar) */}
-        <div className="pointer-events-none absolute inset-0 hidden items-center justify-center md:flex">
-          <div className="pointer-events-auto flex items-center justify-center gap-x-4 lg:gap-x-6">
-            {links.map((link) => (
-              <a
-                key={link.id}
-                href={`/#${link.id}`}
-                className="nav-link whitespace-nowrap"
-              >
-                {link.label}
-              </a>
-            ))}
-            {pages.map((p) => (
-              <a
-                key={p.href}
-                href={p.href}
-                className="nav-link whitespace-nowrap"
-                style={{ color: "var(--accent)" }}
-              >
-                {p.label}
-              </a>
-            ))}
-          </div>
+        <div className="nav-center">
+          {links.map((link) => (
+            <a key={link.id} href={`/#${link.id}`} className="nav-link">
+              {link.label}
+            </a>
+          ))}
+          {pages.map((p) => (
+            <a
+              key={p.href}
+              href={p.href}
+              className="nav-link"
+              style={{ color: "var(--accent)" }}
+            >
+              {p.label}
+            </a>
+          ))}
         </div>
 
-        {/* Right — GitHub + mobile menu */}
-        <div className="relative z-10 ml-auto flex shrink-0 items-center gap-3">
+        <div className="nav-right">
           <a
             href="https://github.com/phoenixlibbi/PriorLock-RL-env"
             target="_blank"
@@ -103,7 +79,7 @@ export default function Nav() {
 
           <button
             type="button"
-            className="nav-menu-btn md:hidden"
+            className="nav-menu-btn nav-menu-desktop-hide"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             aria-controls="mobile-nav"
@@ -118,11 +94,16 @@ export default function Nav() {
         <>
           <button
             type="button"
-            className="nav-menu-backdrop md:hidden"
+            className="nav-menu-backdrop nav-menu-desktop-hide"
             aria-label="Close menu"
             onClick={close}
           />
-          <div id="mobile-nav" className="nav-menu-panel md:hidden" role="dialog" aria-modal="true">
+          <div
+            id="mobile-nav"
+            className="nav-menu-panel nav-menu-desktop-hide"
+            role="dialog"
+            aria-modal="true"
+          >
             <div className="flex flex-col gap-1 px-4 py-3">
               {links.map((link) => (
                 <a
