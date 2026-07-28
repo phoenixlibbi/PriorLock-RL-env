@@ -3,6 +3,7 @@ import Hero from "./components/Hero";
 import Stats from "./components/Stats";
 import HowItWorks from "./components/HowItWorks";
 import Scores from "./components/Scores";
+import Evaluators from "./components/Evaluators";
 import Domains from "./components/Domains";
 import Leaderboard from "./components/Leaderboard";
 import Contribute from "./components/Contribute";
@@ -26,6 +27,8 @@ export default function Home() {
       <Soundness />
       <div className="divider" />
       <Scores />
+      <div className="divider" />
+      <Evaluators />
       <div className="divider" />
       <Research />
       <div className="divider" />

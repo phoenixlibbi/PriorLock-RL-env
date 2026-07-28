@@ -476,48 +476,99 @@ def cmd_verify(args, root: str) -> int:
     Useful for iterating on a solution locally without spinning up Harbor, and
     for inspecting exactly which arguments a solution supplied.
     """
-    from priorlock.gates import _Sandbox
-    from priorlock.inject import detect_layout, is_wrapped
+    from priorlock.evaluators import evaluate_submission
 
     task = Path(args.task).resolve()
-    if not is_wrapped(task):
-        print(f"{RED}{task} is not wrapped{RESET}", file=sys.stderr)
-        return 1
-
-    layout = detect_layout(task)
-    solution = Path(args.solution).resolve() if args.solution else None
-    if args.reference:
-        solution = layout.tests / "_plx_reference" / f"{args.reference}.py"
-    if not solution or not solution.is_file():
-        print(f"{RED}solution not found: {solution}{RESET}", file=sys.stderr)
-        return 1
-
-    sandbox = _Sandbox(layout)
     try:
-        sandbox.install_solution(solution)
-        result = sandbox.run_grader()
-    finally:
-        sandbox.cleanup()
+        report = evaluate_submission(
+            task,
+            solution=args.solution,
+            reference=args.reference,
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"{RED}{exc}{RESET}", file=sys.stderr)
+        return 1
 
     if args.json:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(json.dumps(report.raw, indent=2, ensure_ascii=False))
         return 0
 
-    gap = result.get("gap_score", 0.0)
-    print(f"{BOLD}gap_score {gap}{RESET}  {DIM}({solution.name}){RESET}\n")
-    for p in result.get("probes", []):
-        verdict = p["verdict"]
-        colour = GREEN if verdict == "override" else RED if p["score"] == 0 else ""
-        supplied = p.get("detail", {}).get("supplied", [])
-        print(f"  {p['id']:<28} {colour}{verdict:<24}{RESET} {p['score']:.2f}")
+    label = args.reference or (Path(args.solution).name if args.solution else "solution")
+    print(f"{BOLD}gap_score {report.gap_score}{RESET}  {DIM}({label}){RESET}\n")
+    for c in report.checks:
+        colour = GREEN if c.verdict == "override" else RED if c.score == 0 else ""
+        print(f"  {c.id:<28} {colour}{c.verdict:<24}{RESET} {c.score:.2f}")
+        supplied = c.evidence.get("supplied") or []
         if supplied:
             print(f"    {DIM}supplied: {json.dumps(supplied, ensure_ascii=False)}{RESET}")
-        match = p.get("detail", {}).get("output_matches")
+        match = c.evidence.get("output_matches")
         if match:
             print(f"    {DIM}output matches: {match}{RESET}")
-    if result.get("flags"):
-        print(f"\n  {RED}flags: {', '.join(result['flags'])}{RESET}")
+    if report.flags:
+        print(f"\n  {RED}flags: {', '.join(report.flags)}{RESET}")
     return 0
+
+
+def cmd_evaluate(args, root: str) -> int:
+    """Automated Evaluators — deterministic success-criteria report.
+
+    Checklist-facing twin of ``verify``. Emits a structured report mapping each
+    probe to an explicit criterion + pass/fail + call-arg evidence. Host
+    ``task_score`` still requires Harbor/Docker (documented in the report).
+    """
+    from priorlock.evaluators import (
+        evaluate_submission,
+        meets_success_criteria,
+        write_report,
+    )
+
+    task = Path(args.task).resolve()
+    try:
+        report = evaluate_submission(
+            task,
+            solution=args.solution,
+            reference=args.reference,
+        )
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"{RED}{exc}{RESET}", file=sys.stderr)
+        return 1
+
+    payload = report.to_dict()
+    if args.out:
+        write_report(report, args.out)
+
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        label = args.reference or (
+            Path(args.solution).name if args.solution else "solution"
+        )
+        print(f"{BOLD}Automated Evaluators{RESET}  {DIM}({report.task_id} · {label}){RESET}")
+        print(f"  library       {report.library}")
+        print(f"  deterministic {GREEN}true{RESET}")
+        print(f"  gap_score     {BOLD}{report.gap_score}{RESET}")
+        print(f"  host          {DIM}{report.host_evaluator['entrypoint']} → task_score "
+              f"(Harbor/Docker){RESET}")
+        print(f"  probe         {DIM}{report.probe_evaluator['entrypoint']} → gap_score "
+              f"(offline){RESET}")
+        print()
+        for c in report.checks:
+            mark = f"{GREEN}PASS{RESET}" if c.passed else f"{RED}FAIL{RESET}"
+            print(f"  [{mark}] {c.id:<28} {c.verdict:<14} {c.score:.2f}")
+            print(f"         {DIM}criterion: {c.criterion}{RESET}")
+            supplied = c.evidence.get("supplied") or []
+            if supplied:
+                print(f"         {DIM}supplied: {json.dumps(supplied, ensure_ascii=False)}{RESET}")
+        if report.flags:
+            print(f"\n  {RED}flags: {', '.join(report.flags)}{RESET}")
+        if args.out:
+            print(f"\n  report written to {args.out}")
+
+    ok = meets_success_criteria(
+        report,
+        require_all_override=bool(args.require_override),
+    )
+    return 0 if ok else 1
 
 
 def cmd_leakprobe(args, root: str) -> int:
@@ -840,6 +891,28 @@ other:
                           help="grade a generated reference solution instead")
     p_verify.add_argument("--json", action="store_true")
 
+    p_eval = sub.add_parser(
+        "evaluate",
+        help="automated evaluators — deterministic success-criteria report",
+    )
+    p_eval.add_argument("task", help="wrapped PriorLock task directory")
+    p_eval.add_argument("-s", "--solution", help="path to a probe_solution.py")
+    p_eval.add_argument(
+        "--reference",
+        choices=["gold", "familiar", "stub", "bypass"],
+        help="grade a generated reference solution instead",
+    )
+    p_eval.add_argument("--json", action="store_true", help="print full report JSON")
+    p_eval.add_argument(
+        "-o", "--out", metavar="FILE",
+        help="write evaluator_report.json to this path",
+    )
+    p_eval.add_argument(
+        "--require-override",
+        action="store_true",
+        help="exit non-zero unless every probe verdict is override",
+    )
+
     p_lp = sub.add_parser("leakprobe",
                           help="generate the runtime isolation proof")
     p_lp.add_argument("task")
@@ -914,6 +987,7 @@ DISPATCH = {
     "unwrap": cmd_unwrap,
     "stage0": cmd_stage0,
     "verify": cmd_verify,
+    "evaluate": cmd_evaluate,
     "run": cmd_run,
     "leakprobe": cmd_leakprobe,
     "cheats": cmd_cheats,

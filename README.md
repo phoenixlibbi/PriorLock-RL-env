@@ -36,10 +36,17 @@ priorlock wrap tasks/my-task --baseline-from jobs/
 # 3) Offline gates (no Docker, no API key)
 priorlock stage0 tasks/my-task
 
+# 3b) Automated evaluators — deterministic success-criteria report
+priorlock evaluate tasks/my-task --reference gold          # expect gap 1.0
+priorlock evaluate tasks/my-task --reference familiar      # expect gap 0.40
+# priorlock evaluate tasks/my-task -s ./probe_solution.py --json -o report.json
+
 # 4) Re-run oracle + doctor
 harbor run -p tasks/my-task -a oracle
 priorlock doctor tasks/my-task
 ```
+
+Full evaluator design: [`06-EVALUATORS.md`](priorlock/docs/06-EVALUATORS.md).
 
 ### One-command lifecycle (with or without oracle)
 

@@ -107,13 +107,13 @@
     "gemini-3.5-flash-lite": {
       "merge_precedence_remap": {
         "bypassed": 0,
-        "discrimination": 0.6667,
+        "discrimination": 0.75,
         "familiar_rate": 0.0,
         "incorrect": 0,
         "other": 1,
-        "override": 2,
+        "override": 3,
         "prior_locked": 0,
-        "runs": 3
+        "runs": 4
       },
       "null_key_policy": {
         "bypassed": 0,
@@ -121,21 +121,11 @@
         "familiar_rate": 0.0,
         "incorrect": 0,
         "other": 0,
-        "override": 1,
-        "prior_locked": 0,
-        "runs": 1
-      },
-      "range_end_inclusive": {
-        "bypassed": 0,
-        "discrimination": 0.5,
-        "familiar_rate": 0.0,
-        "incorrect": 0,
-        "other": 1,
-        "override": 1,
+        "override": 2,
         "prior_locked": 0,
         "runs": 2
       },
-      "tie_inclusive_topk": {
+      "range_end_inclusive": {
         "bypassed": 0,
         "discrimination": 0.6667,
         "familiar_rate": 0.0,
@@ -144,6 +134,16 @@
         "override": 2,
         "prior_locked": 0,
         "runs": 3
+      },
+      "tie_inclusive_topk": {
+        "bypassed": 0,
+        "discrimination": 0.75,
+        "familiar_rate": 0.0,
+        "incorrect": 0,
+        "other": 1,
+        "override": 3,
+        "prior_locked": 0,
+        "runs": 4
       }
     }
   },
@@ -152,14 +152,14 @@
     "merge_precedence_remap": {
       "bypassed": 0,
       "category": "mapping",
-      "discrimination": 0.9231,
+      "discrimination": 0.9286,
       "familiar_rate": 0.0,
       "family": "value_remap",
       "incorrect": 0,
       "other": 1,
-      "override": 12,
+      "override": 13,
       "prior_locked": 0,
-      "runs": 13
+      "runs": 14
     },
     "null_key_policy": {
       "bypassed": 0,
@@ -169,21 +169,21 @@
       "family": "default_flip",
       "incorrect": 0,
       "other": 0,
-      "override": 7,
+      "override": 8,
       "prior_locked": 0,
-      "runs": 7
+      "runs": 8
     },
     "range_end_inclusive": {
       "bypassed": 0,
       "category": "collection",
-      "discrimination": 0.8333,
+      "discrimination": 0.8571,
       "familiar_rate": 0.0,
       "family": "default_flip",
       "incorrect": 0,
       "other": 1,
-      "override": 5,
+      "override": 6,
       "prior_locked": 0,
-      "runs": 6
+      "runs": 7
     },
     "sentinel_on_empty": {
       "bypassed": 0,
@@ -200,14 +200,14 @@
     "tie_inclusive_topk": {
       "bypassed": 0,
       "category": "collection",
-      "discrimination": 0.9091,
+      "discrimination": 0.9167,
       "familiar_rate": 0.0,
       "family": "result_shape",
       "incorrect": 0,
       "other": 1,
-      "override": 10,
+      "override": 11,
       "prior_locked": 0,
-      "runs": 11
+      "runs": 12
     }
   },
   "schema": 1

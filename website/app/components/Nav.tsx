@@ -6,6 +6,7 @@ const links = [
   { id: "how-it-works", label: "How it works" },
   { id: "probes", label: "Probes" },
   { id: "soundness", label: "Soundness" },
+  { id: "evaluators", label: "Evaluators" },
   { id: "research", label: "Research" },
   { id: "leaderboard", label: "Leaderboard" },
   { id: "contribute", label: "Contribute" },

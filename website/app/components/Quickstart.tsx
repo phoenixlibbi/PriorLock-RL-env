@@ -53,29 +53,31 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
 
 # G1 gold score              PASS  1.0
 # G2 familiar score          PASS  0.4
-# G3 stub score              PASS  0.0
-# G4 strict ladder           PASS  0.0 < 0.4 < 1.0
-# G5 visible tests           PASS  gold=pass familiar=pass
-# G6 canary clean            PASS  no oracle assets
-# G7 bypass scores zero      PASS  verdicts={bypassed: 3}
-# G8 tamper-proof grading    PASS  flags=[library_modified]
-# G9 all probes discriminate PASS
-# ALL GATES PASS`,
+# … ALL GATES PASS`,
   },
   {
     n: 5,
+    label: "Automated evaluators — deterministic success-criteria report",
+    code: `priorlock evaluate tasks/my-task --reference gold
+# gap_score 1.0 · every probe check PASS (override)
+
+priorlock evaluate tasks/my-task --reference familiar
+# gap_score 0.40 · prior_locked (still deterministic)
+
+priorlock evaluate tasks/my-task -s ./probe_solution.py \\
+  --json -o evaluator_report.json`,
+  },
+  {
+    n: 6,
     label: "Attack it — 8 cheat classes, pooled FAR receipt",
     code: `priorlock cheats tasks/my-task --suite
 
 # trials          104     8 classes x 13 archetypes
-# all executed    104/104 none excluded
 # false accepts   0/104   Wilson95 [0.0000, 0.0356]
-# required        upper < 0.05                  PASS
-# worst surviving 0.0     against a 0.40 baseline
 # SOUND`,
   },
   {
-    n: 6,
+    n: 7,
     label: "Inspect what the benchmark actually reads",
     code: `priorlock verify tasks/my-task --reference familiar
 
@@ -84,7 +86,7 @@ priorlock wrap tasks/ --recursive     # or an entire suite`,
 #   …`,
   },
   {
-    n: 7,
+    n: 8,
     label: "Or run the full lifecycle in one command (with / without oracle)",
     code: `# Keys + AGENT/MODEL live in harbortasks/model.env
 # CLI flags override LIFECYCLE_ORACLE=with|without
@@ -97,7 +99,7 @@ bash harbortasks/run-lifecycle.sh --with-oracle tasks/my-task
 bash harbortasks/run-lifecycle.sh --without-oracle tasks/my-task`,
   },
   {
-    n: 8,
+    n: 9,
     label: "Run an agent directly (Harbor + Docker + API key)",
     code: `export ANTHROPIC_API_KEY=sk-...
 harbor run -p tasks/my-task \\
@@ -107,7 +109,7 @@ harbor run -p tasks/my-task \\
 # priorlock_summary.json   task_score + gap_score + per-probe verdicts`,
   },
   {
-    n: 9,
+    n: 10,
     label: "Measure how informative each probe is for that model",
     code: `priorlock calibrate ingest trials/ --model claude-sonnet-5
 priorlock calibrate report --model claude-sonnet-5
@@ -133,10 +135,9 @@ export default function Quickstart() {
         >
           Harbor
         </a>{" "}
-        + Docker (oracle smoke — expect reward 1.0). Steps 3–6 need no API key.
-        Step 7 is the one-command lifecycle (<code className="font-mono text-[13px]">--with-oracle</code>{" "}
-        or <code className="font-mono text-[13px]">--without-oracle</code>). Steps 8–9 add a live model
-        and calibration.
+        + Docker (oracle smoke — expect reward 1.0). Steps 3–7 need no API key.
+        Step 5 is Automated Evaluators (<code className="font-mono text-[13px]">priorlock evaluate</code>).
+        Step 8 is the one-command lifecycle. Steps 9–10 add a live model and calibration.
       </p>
 
       <div className="flex flex-col gap-5">

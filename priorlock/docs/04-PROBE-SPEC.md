@@ -162,6 +162,10 @@ without making the correct call does not score.
 
 Five independent defences. Each closes an attack that the others do not.
 
+> **Automated Evaluators.** The public API and checklist mapping live in
+> [`06-EVALUATORS.md`](06-EVALUATORS.md). Offline:
+> `priorlock evaluate <task> --reference gold`.
+
 ### 5.1 The verifier owns the library
 
 Grading imports a **pristine copy** shipped in `tests/_plx_lib/` and places it
