@@ -69,20 +69,21 @@ Run it yourself: `priorlock bench --suite v2 --model <model> …`, report with `
 <!-- V2_FINDINGS_END -->
 
 <!-- V2_TABLES_START -->
-_Last updated 2026-10-29 03:42 · 45 runs · gemini-3.5-flash-lite (45 runs)._
+_Last updated 2026-10-29 03:46 · 49 runs · gemini-3.5-flash-lite (45 runs), openai/gpt-oss-120b (4 runs)._
 
 ### Right calls by condition (the hint ladder)
 
 | Model | repo_open | repo_source | repo_docs | repo_docs_h1 | repo_docs_h2 | repo_docs_h3 | repo_run |
 |---|---|---|---|---|---|---|---|
 | gemini-3.5-flash-lite | 100% | 78% | 29% | 28% | 38% | 61% | 72% |
+| openai/gpt-oss-120b | 100% | – | 33% | – | 33% | – | – |
 
 ### Where the change was written (all models pooled)
 
 | Channel | Open book: right call | Compiled, no hint: right call | Compiled, no hint: found the change |
 |---|---|---|---|
-| changelog | 100% (6/6) | 17% (1/6) | 0% (0/2) |
-| migration | 100% (6/6) | 0% (0/6) | 0% (0/2) |
+| changelog | 100% (9/9) | 22% (2/9) | 0% (0/3) |
+| migration | 100% (9/9) | 0% (0/6) | 0% (0/2) |
 | api_reference | 100% (3/3) | 33% (1/3) | 100% (1/1) |
 | stub | 100% (3/3) | 100% (3/3) | 100% (1/1) |
 | readme | 100% (3/3) | 33% (1/3) | 0% (0/1) |
@@ -92,14 +93,15 @@ _Last updated 2026-10-29 03:42 · 45 runs · gemini-3.5-flash-lite (45 runs)._
 | Family | Right call | Prior-locked |
 |---|---|---|
 | default_flip | 41% (22/54) | 48% (26/54) |
-| value_remap | 30% (8/27) | 41% (11/27) |
-| result_shape | 87% (13/15) | 0% (0/15) |
+| value_remap | 26% (8/31) | 45% (14/31) |
+| result_shape | 88% (15/17) | 0% (0/17) |
 
 ### Did finding the change help? (compiled library, all hints and RUN pooled)
 
 | Model | Right call when it found the change | Right call when it did not |
 |---|---|---|
 | gemini-3.5-flash-lite | 87% (26/30) | 26% (17/66) |
+| openai/gpt-oss-120b | – | 33% (2/6) |
 
 <details><summary>Every model and condition (found / looked / GREP / RUN / turns)</summary>
 
@@ -114,6 +116,9 @@ _Last updated 2026-10-29 03:42 · 45 runs · gemini-3.5-flash-lite (45 runs)._
 | gemini-3.5-flash-lite | repo_docs_h2 | 7 | **38%** [19%, 62%] | 52% (11/21) | 43% (3/7) | 100% (7/7) | 43% (3/7) | 0% (0/7) | 9.3 |
 | gemini-3.5-flash-lite | repo_docs_h3 | 6 | **61%** [39%, 83%] | 17% (3/18) | 50% (3/6) | 100% (6/6) | 50% (3/6) | 0% (0/6) | 9.3 |
 | gemini-3.5-flash-lite | repo_run | 6 | **72%** [50%, 89%] | 28% (5/18) | 17% (1/6) | 83% (5/6) | 0% (0/6) | 100% (6/6) | 8.7 |
+| openai/gpt-oss-120b | repo_open | 2 | **100%** [100%, 100%] | 0% (0/6) | 100% (2/2) | 0% (0/2) | 0% (0/2) | 0% (0/2) | 1.0 |
+| openai/gpt-oss-120b | repo_docs | 1 | **33%** [0%, 100%] | 67% (2/3) | 0% (0/1) | 0% (0/1) | 0% (0/1) | 0% (0/1) | 1.0 |
+| openai/gpt-oss-120b | repo_docs_h2 | 1 | **33%** [0%, 100%] | 33% (1/3) | 0% (0/1) | 0% (0/1) | 0% (0/1) | 0% (0/1) | 1.0 |
 
 </details>
 <!-- V2_TABLES_END -->

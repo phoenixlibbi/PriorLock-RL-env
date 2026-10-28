@@ -1,0 +1,6 @@
+[1mPriorLock bench[0m · openai/gpt-oss-120b via openai · 12 tasks × 4 conditions · sandbox=docker
+  openai/gpt-oss-120b      v2-r0-g00 repo_open gap=1.00  override  [read docs]
+  openai/gpt-oss-120b      v2-r0-g00 repo_docs gap=0.60  override prior_locked
+  openai/gpt-oss-120b      v2-r0-g00 repo_docs_h2 gap=0.47  bypassed override prior_locked
+  openai/gpt-oss-120b      v2-r0-g00 repo_run skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g01 repo_open gap=1.00  override  [read docs]

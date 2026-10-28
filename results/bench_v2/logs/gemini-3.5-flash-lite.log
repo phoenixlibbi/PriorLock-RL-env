@@ -46,3 +46,4 @@
   gemini-3.5-flash-lite    v2-r0-g06 repo_docs gap=0.27  incorrect prior_locked  [read source]
   gemini-3.5-flash-lite    v2-r0-g06 repo_docs_h2 gap=0.27  incorrect prior_locked  [read source]
   gemini-3.5-flash-lite    v2-r0-g06 repo_run skipped: 429 from https://generativelanguage.googleapis.com/v1beta/openai/chat/completions: b'[{\n  "error": {\n    "code": 429,\
+  gemini-3.5-flash-lite    v2-r0-g06 repo_source skipped: 429 from https://generativelanguage.googleapis.com/v1beta/openai/chat/completions: b'[{\n  "error": {\n    "code": 429,\
