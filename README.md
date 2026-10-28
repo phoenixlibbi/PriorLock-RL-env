@@ -1,12 +1,22 @@
 # PriorLock
 
-> **Do coding agents read the docs, or code from memory?** PriorLock is an RL environment and benchmark for *prior override*: acting on what the installed library's documentation says when it contradicts what the model memorized in training. Benchmark any model in minutes with no task image and no paid API, wrap Harbor tasks to measure it alongside their own score, or train on it with `verifiers`.
+> **An open building block for measuring, and rewarding, whether coding agents read the docs or code from memory.** When an installed library's behaviour has changed, code written from memory runs, passes every visible test, and is wrong. PriorLock turns that failure into tasks, a hardened verifier and a reward you can benchmark with, wrap into existing benchmarks, or train on, and it is built to be extended.
 
 [![tests](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/test.yml/badge.svg)](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/test.yml)
 [![Stage-0 gates](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/stage0.yml/badge.svg)](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/stage0.yml)
 ![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
+
+**Where it stands**
+
+| | |
+|---|---|
+| **Solid** (tested, in CI) | An isolated grader that scores the library calls the code actually made · 12 offline integrity gates · a 12-class cheat battery built from an outside red-team (0 of 156 cheat runs beat the do-nothing baseline) · per-seed tasks whose answers cannot be reused · non-destructive wrapping of Harbor / Terminal-Bench tasks · a four-condition model benchmark |
+| **Preliminary** | A small pilot on two free models. The same tasks separate a model that looks from one that does not (see Results) |
+| **Open, for you to build** | A multi-turn tool environment · a trained policy · tasks on real libraries · other languages. See [Build on it](#build-on-it) and [Open questions](#open-questions) |
+
+**Start here:** [Quickstart](#quickstart-no-model-one-minute) (one minute, no model) · [Starter recipes](#starter-recipes) (your own behaviour change, your own agent, your own RL loop) · [Open questions](#open-questions)
 
 Models learn libraries from a frozen snapshot of the internet. When a project pins a version whose behaviour changed, a model that codes from memory writes code that **runs, passes every visible test, and is wrong**. Nothing crashes, so nothing tells the agent to look. The documentation that would have saved it is sitting in the repository.
 
@@ -135,6 +145,16 @@ priorlock run --grade my-task --reference stub      # 0.0
 ```
 
 Hand `my-task/instruction.md` to any model or agent, let it write `probe_solution.py`, then `priorlock run --grade my-task`.
+
+## Starter recipes
+
+Three runnable scripts in [`examples/`](examples/), each under 80 lines and checked in CI:
+
+| Recipe | What it shows |
+|---|---|
+| [`01_your_own_behaviour_change.py`](examples/01_your_own_behaviour_change.py) | Define one `Probe` (a function whose behaviour changed silently, the documented call and the memorized call) and get a complete gated task. Prints gold 1.00 · familiar 0.40 · stub 0.00. |
+| [`02_plug_in_your_agent.py`](examples/02_plug_in_your_agent.py) | Measure any agent or code-writing function across all 13 archetypes with the hidden grader. |
+| [`03_reward_for_your_rl_loop.py`](examples/03_reward_for_your_rl_loop.py) | Use the grader as the reward in your own RL loop, one fresh task per seed. |
 
 ## Benchmark a model
 

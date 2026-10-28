@@ -69,6 +69,7 @@ def generate(
     count: int = 3,
     domains: list[str] | None = None,
     probe_ids: list[str] | None = None,
+    probes: list[Probe] | None = None,
     level: int = 1,
     seed: str = "",
     difficulty_range: tuple[float, float] | None = None,
@@ -84,6 +85,7 @@ def generate(
         count: number of probes to inject.
         domains: restrict probes to these cartridge domains.
         probe_ids: pin specific probe IDs (overrides auto-selection).
+        probes: your own ``Probe`` objects, used as given (overrides both).
         level: maximum probe difficulty level.
         seed: deterministic seed for probe selection.
         difficulty_range: ``(lo, hi)`` a-priori difficulty bounds.
@@ -95,7 +97,9 @@ def generate(
     task_id = seed or f"standalone-{secrets.token_hex(4)}"
 
     # ── probe selection ─────────────────────────────────────────────────────
-    if probe_ids:
+    if probes:
+        probes = list(probes)
+    elif probe_ids:
         from .probes import BY_ID, all_probes_by_id
         merged = {**BY_ID, **all_probes_by_id(domains)}
         unknown = [p for p in probe_ids if p not in merged]

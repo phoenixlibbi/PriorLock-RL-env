@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use or build on PriorLock, please cite it as below."
+title: "PriorLock: an open building block for measuring and rewarding prior override in coding agents"
+abstract: >-
+  An RL environment, benchmark and hardened verifier that measure whether
+  coding agents act on the installed library's documentation when it
+  contradicts what they memorized. Includes an isolated call-observing grader,
+  offline integrity gates, a cheat battery, per-seed synthetic tasks,
+  non-destructive wrapping of Harbor tasks, and a four-condition model
+  benchmark.
+type: software
+authors:
+  - family-names: Tariq
+    given-names: Muhammad Labeeb
+    email: labeebjutt80@gmail.com
+repository-code: "https://github.com/phoenixlibbi/PriorLock-RL-env"
+license: MIT
+version: 0.1.1
+date-released: 2026-10-28
+keywords:
+  - reinforcement learning
+  - RL environment
+  - LLM evaluation
+  - coding agents
+  - reward hacking
+  - verifiers
+  - knowledge conflicts
