@@ -1,6 +1,6 @@
 # Bench v2 report
 
-Generated 2026-10-29 04:30 from 114 runs: gemini-3.1-flash-lite (47 runs), gemini-3.5-flash-lite (45 runs), openai/gpt-oss-120b (22 runs).
+Generated 2026-10-29 04:31 from 115 runs: gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), openai/gpt-oss-120b (22 runs).
 Regenerate with `priorlock bench --report results/bench_v2/*.jsonl`.
 
 ### Every model and condition
@@ -10,7 +10,7 @@ Regenerate with `priorlock bench --report results/bench_v2/*.jsonl`.
 | gemini-3.1-flash-lite | repo_open | 12 | **89%** [78%, 97%] | 3% (1/36) | 100% (12/12) | 0% (0/12) | 0% (0/12) | 0% (0/12) | 1.0 |
 | gemini-3.1-flash-lite | repo_docs | 12 | **22%** [8%, 36%] | 36% (13/36) | 25% (3/12) | 92% (11/12) | 42% (5/12) | 0% (0/12) | 7.4 |
 | gemini-3.1-flash-lite | repo_docs_h2 | 12 | **22%** [8%, 36%] | 25% (9/36) | 25% (3/12) | 100% (12/12) | 67% (8/12) | 0% (0/12) | 10.2 |
-| gemini-3.1-flash-lite | repo_run | 11 | **39%** [24%, 58%] | 45% (15/33) | 18% (2/11) | 100% (11/11) | 0% (0/11) | 82% (9/11) | 7.8 |
+| gemini-3.1-flash-lite | repo_run | 12 | **36%** [22%, 53%] | 50% (18/36) | 17% (2/12) | 100% (12/12) | 0% (0/12) | 83% (10/12) | 8.0 |
 | gemini-3.5-flash-lite | repo_open | 7 | **100%** [100%, 100%] | 0% (0/21) | 100% (7/7) | 0% (0/7) | 0% (0/7) | 0% (0/7) | 1.0 |
 | gemini-3.5-flash-lite | repo_source | 6 | **78%** [56%, 94%] | 6% (1/18) | 0% (0/6) | 100% (6/6) | 0% (0/6) | 0% (0/6) | 4.3 |
 | gemini-3.5-flash-lite | repo_docs | 7 | **29%** [10%, 48%] | 48% (10/21) | 29% (2/7) | 86% (6/7) | 14% (1/7) | 0% (0/7) | 5.1 |
@@ -26,7 +26,7 @@ Regenerate with `priorlock bench --report results/bench_v2/*.jsonl`.
 
 | Model | repo_open | repo_source | repo_docs | repo_docs_h1 | repo_docs_h2 | repo_docs_h3 | repo_run |
 |---|---|---|---|---|---|---|---|
-| gemini-3.1-flash-lite | 89% | – | 22% | – | 22% | – | 39% |
+| gemini-3.1-flash-lite | 89% | – | 22% | – | 22% | – | 36% |
 | gemini-3.5-flash-lite | 100% | 78% | 29% | 28% | 38% | 61% | 72% |
 | openai/gpt-oss-120b | 100% | – | 8% | – | 7% | – | – |
 
@@ -44,7 +44,7 @@ Regenerate with `priorlock bench --report results/bench_v2/*.jsonl`.
 
 | Family | Right call | Prior-locked |
 |---|---|---|
-| default_flip | 28% (40/141) | 44% (62/141) |
+| default_flip | 28% (40/144) | 45% (65/144) |
 | value_remap | 17% (12/70) | 46% (32/70) |
 | result_shape | 79% (23/29) | 0% (0/29) |
 
@@ -52,6 +52,6 @@ Regenerate with `priorlock bench --report results/bench_v2/*.jsonl`.
 
 | Model | Right call when it found the change | Right call when it did not |
 |---|---|---|
-| gemini-3.1-flash-lite | 79% (19/24) | 12% (10/81) |
+| gemini-3.1-flash-lite | 79% (19/24) | 12% (10/84) |
 | gemini-3.5-flash-lite | 87% (26/30) | 26% (17/66) |
 | openai/gpt-oss-120b | – | 8% (3/39) |
