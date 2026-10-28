@@ -377,6 +377,24 @@ Everything above ran on free tiers. The pipeline is complete; these are the expe
 
 Also open: docs or source ([#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)) and habit or knowledge ([#3](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/3)). If you can run any of these, or want the results on your models, open an issue or get in touch.
 
+### 9.1 Study 2 (next): silent dependency changes inside real repositories
+
+Study 1 shows *why* the failure happens, under control. Study 2 tests whether it happens in real software. Full handover plan: [`research/study2-swebench-pro.md`](research/study2-swebench-pro.md).
+
+- **Substrate: the public set of [SWE-bench Pro](https://arxiv.org/abs/2509.16941).** Its tasks are not used, only its complete repositories and their ready, pinned Docker images. Our own tasks stay small, so a failure means "did not notice the change", not "could not solve a hard PR".
+- **Counterfactual changes, not post-cutoff releases.** One real dependency function (PyYAML, Jinja2, python-dateutil, …) has its behaviour silently changed in the installed copy and documented in that library's own style. No model can have seen the change, whatever its training cutoff, and the test is reproducible for every model. A closed-book check per model confirms it expects the original behaviour.
+- **A task:** pick a dependency function the project really calls → change it in the image, same signature → document it in exactly one place (installed docstring, `dist-info` release notes, the project's changelog or pin comment) → write a short, natural task in the project → grade the call with the same verifier, plus the repository's own tests.
+- **Survey of the public set** (2026-10-29, metadata only; [raw data](research/swebench-pro-survey.json)): 642 tasks across 11 repositories; 3 are Python, which the verifier supports today:
+
+  | Repository | Tasks | Licence | Image | Dependencies to change |
+  |---|---|---|---|---|
+  | internetarchive/openlibrary | 82 | AGPL-3.0 | 1.07 GB | python-dateutil, beautifulsoup4, httpx, lxml, PyYAML, pydantic, … |
+  | ansible/ansible | 82 | GPL-3.0 | 0.75 GB | PyYAML, Jinja2, packaging, cryptography |
+  | qutebrowser/qutebrowser | 73 | GPL-3.0 | 0.75 GB | Jinja2, PyYAML, Pygments, attrs |
+
+  The other 8 are Go or JavaScript (they need a language-specific call observer). All are copyleft, so tasks will be published as patches and setup scripts that pull the original images, never as copies of the repositories.
+- **Pilot:** openlibrary and ansible, five tasks each, run on the free models and compared with Study 1. Then 20–30 tasks for the paper, and frontier models once credits allow.
+
 ## 10. Related work
 
 | Work | Measures | PriorLock adds |
