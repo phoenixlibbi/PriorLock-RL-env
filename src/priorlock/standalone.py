@@ -269,25 +269,18 @@ def grade(
             )
 
     # Run the grader as a subprocess (cleanest isolation)
-    result = subprocess.run(
+    from .grading import run_grader
+    report, result = run_grader(
         [sys.executable, str(plx / "probe_grade.py"),
-         "--submission", str(task),
-         "--tests-dir", str(plx)],
-        capture_output=True, text=True, timeout=60,
+         "--submission", str(task), "--tests-dir", str(plx)],
+        timeout=60,
     )
-
-    if result.returncode != 0 and not result.stdout.strip():
+    if report is None:
         raise RuntimeError(
-            f"grader failed (exit {result.returncode}):\n{result.stderr[:1000]}"
+            f"grader produced no report (exit {result.returncode}):\n"
+            f"stdout:\n{result.stdout[-500:]}\nstderr:\n{result.stderr[-500:]}"
         )
-
-    try:
-        return json.loads(result.stdout)
-    except json.JSONDecodeError:
-        raise RuntimeError(
-            f"grader produced invalid JSON:\n{result.stdout[:500]}\n"
-            f"stderr:\n{result.stderr[:500]}"
-        )
+    return report
 
 
 def is_standalone(task_dir: str | Path) -> bool:

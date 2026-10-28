@@ -10,11 +10,12 @@ solution = "probe_solution.py"
 input = "data/probe_input.json"
 workdir = "/app/repo"
 container_repo = "/app/repo"
-canary = "PLXCANARY-8D38A2DB47E803441660F7C8"
+canary = "PLXCANARY-F90BD7E2DFCAEC366C501617"
 original_verifier = "task_verify.sh"
 original_verifier_sha256 = "91939ab6fa68f770dec110d286da23a154d497a9afbbad6be744a085b52f8d11"
 familiar_baseline = 0.40
 information_sources = ["api_doc", "changelog", "source_code"]
+context_files = []
 
 [weights]
 task = 0.5

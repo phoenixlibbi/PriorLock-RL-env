@@ -307,22 +307,22 @@ def grade_code(task: Path, code: str, sandbox: str, image: str) -> dict:
         shutil.copytree(task, work)
         (work / _solution_name(task)).write_text(code)
         if sandbox == "docker":
-            cmd = ["docker", "run", "--rm", "--network", "none", "--memory", "512m",
+            cmd = ["docker", "run", "--rm", "-i", "--network", "none", "--memory", "512m",
                    "-v", f"{work}:/task", image, "python",
                    "/task/.priorlock/probe_grade.py",
                    "--submission", "/task", "--tests-dir", "/task/.priorlock"]
         else:
             cmd = [sys.executable, str(work / ".priorlock" / "probe_grade.py"),
                    "--submission", str(work), "--tests-dir", str(work / ".priorlock")]
+        from .grading import run_grader
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            report, res = run_grader(cmd, timeout=120)
         except subprocess.TimeoutExpired:
             return {"gap_score": 0.0, "probes": [], "error": "grader timeout"}
-        try:
-            return json.loads(res.stdout)
-        except json.JSONDecodeError:
+        if report is None:
             return {"gap_score": 0.0, "probes": [],
                     "error": (res.stderr or res.stdout)[-500:]}
+        return report
 
 
 # ── run + summarise ─────────────────────────────────────────────────────────

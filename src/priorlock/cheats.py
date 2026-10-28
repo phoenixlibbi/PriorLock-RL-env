@@ -560,14 +560,14 @@ def _run_one(layout, cheat: dict) -> CheatResult:
             # ("probe_details.json", "../tests/probe_grade.py"). Without a
             # contained cwd those escape into whatever directory the harness
             # was invoked from.
-            proc = subprocess.run(
+            from .grading import run_grader
+            data, proc = run_grader(
                 [sys.executable, str(grader),
                  "--submission", str(sb.submission), "--tests-dir", str(sb.tests)],
-                capture_output=True, text=True, timeout=CHEAT_TIMEOUT,
-                cwd=str(sb.tmp),
+                timeout=CHEAT_TIMEOUT, cwd=str(sb.tmp),
                 env={**os.environ, "PLX_CHILD_TIMEOUT": str(CHEAT_TIMEOUT - 2)},
             )
-            stderr, stdout = proc.stderr, proc.stdout
+            stderr = proc.stderr
         except subprocess.TimeoutExpired as exc:
             stderr = (exc.stderr or b"").decode() if isinstance(exc.stderr, bytes) else (exc.stderr or "")
             return CheatResult(
@@ -578,12 +578,7 @@ def _run_one(layout, cheat: dict) -> CheatResult:
             )
 
         markers = [l for l in stderr.splitlines() if MARKER in l]
-        data = {}
-        if stdout.strip():
-            try:
-                data = json.loads(stdout)
-            except json.JSONDecodeError:
-                pass
+        data = data or {}
         return CheatResult(
             cheat["id"], cheat["class"], cheat["description"],
             float(data.get("gap_score", 0.0)),

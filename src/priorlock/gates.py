@@ -123,20 +123,17 @@ class _Sandbox:
         # test grader tampering; without a contained cwd those land in whatever
         # directory the harness happened to be invoked from — i.e. the user's
         # repo. Observed: probe_details.json appearing at the repo root.
-        proc = subprocess.run(
+        from .grading import run_grader
+        report, proc = run_grader(
             [sys.executable, str(grader),
              "--submission", str(self.submission),
              "--tests-dir", str(self.tests)],
-            capture_output=True, text=True, timeout=180, cwd=str(self.tmp),
+            timeout=180, cwd=str(self.tmp),
         )
-        if not proc.stdout.strip():
-            return {"gap_score": 0.0, "probes": [],
-                    "flags": ["grader_no_output"], "stderr": proc.stderr[-800:]}
-        try:
-            return json.loads(proc.stdout)
-        except json.JSONDecodeError:
-            return {"gap_score": 0.0, "probes": [],
-                    "flags": ["grader_bad_json"], "stdout": proc.stdout[-800:]}
+        if report is None:
+            return {"gap_score": 0.0, "probes": [], "flags": ["grader_no_report"],
+                    "stdout": proc.stdout[-800:], "stderr": proc.stderr[-800:]}
+        return report
 
     def run_visible_tests(self) -> tuple[bool, str]:
         test_file = self.submission / "tests" / "test_probe_visible.py"

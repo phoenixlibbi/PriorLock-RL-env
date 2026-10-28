@@ -176,6 +176,7 @@ def run_isolated(tests_dir, submission, solution_path, data_path, flags, notes):
             [sys.executable, "-I", child, lib_dir, LIB, sol_copy, data_path,
              out_path, rec_path, json.dumps(sorted({p["fn"] for p in PROBES}))],
             cwd=submission, env={"PATH": "/usr/bin:/bin", "PYTHONHASHSEED": "0"},
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,       # never part of the report
             timeout=CHILD_TIMEOUT, preexec_fn=preexec)
     except subprocess.TimeoutExpired:
@@ -259,7 +260,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--submission", required=True, help="agent repo root")
     ap.add_argument("--tests-dir", required=True, help="verifier tests dir")
+    ap.add_argument("--nonce-stdin", action="store_true",
+                    help="read a one-time nonce from stdin and stamp it on the report")
     args = ap.parse_args()
+    global NONCE
+    # read before the solution runs: it can never see this value
+    NONCE = sys.stdin.readline().strip() if args.nonce_stdin else ""
 
     tests_dir = os.path.abspath(args.tests_dir)
     submission = os.path.abspath(args.submission)
@@ -342,12 +348,20 @@ def finish(report):
     emit(report)
 
 
+NONCE = ""
+
+
 def emit(report):
-    json.dump(report, sys.stdout, indent=2, ensure_ascii=False)
-    sys.stdout.write("\n")
+    if NONCE:
+        report["nonce"] = NONCE
+        sys.stdout.write(json.dumps(report, ensure_ascii=False) + "\n")
+    else:
+        json.dump(report, sys.stdout, indent=2, ensure_ascii=False)
+        sys.stdout.write("\n")
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":
     sys.exit(main())
 
-# oracle canary — verifier-side only: PLXCANARY-8D38A2DB47E803441660F7C8
+# oracle canary — verifier-side only: PLXCANARY-F90BD7E2DFCAEC366C501617
