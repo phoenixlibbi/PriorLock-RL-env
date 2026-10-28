@@ -855,9 +855,14 @@ def cmd_bench(args, root: str) -> int:
     model = B.make_model(args.provider, args.model, base_url=args.base_url,
                          api_key_env=args.api_key_env, rpm=args.rpm)
     model.max_tokens = args.max_tokens
-    conditions = args.condition or list(B.CONDITIONS)
     out_dir = Path(args.out)
-    tasks = B.build_tasks(out_dir / "tasks", args.repeats, domains=args.domain)
+    if args.suite == "v2":
+        from . import repo_v2
+        conditions = args.condition or list(repo_v2.V2_CONDITIONS)
+        tasks = repo_v2.build_tasks_v2(out_dir / "tasks_v2", args.repeats)
+    else:
+        conditions = args.condition or list(B.CONDITIONS)
+        tasks = B.build_tasks(out_dir / "tasks", args.repeats, domains=args.domain)
     sandbox = args.sandbox
     if sandbox == "auto":
         sandbox = "docker" if B.docker_available() else "none"
@@ -1089,8 +1094,12 @@ other:
     p_bench.add_argument("--api-key-env", help="env var holding the API key")
     p_bench.add_argument("--condition", action="append",
                          choices=["closed", "open", "agentic", "agentic_uncued",
-                                  "agentic_docs_only"],
-                         help="repeatable; default all five")
+                                  "agentic_docs_only", "repo_open", "repo_source", "repo_docs",
+                                  "repo_docs_h1", "repo_docs_h2", "repo_docs_h3", "repo_run"],
+                         help="repeatable; default all conditions of the suite")
+    p_bench.add_argument("--suite", default="v1", choices=["v1", "v2"],
+                         help="v1: the 13-archetype pilot tasks; v2: 36 archetypes in realistic "
+                              "repos with one documentation channel each (repo_* conditions)")
     p_bench.add_argument("--repeats", type=int, default=2,
                          help="task sets to generate (each covers all 13 archetypes)")
     p_bench.add_argument("--steps", type=int, default=10,

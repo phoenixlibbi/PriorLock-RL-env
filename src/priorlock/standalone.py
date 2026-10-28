@@ -253,18 +253,25 @@ def grade(
     manifest = json.loads((plx / "manifest.json").read_text())
     sol_name = manifest["solution"]
 
-    # Resolve which solution to grade
+    # Resolve which solution to grade. A reference or outside solution is copied
+    # in only for the grader and removed again (whatever was there is restored),
+    # so grading a reference never leaves an answer in the agent-visible task.
+    target = task / sol_name
+    previous = target.read_bytes() if (reference or solution) and target.is_file() else None
+    placed = False
     if reference:
         ref_path = plx / "_plx_reference" / f"{reference}.py"
         if not ref_path.is_file():
             raise FileNotFoundError(f"reference solution not found: {ref_path}")
-        # Copy reference into position for the grader
-        shutil.copy2(ref_path, task / sol_name)
+        shutil.copy2(ref_path, target)
+        placed = True
     elif solution:
         sol = Path(solution).resolve()
         if not sol.is_file():
             raise FileNotFoundError(f"solution not found: {sol}")
-        shutil.copy2(sol, task / sol_name)
+        if sol != target:
+            shutil.copy2(sol, target)
+            placed = True
     else:
         if not (task / sol_name).is_file():
             raise FileNotFoundError(
@@ -274,11 +281,19 @@ def grade(
 
     # Run the grader as a subprocess (cleanest isolation)
     from .grading import run_grader
-    report, result = run_grader(
-        [sys.executable, str(plx / "probe_grade.py"),
-         "--submission", str(task), "--tests-dir", str(plx)],
-        timeout=60,
-    )
+    try:
+        report, result = run_grader(
+            [sys.executable, str(plx / "probe_grade.py"),
+             "--submission", str(task), "--tests-dir", str(plx)],
+            timeout=60,
+        )
+    finally:
+        if placed:
+            if previous is None:
+                target.unlink(missing_ok=True)
+            else:
+                target.write_bytes(previous)
+        (task / "probe_output.json").unlink(missing_ok=True)
     if report is None:
         raise RuntimeError(
             f"grader produced no report (exit {result.returncode}):\n"

@@ -227,7 +227,8 @@ def uncue(instruction: str) -> str:
 def _signatures(task: Path) -> str:
     """Probed function signatures with every default value hidden."""
     from .probes import BY_ID, all_probes_by_id
-    merged = {**BY_ID, **all_probes_by_id(None)}
+    from .probes.catalog_v2 import EXTENDED_BY_ID
+    merged = {**BY_ID, **EXTENDED_BY_ID, **all_probes_by_id(None)}
     lib = _lib_dir(task)
     lines = []
     for pid in _probe_ids(task):
@@ -306,6 +307,9 @@ def _act(task: Path, line: str, compiled: bool = False) -> tuple[str, str | None
 
 
 def solve(model: Model, task: Path, condition: str, steps: int = 10) -> dict:
+    if condition.startswith("repo_"):
+        from .repo_v2 import STEPS, solve_v2
+        return solve_v2(model, task, condition, max(steps, STEPS))
     instruction = (task / "instruction.md").read_text()
     sol = _solution_name(task)
     final = FINAL_HINT.format(sol=sol)
@@ -422,12 +426,16 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                     "model": model.name, "task": task.name, "condition": cond,
                     "gap_score": report.get("gap_score", 0.0), "verdicts": verdicts,
                     "read": out["read"], "turns": out["turns"],
-                    "read_docs": any(p.startswith("docs/") for p in out["read"]),
+                    "read_docs": out.get("info_seen",
+                                         any(p.startswith("docs/") for p in out["read"])),
                     "read_source": any(p.startswith(f"{lib}/") for p in out["read"]),
                     "code": out["code"],
                     "error": error or report.get("error"),
                     "seconds": round(time.time() - t0, 1),
                 }
+                for extra in ("greps", "runs", "actions"):
+                    if extra in out:
+                        rec[extra] = out[extra]
                 fh.write(json.dumps(rec) + "\n")
                 fh.flush()
                 log(f"  {model.name:<24} {task.name:<7} {cond:<8} "
@@ -444,7 +452,8 @@ def _probe_ids(task: Path) -> list[str]:
 
 def _family(pid: str) -> str:
     from .probes import BY_ID, all_probes_by_id
-    probe = {**BY_ID, **all_probes_by_id(None)}.get(pid)
+    from .probes.catalog_v2 import EXTENDED_BY_ID
+    probe = {**BY_ID, **EXTENDED_BY_ID, **all_probes_by_id(None)}.get(pid)
     return probe.family if probe else "?"
 
 
