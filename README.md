@@ -13,7 +13,7 @@
 | | |
 |---|---|
 | **Solid** (tested, in CI) | An isolated grader that scores the library calls the code actually made · 12 offline integrity gates · a 12-class cheat battery built from an outside red-team (0 of 156 cheat runs beat the do-nothing baseline) · per-seed tasks whose answers cannot be reused · non-destructive wrapping of Harbor / Terminal-Bench tasks · a four-condition model benchmark |
-| **Preliminary** | A small pilot on three free models. The same tasks separate models that look from one that does not (see Results) |
+| **Preliminary** | A small pilot on four free models from three vendors. Every model applies the change when the docs are in the prompt (96–100%, except a 7B model at 62%), but when it has to find them, right calls fall to 12–27%: some models read only the code, one never looks (see Results) |
 | **Open, for you to build** | A multi-turn tool environment · a trained policy · tasks on real libraries · other languages. See [Build on it](#build-on-it) and [Open questions](#open-questions) |
 
 **Start here:** [Quickstart](#quickstart-no-model-one-minute) (one minute, no model) · [Starter recipes](#starter-recipes) (your own behaviour change, your own agent, your own RL loop) · [Open questions](#open-questions)
@@ -59,7 +59,22 @@ Every number below regenerates offline from this repository.
 
 The receipt pools 156 runs (12 classes × 13 archetypes) for a Wilson upper bound of 2.4% on false accepts. Runs of the same class are correlated, so read that number as "no class got through anywhere", not as 156 independent trials.
 
-### 2. Pilot: what models do with the docs
+### 2. Headline: agents that seem to read the docs are reading the code
+
+Same models, same tasks, no hints in the instruction. The only change: in the second column the library ships compiled, so its source cannot be read, and the change is written only in the CHANGELOG and API reference, as for many real packages (`priorlock bench --condition agentic_docs_only`).
+
+| Model | Library code readable | Library compiled, docs readable | Opened the docs |
+|---|---|---|---|
+| Gemini 3.5 Flash-Lite | **100%** right call | **23%** [0%, 46%], 58% coded from memory | 0 of 8 tasks |
+| Gemini 3.1 Flash-Lite | **100%** | **27%** [8%, 50%], 50% coded from memory | 1 of 8 tasks |
+| gpt-oss-120b (Groq) | **12%** [3%, 24%], never opened a file | **25%** [6%, 47%], never opened a file | 0 of 10 tasks |
+| Qwen2.5-Coder 7B (local) | 15% [0%, 38%] | 15% [0%, 38%] | 0 of 4 tasks |
+
+Handed the docs in the prompt, gpt-oss-120b scores **100%** (32 of 32 calls), so the tasks are solvable; in the agentic conditions it wrote its answer on the first turn without looking at anything. That is a second way to fail: the Gemini models look, but only at the code; gpt-oss does not look at all. Its two agentic rows are effectively the same condition for a model that never opens a file, so the 12-point gap between them is run-to-run noise, a useful reminder of how wide these intervals are.
+
+On the two probe families that genuinely require the docs (`default_flip`, `value_remap`), the Gemini models made **1 right call out of 40**; their remaining right calls came from `result_shape` probes, which the instruction gives away. Handed the same docs in the prompt, the same models score 96–100%. So the skill was never "reads the documentation": with readable code they read the code, and without it they looked at the library, found nothing, and fell back on memory instead of opening the CHANGELOG.
+
+### 3. Pilot: what models do with the docs
 
 Three free models: two Gemini Flash-Lite versions through the free API tier (2 task sets each) and Qwen2.5-Coder 7B run locally with Ollama (1 task set). Every task set covers all 13 behaviour changes.
 
@@ -72,7 +87,7 @@ Three free models: two Gemini Flash-Lite versions through the free API tier (2 t
 **What it shows so far.**
 1. **The prior is real.** With no docs and no source (closed-book), Gemini 3.5 Flash-Lite used the memorized behaviour 46% of the time [23%, 73%], and on every one of the 8 `value_remap` probes, the family only reading can solve.
 2. **Models differ in whether they look.** Both Gemini models looked on every task and got everything right. Qwen could use the docs when handed them (62%) but rarely went to look, and fell to 15%. The 47-point drop is the cost of not looking, which is what PriorLock is built to isolate.
-3. **Nobody read the CHANGELOG.** Every look was at the library's own source, whose docstrings also describe the new behaviour (open question [#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)).
+3. **Nobody read the CHANGELOG.** Every look was at the library's own source, whose docstrings also describe the new behaviour. Section 2 tests what happens when that source is not readable.
 
 Qwen in closed-book mostly reimplemented the logic instead of calling the library (scored `bypassed`), so that condition says little about it. Gemini 3.5 Flash and 2.5 Flash could not be run on the free tier (daily quota, model retired) and are not reported.
 
@@ -110,7 +125,7 @@ Right call by probe family (prior-locked in brackets):
 **How to read it.**
 - **Closed-book** shows the prior: the model sees the instruction, the input file and the function signatures with defaults hidden, but no docs or source. A high prior-locked rate here is what makes a probe meaningful.
 - **Open-book** is the ceiling: the docs pasted into the prompt.
-- **Agentic** gives `LIST` and `READ` over the repository; the model has to decide to look. **Agentic, uncued** removes the instruction's hints (the version tag, the pointer to `docs/`, the bold on the required behaviour), which is closer to how real tasks read.
+- **Agentic** gives `LIST` and `READ` over the repository; the model has to decide to look. **Agentic, uncued** removes the instruction's hints (the version tag, the pointer to `docs/`, the bold on the required behaviour), which is closer to how real tasks read. **Agentic, docs-only** is uncued with the library shipped compiled: reading it shows a one-line `__init__.py` and a native binary, so the docs are the only source.
 - Every condition gets the task's input file, so differences between conditions are not about guessing the input layout.
 - **Right call** means every call to the probed function used the installed version's behaviour; **fully correct** additionally means the output was right. **Opened docs / source** counts agentic tasks where the model read a `docs/` file or the library's own source.
 
@@ -290,7 +305,7 @@ To extend it:
 The pilot answers one question and raises better ones. Each is testable with this repository and a modest compute budget, and each has an open issue to discuss or pick up:
 
 1. **Does looking drop when it costs something?** ([#1](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/1)) In a small repo two pilot models read the library every time and one rarely did. Bury the probes in a large repository, cap the number of reads, and measure the prior-locked rate as the budget shrinks.
-2. **Docs or source?** ([#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)) Agents read the library source, never the CHANGELOG. Strip docstrings from the source (keep only the changelog) and see whether they adapt or fall back on memory.
+2. **Docs or source?** ([#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)) Answered in part by the pilot: with the source unreadable, two models fell back on memory instead of opening the CHANGELOG. Open: does this hold for frontier models and full agents that can search, and does a hint like "check the release notes" close the gap?
 3. **Habit or knowledge?** ([#3](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/3)) On `default_flip` probes, always passing arguments explicitly is enough. Compare `default_flip` against `value_remap`, where only reading helps, across models.
 4. **Do synthetic scores predict real ones?** ([#4](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/4)) Inject the same kinds of silent change into forks of real libraries (or use post-cutoff releases) and correlate with the synthetic results.
 5. **Can RL teach looking?** ([#5](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/5)) Train a small open model on the agentic condition and test transfer to held-out archetypes and to real-library drift, without regressing on general coding.

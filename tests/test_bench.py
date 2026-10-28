@@ -117,3 +117,21 @@ def test_docker_sandbox_grades_the_ladder(tasks):
         code = (task / ".priorlock" / "_plx_reference" / f"{ref}.py").read_text()
         report = B.grade_code(task, code, sandbox="docker", image="python:3.11-bookworm")
         assert report["gap_score"] == score
+
+
+def test_docs_only_hides_the_library_code_but_not_the_docs(tasks):
+    task = tasks[0]
+    lib = B._lib_dir(task)
+    real = (task / lib / "__init__.py").read_text()
+    listing, _ = B._act(task, f"LIST {lib}", compiled=True)
+    assert B.NATIVE in listing
+    stub, path = B._act(task, f"READ {lib}/__init__.py", compiled=True)
+    assert "compiled extension" in stub and stub != real and path
+    for line in real.splitlines():
+        if "def " in line:
+            assert line.strip() not in stub            # no function bodies or docstrings
+    binary, _ = B._act(task, f"READ {lib}/{B.NATIVE}", compiled=True)
+    assert "binary file" in binary
+    changelog = next((task / "docs").glob("*CHANGELOG.md"))
+    obs, _ = B._act(task, f"READ docs/{changelog.name}", compiled=True)
+    assert obs == changelog.read_text()

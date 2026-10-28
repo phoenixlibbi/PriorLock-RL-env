@@ -21,6 +21,12 @@ Three conditions separate *not knowing* from *not looking*:
     The same, with the instruction's hints removed: no version tag, no pointer
     to ``docs/``, no bold on the required behaviour. Real tasks rarely announce
     the trap, so this is the harder and more realistic reading.
+``agentic_docs_only``
+    Uncued, and the library ships compiled: its folder holds a native binary
+    and a one-line ``__init__.py``, so the code cannot be read. The CHANGELOG
+    and API reference are the only places the change is written, as for many
+    real packages. This separates agents that read documentation from agents
+    that read code.
 
 Every condition sees the task's input file, so a gap between conditions is not
 about guessing the input layout.
@@ -50,7 +56,8 @@ from pathlib import Path
 from .probes import BY_ID
 from .standalone import generate
 
-CONDITIONS = ("closed", "open", "agentic", "agentic_uncued")
+CONDITIONS = ("closed", "open", "agentic", "agentic_uncued", "agentic_docs_only")
+NATIVE = "_native.cpython-311-x86_64-linux-gnu.so"
 
 # Verdicts where the solution made the call the installed version requires.
 # ``correct_call_bad_output`` used the new behaviour but mishandled the task's
@@ -109,7 +116,8 @@ class Model:
             "temperature": 0,
             "max_tokens": self.max_tokens,
         }).encode()
-        headers = {"Content-Type": "application/json"}
+        # Some gateways (Cloudflare) reject the default Python-urllib agent.
+        headers = {"Content-Type": "application/json", "User-Agent": "priorlock-bench"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         url = self.base_url.rstrip("/") + "/chat/completions"
@@ -152,7 +160,26 @@ def probe_groups(size: int = 3) -> list[list[str]]:
     return groups
 
 
-def build_tasks(out: Path, repeats: int) -> list[Path]:
+def _ladder_ok(task: Path) -> bool:
+    """A task is usable only if it ships a CHANGELOG and its references score
+    exactly gold 1.0, familiar 0.40."""
+    from .standalone import grade
+    if not list((task / "docs").glob("*CHANGELOG.md")):
+        return False                     # the change must be findable in the docs
+    try:
+        return (grade(task, reference="gold")["gap_score"] == 1.0
+                and abs(grade(task, reference="familiar")["gap_score"] - 0.4) < 1e-9)
+    except Exception:
+        return False
+
+
+def build_tasks(out: Path, repeats: int, domains: list[str] | None = None,
+                log=print) -> list[Path]:
+    """Coding archetype tasks, plus one task per extra domain per repeat.
+
+    Every task must pass its own reference ladder or it is left out, so a
+    broken probe can never reach the results.
+    """
     tasks = []
     for r in range(repeats):
         for g, ids in enumerate(probe_groups()):
@@ -160,6 +187,14 @@ def build_tasks(out: Path, repeats: int) -> list[Path]:
             if not (path / ".priorlock").is_dir():
                 generate(path, probe_ids=ids, seed=f"bench-r{r}-g{g}")
             tasks.append(path)
+        for d in domains or []:
+            path = out / f"r{r}-{d}"
+            if not (path / ".priorlock").is_dir():
+                generate(path, domains=[d], count=3, seed=f"bench-r{r}-{d}")
+            if _ladder_ok(path):
+                tasks.append(path)
+            else:
+                log(f"  skipped domain task {path.name}: reference ladder is not exact")
     return tasks
 
 
@@ -226,15 +261,36 @@ def _visible(task: Path, rel: str) -> Path | None:
     return target if target.exists() else None
 
 
-def _act(task: Path, line: str) -> tuple[str, str | None]:
+def _compiled_view(task: Path, target: Path, verb: str) -> str | None:
+    """What a compiled library looks like from inside the repo, or None."""
+    lib_dir = (task / _lib_dir(task)).resolve()
+    if target != lib_dir and lib_dir not in target.parents:
+        return None
+    lib = lib_dir.name
+    if verb == "LIST":
+        return "__init__.py\n" + NATIVE if target == lib_dir else f"{target.name}: not a directory"
+    if target.name == "__init__.py":
+        return (f'"""{lib} 2.0.0."""\nfrom ._native import *  # compiled extension\n'
+                f'__version__ = "2.0.0"\n')
+    return f"{target.name}: binary file, cannot display"
+
+
+def _act(task: Path, line: str, compiled: bool = False) -> tuple[str, str | None]:
     """Run one LIST/READ action. Returns (observation, path read or None)."""
     m = re.match(r"\s*(LIST|READ)\s+(\S+)", line)
     if not m:
         return ("Reply with LIST <dir>, READ <path>, or the final ```python block.", None)
     verb, rel = m.groups()
+    lib_native = (task / _lib_dir(task) / NATIVE).resolve()
     target = _visible(task, rel)
+    if target is None and compiled and (task / rel).resolve() == lib_native:
+        target = lib_native
     if target is None:
         return (f"{rel}: no such file or directory", None)
+    if compiled:
+        view = _compiled_view(task, target, verb)
+        if view is not None:
+            return (view, str(target.relative_to(task.resolve())) if verb == "READ" else None)
     if verb == "LIST":
         if not target.is_dir():
             return (f"{rel}: not a directory", None)
@@ -270,8 +326,9 @@ def solve(model: Model, task: Path, condition: str, steps: int = 10) -> dict:
         messages = [{"role": "system", "content": SYSTEM},
                     {"role": "user", "content": prompt}]
         reply, turns = model.chat(messages), 1
-    elif condition in ("agentic", "agentic_uncued"):
-        text = uncue(instruction) if condition == "agentic_uncued" else instruction
+    elif condition in ("agentic", "agentic_uncued", "agentic_docs_only"):
+        text = instruction if condition == "agentic" else uncue(instruction)
+        compiled = condition == "agentic_docs_only"
         messages = [{"role": "system", "content": SYSTEM},
                     {"role": "user", "content": f"{text}\n\nThe input file is:\n\n"
                      f"{_input(task)}\n\n" + AGENT_PROTOCOL.format(sol=sol, steps=steps)}]
@@ -281,7 +338,8 @@ def solve(model: Model, task: Path, condition: str, steps: int = 10) -> dict:
             turns += 1
             if extract_code(reply) is not None:
                 break
-            obs, path = _act(task, reply.strip().splitlines()[0] if reply.strip() else "")
+            obs, path = _act(task, reply.strip().splitlines()[0] if reply.strip() else "",
+                             compiled=compiled)
             if path:
                 read.append(path)
             messages += [{"role": "assistant", "content": reply},

@@ -857,7 +857,7 @@ def cmd_bench(args, root: str) -> int:
     model.max_tokens = args.max_tokens
     conditions = args.condition or list(B.CONDITIONS)
     out_dir = Path(args.out)
-    tasks = B.build_tasks(out_dir / "tasks", args.repeats)
+    tasks = B.build_tasks(out_dir / "tasks", args.repeats, domains=args.domain)
     sandbox = args.sandbox
     if sandbox == "auto":
         sandbox = "docker" if B.docker_available() else "none"
@@ -1079,7 +1079,7 @@ other:
 
     # ── bench ───────────────────────────────────────────────────────────────
     p_bench = sub.add_parser(
-        "bench", help="measure a model on the probes: closed / open / agentic (cued and uncued) "
+        "bench", help="measure a model on the probes: closed / open / agentic (cued, uncued, docs-only) "
                       "(any OpenAI-compatible endpoint, no Harbor)")
     p_bench.add_argument("--model", help="model name, e.g. qwen2.5-coder:7b")
     p_bench.add_argument("--provider", default="ollama",
@@ -1088,12 +1088,16 @@ other:
     p_bench.add_argument("--base-url", help="override the endpoint base URL")
     p_bench.add_argument("--api-key-env", help="env var holding the API key")
     p_bench.add_argument("--condition", action="append",
-                         choices=["closed", "open", "agentic", "agentic_uncued"],
-                         help="repeatable; default all four")
+                         choices=["closed", "open", "agentic", "agentic_uncued",
+                                  "agentic_docs_only"],
+                         help="repeatable; default all five")
     p_bench.add_argument("--repeats", type=int, default=2,
                          help="task sets to generate (each covers all 13 archetypes)")
     p_bench.add_argument("--steps", type=int, default=10,
                          help="max turns in the agentic condition")
+    p_bench.add_argument("--domain", action="append", metavar="DOMAIN",
+                         help="also add one task per repeat from this cartridge domain "
+                              "(repeatable; tasks whose reference ladder is not exact are skipped)")
     p_bench.add_argument("--max-tokens", type=int, default=2048,
                          help="answer token cap; raise it for thinking models")
     p_bench.add_argument("--rpm", type=float, default=0.0,

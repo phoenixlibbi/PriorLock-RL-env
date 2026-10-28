@@ -31,7 +31,8 @@ from .probes.base import Probe
 
 _WORD = re.compile(r"^[A-Za-z][A-Za-z0-9]{0,15}$")
 # integer arguments that are positions or sizes, not data
-_INDEX_KEYS = {"start", "end", "size", "k", "n", "width", "places", "count", "limit", "index"}
+_INDEX_KEYS = {"start", "end", "size", "k", "n", "width", "places", "count", "limit", "index",
+               "page", "per_page", "qs"}
 _SYLLABLES = ("ka", "lo", "mi", "ren", "tu", "sa", "vo", "zel", "pa", "ni", "dor", "ve")
 
 
