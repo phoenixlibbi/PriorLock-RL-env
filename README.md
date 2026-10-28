@@ -13,7 +13,7 @@
 | | |
 |---|---|
 | **Solid** (tested, in CI) | An isolated grader that scores the library calls the code actually made · 12 offline integrity gates · a 12-class cheat battery built from an outside red-team (0 of 156 cheat runs beat the do-nothing baseline) · per-seed tasks whose answers cannot be reused · non-destructive wrapping of Harbor / Terminal-Bench tasks · a four-condition model benchmark |
-| **Preliminary** | A small pilot on two free models. The same tasks separate a model that looks from one that does not (see Results) |
+| **Preliminary** | A small pilot on three free models. The same tasks separate models that look from one that does not (see Results) |
 | **Open, for you to build** | A multi-turn tool environment · a trained policy · tasks on real libraries · other languages. See [Build on it](#build-on-it) and [Open questions](#open-questions) |
 
 **Start here:** [Quickstart](#quickstart-no-model-one-minute) (one minute, no model) · [Starter recipes](#starter-recipes) (your own behaviour change, your own agent, your own RL loop) · [Open questions](#open-questions)
@@ -61,7 +61,51 @@ The receipt pools 156 runs (12 classes × 13 archetypes) for a Wilson upper boun
 
 ### 2. Pilot: what models do with the docs
 
-<!-- RESULTS -->
+Three free models: two Gemini Flash-Lite versions through the free API tier (2 task sets each) and Qwen2.5-Coder 7B run locally with Ollama (1 task set). Every task set covers all 13 behaviour changes.
+
+| Model | Docs handed over (open-book) | Must look for itself (agentic, no hints) | What it opened when it looked |
+|---|---|---|---|
+| Gemini 3.5 Flash-Lite | 100% right call | **100%** right call | the library source, 8 of 8 tasks; the docs, 0 |
+| Gemini 3.1 Flash-Lite | 96% | **100%** | the library source, 8 of 8; the docs, 0 |
+| Qwen2.5-Coder 7B | 62% | **15%** (38% coded from memory) | the library source, 1 of 4; the docs, 0 |
+
+**What it shows so far.**
+1. **The prior is real.** With no docs and no source (closed-book), Gemini 3.5 Flash-Lite used the memorized behaviour 46% of the time [23%, 73%], and on every one of the 8 `value_remap` probes, the family only reading can solve.
+2. **Models differ in whether they look.** Both Gemini models looked on every task and got everything right. Qwen could use the docs when handed them (62%) but rarely went to look, and fell to 15%. The 47-point drop is the cost of not looking, which is what PriorLock is built to isolate.
+3. **Nobody read the CHANGELOG.** Every look was at the library's own source, whose docstrings also describe the new behaviour (open question [#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)).
+
+Qwen in closed-book mostly reimplemented the logic instead of calling the library (scored `bypassed`), so that condition says little about it. Gemini 3.5 Flash and 2.5 Flash could not be run on the free tier (daily quota, model retired) and are not reported.
+
+<details>
+<summary>Full table: every condition, verdict mix and per-family breakdown</summary>
+
+| Model | Condition | Probes | Opened docs / source | Prior-locked (memorized behaviour) | Right call (installed behaviour) | Fully correct | Other |
+|---|---|---|---|---|---|---|---|
+| gemini-3.1-flash-lite | open | 26 | — | 4% [0%, 12%] | 96% [88%, 100%] | 96% [88%, 100%] | 0 |
+| gemini-3.1-flash-lite | agentic_uncued | 26 | 0 / 8 of 8 tasks | 0% [0%, 0%] | 100% [100%, 100%] | 100% [100%, 100%] | 0 |
+| gemini-3.5-flash-lite | closed | 26 | — | 46% [23%, 73%] | 50% [27%, 73%] | 50% [27%, 73%] | 1 |
+| gemini-3.5-flash-lite | open | 26 | — | 0% [0%, 0%] | 100% [100%, 100%] | 96% [88%, 100%] | 0 |
+| gemini-3.5-flash-lite | agentic | 26 | 0 / 8 of 8 tasks | 0% [0%, 0%] | 100% [100%, 100%] | 100% [100%, 100%] | 0 |
+| gemini-3.5-flash-lite | agentic_uncued | 26 | 0 / 8 of 8 tasks | 0% [0%, 0%] | 100% [100%, 100%] | 100% [100%, 100%] | 0 |
+| qwen2.5-coder:7b | closed | 13 | — | 0% [0%, 0%] | 0% [0%, 0%] | 0% [0%, 0%] | 13 |
+| qwen2.5-coder:7b | open | 13 | — | 8% [0%, 23%] | 62% [38%, 85%] | 54% [31%, 77%] | 4 |
+| qwen2.5-coder:7b | agentic_uncued | 13 | 0 / 1 of 4 tasks | 38% [15%, 69%] | 15% [0%, 38%] | 15% [0%, 38%] | 6 |
+
+Right call by probe family (prior-locked in brackets):
+
+| Model | Condition | default_flip | value_remap | result_shape |
+|---|---|---|---|---|
+| gemini-3.1-flash-lite | open | 12/12 (0) | 8/8 (0) | 5/6 (1) |
+| gemini-3.1-flash-lite | agentic_uncued | 12/12 (0) | 8/8 (0) | 6/6 (0) |
+| gemini-3.5-flash-lite | closed | 7/12 (4) | 0/8 (8) | 6/6 (0) |
+| gemini-3.5-flash-lite | open | 12/12 (0) | 8/8 (0) | 6/6 (0) |
+| gemini-3.5-flash-lite | agentic | 12/12 (0) | 8/8 (0) | 6/6 (0) |
+| gemini-3.5-flash-lite | agentic_uncued | 12/12 (0) | 8/8 (0) | 6/6 (0) |
+| qwen2.5-coder:7b | closed | 0/6 (0) | 0/4 (0) | 0/3 (0) |
+| qwen2.5-coder:7b | open | 6/6 (0) | 2/4 (1) | 0/3 (0) |
+| qwen2.5-coder:7b | agentic_uncued | 0/6 (5) | 0/4 (0) | 2/3 (0) |
+
+</details>
 
 **How to read it.**
 - **Closed-book** shows the prior: the model sees the instruction, the input file and the function signatures with defaults hidden, but no docs or source. A high prior-locked rate here is what makes a probe meaningful.
@@ -70,7 +114,7 @@ The receipt pools 156 runs (12 classes × 13 archetypes) for a Wilson upper boun
 - Every condition gets the task's input file, so differences between conditions are not about guessing the input layout.
 - **Right call** means every call to the probed function used the installed version's behaviour; **fully correct** additionally means the output was right. **Opened docs / source** counts agentic tasks where the model read a `docs/` file or the library's own source.
 
-Intervals resample whole archetypes (the 13 behaviour changes), not individual probes, because repeats of one archetype are correlated. This is a pilot, not a leaderboard: one free hosted model and one local open model, temperature 0, 3 task sets. Every answer, every file the agent read and every per-probe verdict is in [`results/bench/`](results/bench/).
+Intervals resample whole archetypes (the 13 behaviour changes), not individual probes, because repeats of one archetype are correlated. This is a pilot, not a leaderboard: three free models, temperature 0, 13 behaviour changes per task set. Every answer, every file the agent read and every per-probe verdict is in [`results/bench/`](results/bench/).
 
 ---
 
@@ -245,7 +289,7 @@ To extend it:
 
 The pilot answers one question and raises better ones. Each is testable with this repository and a modest compute budget, and each has an open issue to discuss or pick up:
 
-1. **Does looking drop when it costs something?** ([#1](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/1)) In a small repo the pilot model read the library every time. Bury the probes in a large repository, cap the number of reads, and measure the prior-locked rate as the budget shrinks.
+1. **Does looking drop when it costs something?** ([#1](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/1)) In a small repo two pilot models read the library every time and one rarely did. Bury the probes in a large repository, cap the number of reads, and measure the prior-locked rate as the budget shrinks.
 2. **Docs or source?** ([#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)) Agents read the library source, never the CHANGELOG. Strip docstrings from the source (keep only the changelog) and see whether they adapt or fall back on memory.
 3. **Habit or knowledge?** ([#3](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/3)) On `default_flip` probes, always passing arguments explicitly is enough. Compare `default_flip` against `value_remap`, where only reading helps, across models.
 4. **Do synthetic scores predict real ones?** ([#4](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/4)) Inject the same kinds of silent change into forks of real libraries (or use post-cutoff releases) and correlate with the synthetic results.
@@ -280,7 +324,7 @@ The core comparison (closed vs open vs agentic) is the familiar oracle-retrieval
 
 ## Limitations
 
-- **Pilot scale.** Two models, temperature 0, 13 archetypes. The results show the instrument separating conditions; they are not a ranking of models.
+- **Pilot scale.** Three free models (no frontier models), temperature 0, 13 archetypes. The results show the instrument separating conditions; they are not a ranking of models.
 - **Synthetic, convention-level priors.** The prior being tested is the conventional semantics of a function (keep-first deduplication, truncating top-k, and so on), not memory of one specific real package. That makes tasks contamination-proof and also limits what they say about real libraries (see the roadmap).
 - **Defensive habits can score.** On `default_flip` probes, an agent that always writes every argument out explicitly with the conventional value gets full credit without reading anything. `value_remap` probes are the cleanest test of reading; the bench reports results per family.
 - **`result_shape` probes are partly answerable from the instruction**, which asks for every record the library returns.
