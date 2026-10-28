@@ -39,3 +39,4 @@ out/
 
 # Reproducibility fingerprints (priorlock repro)
 logs/
+tasks/
