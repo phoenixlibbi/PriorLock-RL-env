@@ -433,7 +433,7 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                     "error": error or report.get("error"),
                     "seconds": round(time.time() - t0, 1),
                 }
-                for extra in ("greps", "runs", "actions"):
+                for extra in ("greps", "runs", "actions", "replies"):
                     if extra in out:
                         rec[extra] = out[extra]
                 fh.write(json.dumps(rec) + "\n")

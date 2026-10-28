@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import os
 import subprocess
 import sys
@@ -844,6 +845,10 @@ def cmd_bench(args, root: str) -> int:
 
     if args.report:
         records = B.load_records([Path(p) for p in args.report])
+        if any(r["condition"].startswith("repo_") for r in records):
+            from . import repo_v2
+            print(repo_v2.report_v2(records, Path(args.report[0]).parent / "tasks_v2"))
+            return 0
         print(B.report_markdown(records))
         if args.json:
             print(json.dumps(B.summarise(records), indent=2))
@@ -863,6 +868,8 @@ def cmd_bench(args, root: str) -> int:
     else:
         conditions = args.condition or list(B.CONDITIONS)
         tasks = B.build_tasks(out_dir / "tasks", args.repeats, domains=args.domain)
+    if args.only:
+        tasks = [t for t in tasks if re.search(args.only, t.name)]
     sandbox = args.sandbox
     if sandbox == "auto":
         sandbox = "docker" if B.docker_available() else "none"
@@ -1117,6 +1124,8 @@ other:
                          help="Docker image for the sandboxed grader")
     p_bench.add_argument("-o", "--out", default="bench-results",
                          help="output directory (tasks + one JSONL per model)")
+    p_bench.add_argument("--only", metavar="REGEX",
+                         help="run only the tasks whose name matches this regex")
     p_bench.add_argument("--report", nargs="+", metavar="JSONL",
                          help="print the results table for existing runs")
     p_bench.add_argument("--json", action="store_true", help="with --report: also print JSON")

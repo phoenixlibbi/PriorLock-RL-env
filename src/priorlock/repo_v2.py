@@ -510,7 +510,7 @@ def solve_v2(model, task: Path, condition: str, steps: int = STEPS) -> dict:
     if hint:
         text += "\n\n" + HINTS[hint].format(lib=meta["lib"])
     rec = {"read": [], "greps": [], "runs": 0, "actions": [], "info_seen": False,
-           "turns": 0, "code": None, "reply": ""}
+           "turns": 0, "code": None, "reply": "", "replies": []}
 
     if base == "repo_open":
         docs = "\n\n".join(f"### {rel}\n\n{(task / rel).read_text()}" for rel in meta["info_files"])
@@ -531,6 +531,7 @@ def solve_v2(model, task: Path, condition: str, steps: int = STEPS) -> dict:
         reply = model.chat(messages)
         rec["turns"] += 1
         rec["reply"] = reply
+        rec["replies"].append(reply[:3000])
         verb, arg = parse_action(reply, run_enabled)
         if verb == "FINAL":
             rec["code"] = arg
@@ -558,3 +559,113 @@ def solve_v2(model, task: Path, condition: str, steps: int = STEPS) -> dict:
     reply = model.chat(messages)
     rec.update(reply=reply, code=extract_code(reply), turns=rec["turns"] + 1)
     return rec
+
+
+# ── report ──────────────────────────────────────────────────────────────────
+
+AGENTIC_COMPILED = ("repo_docs", "repo_docs_h1", "repo_docs_h2", "repo_docs_h3", "repo_run")
+
+
+def _pct(k: int, n: int) -> str:
+    return f"{k / n:.0%} ({k}/{n})" if n else "–"
+
+
+def _rate_ci(cells: list[dict]) -> str:
+    """Right-call rate over probes with an archetype-clustered 95% interval."""
+    from .bench import RIGHT_CALL, cluster_ci
+    arch: dict[str, list[int]] = {}
+    for r in cells:
+        for pid, v in r["verdicts"].items():
+            a = arch.setdefault(pid, [0, 0])
+            a[0] += v in RIGHT_CALL
+            a[1] += 1
+    k = sum(a[0] for a in arch.values())
+    n = sum(a[1] for a in arch.values())
+    if not n:
+        return "–"
+    lo, hi = cluster_ci({p: tuple(a) for p, a in arch.items()})
+    return f"**{k / n:.0%}** [{lo:.0%}, {hi:.0%}]"
+
+
+def _probe_counts(cells: list[dict], pred=lambda pid, r: True) -> tuple[int, int, int]:
+    from .bench import RIGHT_CALL
+    right = locked = n = 0
+    for r in cells:
+        for pid, v in r["verdicts"].items():
+            if pred(pid, r):
+                n += 1
+                right += v in RIGHT_CALL
+                locked += v == "prior_locked"
+    return right, locked, n
+
+
+def report_v2(records: list[dict], tasks_dir: Path) -> str:
+    """Markdown tables for a v2 run: conditions, hint ladder, channels, families."""
+    channel = {}
+    for t in {r["task"] for r in records}:
+        meta = tasks_dir / t / ".priorlock" / "v2.json"
+        if meta.is_file():
+            channel[t] = json.loads(meta.read_text())["channel"]
+    models = sorted({r["model"] for r in records})
+    conds = [c for c in V2_CONDITIONS if any(r["condition"] == c for r in records)]
+    by = {}
+    for r in records:
+        by.setdefault((r["model"], r["condition"]), []).append(r)
+    out = ["### Every model and condition", "",
+           "| Model | Condition | Tasks | Right call [95% CI] | Prior-locked | Found the change "
+           "| Read library code | Used GREP | Used RUN | Mean turns |",
+           "|---|---|---|---|---|---|---|---|---|---|"]
+    for m in models:
+        for c in conds:
+            cells = by.get((m, c), [])
+            if not cells:
+                continue
+            right, locked, n = _probe_counts(cells)
+            t = len(cells)
+            out.append(
+                f"| {m} | {c} | {t} | {_rate_ci(cells)} | {_pct(locked, n)} | "
+                f"{_pct(sum(bool(r.get('read_docs')) for r in cells), t)} | "
+                f"{_pct(sum(bool(r.get('read_source')) for r in cells), t)} | "
+                f"{_pct(sum(bool(r.get('greps')) for r in cells), t)} | "
+                f"{_pct(sum(bool(r.get('runs')) for r in cells), t)} | "
+                f"{sum(r['turns'] for r in cells) / t:.1f} |")
+
+    ladder = [c for c in ("repo_open", "repo_source", "repo_docs", "repo_docs_h1", "repo_docs_h2",
+                          "repo_docs_h3", "repo_run") if c in conds]
+    out += ["", "### Right calls by condition (the hint ladder)", "",
+            "| Model | " + " | ".join(ladder) + " |", "|---|" + "---|" * len(ladder)]
+    for m in models:
+        row = []
+        for c in ladder:
+            right, _, n = _probe_counts(by.get((m, c), []))
+            row.append(f"{right / n:.0%}" if n else "–")
+        out.append(f"| {m} | " + " | ".join(row) + " |")
+
+    out += ["", "### Where the change was written (all models pooled)", "",
+            "| Channel | Open book: right call | Compiled, no hint: right call | "
+            "Compiled, no hint: found the change |", "|---|---|---|---|"]
+    for ch in CHANNELS:
+        op = [r for r in records if r["condition"] == "repo_open" and channel.get(r["task"]) == ch]
+        dc = [r for r in records if r["condition"] == "repo_docs" and channel.get(r["task"]) == ch]
+        ro, _, no = _probe_counts(op)
+        rd, _, nd = _probe_counts(dc)
+        out.append(f"| {ch} | {_pct(ro, no)} | {_pct(rd, nd)} | "
+                   f"{_pct(sum(bool(r.get('read_docs')) for r in dc), len(dc))} |")
+
+    fam = lambda pid: V2_BY_ID[pid].family if pid in V2_BY_ID else "?"
+    agentic = [r for r in records if r["condition"] in AGENTIC_COMPILED]
+    out += ["", "### By probe family (compiled library, all hints and RUN pooled)", "",
+            "| Family | Right call | Prior-locked |", "|---|---|---|"]
+    for f in ("default_flip", "value_remap", "result_shape"):
+        right, locked, n = _probe_counts(agentic, lambda pid, r, f=f: fam(pid) == f)
+        out.append(f"| {f} | {_pct(right, n)} | {_pct(locked, n)} |")
+
+    out += ["", "### Did finding the change help? (compiled library, all hints and RUN pooled)", "",
+            "| Model | Right call when it found the change | Right call when it did not |",
+            "|---|---|---|"]
+    for m in models:
+        cells = [r for r in agentic if r["model"] == m]
+        f_r, _, f_n = _probe_counts(cells, lambda pid, r: bool(r.get("read_docs")))
+        n_r, _, n_n = _probe_counts(cells, lambda pid, r: not r.get("read_docs"))
+        out.append(f"| {m} | {_pct(f_r, f_n)} | {_pct(n_r, n_n)} |")
+    return "\n".join(out)
