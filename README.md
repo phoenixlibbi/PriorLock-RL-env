@@ -145,10 +145,10 @@ Same models, same tasks, no hints in the instruction. The only change: in the se
 |---|---|---|---|
 | Gemini 3.5 Flash-Lite | **100%** right call | **23%** [0%, 46%], 58% coded from memory | 0 of 8 tasks |
 | Gemini 3.1 Flash-Lite | **100%** | **27%** [8%, 50%], 50% coded from memory | 1 of 8 tasks |
-| gpt-oss-120b (Groq) | **12%** [3%, 24%], never opened a file | **25%** [6%, 47%], never opened a file | 0 of 10 tasks |
+| gpt-oss-120b (Groq) | **12%** [3%, 24%], opened no file | **25%** [6%, 47%], opened no file | 0 of 10 tasks |
 | Qwen2.5-Coder 7B (local) | 15% [0%, 38%] | 15% [0%, 38%] | 0 of 4 tasks |
 
-Handed the docs in the prompt, gpt-oss-120b scores **100%** (32 of 32 calls), so the tasks are solvable; in the agentic conditions it wrote its answer on the first turn without looking at anything. That is a second way to fail: the Gemini models look, but only at the code; gpt-oss does not look at all. Its two agentic rows are effectively the same condition for a model that never opens a file, so the 12-point gap between them is run-to-run noise, a useful reminder of how wide these intervals are.
+Handed the docs in the prompt, gpt-oss-120b scores **100%** (32 of 32 calls), so the tasks are solvable. In 18 of its 20 agentic tasks it wrote its answer on the first turn without looking at anything: a second way to fail, next to the Gemini models that look but only at the code. In the other 2 tasks its file actions may have been lost: bench v2 later showed that gpt-oss on Groq sometimes emits an action as a native tool call, which reached the harness as an empty reply. The bench now reads such calls back (`recover_action`), and v2 counts every recovery. Its two agentic rows are effectively the same condition for a model that does not look, so the 12-point gap between them is run-to-run noise.
 
 On the two probe families that genuinely require the docs (`default_flip`, `value_remap`), the Gemini models made **1 right call out of 40**; their remaining right calls came from `result_shape` probes, which the instruction gives away. Handed the same docs in the prompt, the same models score 96–100%. So the skill was never "reads the documentation": with readable code they read the code, and without it they looked at the library, found nothing, and fell back on memory instead of opening the CHANGELOG.
 

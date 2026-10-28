@@ -94,6 +94,58 @@ HIDDEN = (".priorlock",)
 
 # ── model client ────────────────────────────────────────────────────────────
 
+_ACTION_TAIL = re.compile(r"\b(LIST|READ|GREP|RUN)\b\s*([^{\n]*?)\s*(\{.*\})?\s*$", re.S)
+
+
+def recover_action(text: str) -> str | None:
+    """An agent action the model emitted as a native tool call, in protocol form.
+
+    Some models (gpt-oss on Groq) express ``LIST .`` as a tool call in their
+    hidden reasoning channel and return an empty reply, or the provider rejects
+    the call with its text attached. This reads the call back so the action is
+    not lost; it never invents one. Returns None when no action is found.
+    """
+    text = (text or "").strip()
+    if not text:
+        return None
+    name, args = None, {}
+    try:                                    # {"name": ..., "arguments": {...}}
+        obj = json.loads(text)
+        if isinstance(obj, dict) and "name" in obj:
+            name = str(obj["name"])
+            args = obj.get("arguments") or {}
+            if isinstance(args, str):
+                args = json.loads(args)
+    except (ValueError, TypeError):
+        pass
+    arg = ""
+    if name is None:
+        m = None
+        for m in _ACTION_TAIL.finditer(text):
+            pass
+        last = text.splitlines()[-1] if text.splitlines() else ""
+        if m is None or (m.group(3) is None and m.group(0).strip() not in last):
+            return None
+        name, arg = m.group(1), m.group(2).strip()
+        if m.group(3):
+            try:
+                args = json.loads(m.group(3))
+            except ValueError:
+                args = {}
+    verb = "RUN" if "python" in name.lower() else name.upper()
+    if not isinstance(args, dict):
+        args = {}
+    if verb == "RUN":
+        code = args.get("code") or args.get("source") or args.get("input") or arg
+        return f"RUN\n```python\n{code}\n```" if code else None
+    if verb in ("LIST", "READ"):
+        return f"{verb} {args.get('path') or args.get('file') or arg or '.'}"
+    if verb == "GREP":
+        pat = args.get("pattern") or args.get("text") or args.get("query") or arg
+        return f"GREP {pat}" if pat else None
+    return None
+
+
 class QuotaExhausted(RuntimeError):
     """The endpoint's daily quota is used up; retrying today is pointless."""
 
@@ -107,6 +159,7 @@ class Model:
     api_key: str | None = None
     rpm: float = 0.0            # requests per minute cap; 0 = unlimited
     max_tokens: int = 2048
+    recovered: int = 0          # actions read back from native tool calls
     _last: float = field(default=0.0, repr=False)
 
     def chat(self, messages: list[dict]) -> str:
@@ -131,11 +184,27 @@ class Model:
             try:
                 with urllib.request.urlopen(req, timeout=600) as resp:
                     data = json.load(resp)
-                return data["choices"][0]["message"].get("content") or ""
+                msg = data["choices"][0]["message"]
+                content = msg.get("content") or ""
+                if not content.strip():
+                    action = recover_action(msg.get("reasoning") or "")
+                    if action:
+                        self.recovered += 1
+                        return action
+                return content
             except urllib.error.HTTPError as exc:
                 err = exc.read()
                 if exc.code == 429 and re.search(rb"per[ -]?day|PerDay", err, re.I):
                     raise QuotaExhausted(f"daily quota exhausted for {self.name}") from exc
+                if exc.code == 400 and b"called a tool" in err:
+                    try:
+                        gen = json.loads(err)["error"].get("failed_generation", "")
+                    except (ValueError, KeyError, AttributeError):
+                        gen = ""
+                    action = recover_action(gen)
+                    if action:
+                        self.recovered += 1
+                        return action
                 if exc.code in (429, 500, 502, 503) and attempt < 5:
                     time.sleep(min(60, 5 * 2 ** attempt))
                     continue
@@ -411,6 +480,7 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                 if key in done:
                     continue
                 t0 = time.time()
+                recovered_before = model.recovered
                 try:
                     out = solve(model, task, cond, steps)
                     error = None
@@ -443,6 +513,7 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                     "error": error or report.get("error"),
                     "seconds": round(time.time() - t0, 1),
                 }
+                rec["recovered_calls"] = model.recovered - recovered_before
                 for extra in ("greps", "runs", "actions", "replies"):
                     if extra in out:
                         rec[extra] = out[extra]

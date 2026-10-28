@@ -176,3 +176,16 @@ def test_daily_quota_stops_the_model(monkeypatch):
     monkeypatch.setattr(B.urllib.request, "urlopen", fake_urlopen)
     with pytest.raises(B.QuotaExhausted):
         B.Model(name="m", base_url="http://x").chat([{"role": "user", "content": "hi"}])
+
+
+@pytest.mark.parametrize("text, want", [
+    ('We need to explore repository.LIST .{"path":".","depth":2}', "LIST ."),
+    ('Let me open it. READ docs/a.md', "READ docs/a.md"),
+    ('{"name": "READ", "arguments": {"path": "lib/x.pyi"}}', "READ lib/x.pyi"),
+    ('{"name": "python", "arguments": {"code": "print(1)"}}', "RUN\n```python\nprint(1)\n```"),
+    ('GREP {"pattern": "default"}', "GREP default"),
+    ("I should READ the docs first, then decide.\nThe answer is below.", None),
+    ("", None),
+])
+def test_recover_action_from_native_tool_calls(text, want):
+    assert B.recover_action(text) == want
