@@ -203,6 +203,34 @@ They found real problems, and this version fixes them:
 | `unwrap` could delete a host task's own `utils/` | the manifest records what wrap wrote; unwrap removes only that |
 | Missing closest prior work | CodeUpdateArena and knowledge-conflict studies are cited |
 
+## Build on it
+
+PriorLock is meant as a foundation more than a finished leaderboard. Its parts are separable, and each is useful on its own:
+
+| Piece | Reuse it for | Where |
+|---|---|---|
+| **Call-observing grader** | Any RL environment where *how* the agent used an API matters, not only the final output. Records the arguments actually passed, against a library copy the agent cannot touch, in an isolated process. | `templates.py` (`GRADER`, `CHILD_SOURCE`) |
+| **Structural reward ladder** | A dense reward with a meaningful middle rung: the "plausible but wrong" answer earns a fixed partial score, cheating can never beat it. | `probes/base.py` |
+| **Probe injection (`wrap`)** | Adding a second, orthogonal measurement to an existing benchmark without re-authoring its tasks or touching its verifier. | `inject.py`, `gates.py` |
+| **Cheat battery** | Red-teaming any verifier: execution markers, "false accept = above baseline", white-box attackers, pooled receipts. | `cheats.py` |
+| **Condition harness** | Separating *not knowing* from *not looking* for any grounding skill (closed / open / agentic / uncued), with archetype-clustered intervals. | `bench.py` |
+| **Per-seed variation** | Making generated tasks resistant to leaked answers: perturb inputs, recompute answers by running reference solutions. | `variation.py` |
+
+To extend it:
+- **New behaviour change:** add a `Probe` (a function, its old and new behaviour, gold and familiar arguments) to `probes/catalog.py` or a cartridge; gates G1–G12 and the cheat battery check it automatically. [`CONTRIBUTING.md`](CONTRIBUTING.md) walks through it.
+- **New model or agent:** any OpenAI-compatible endpoint works with `bench`; a full agent can be measured by wrapping Harbor tasks and running it there.
+- **New condition:** `bench.solve` is one function per condition; a read budget, code execution or a docs-search tool are each a few dozen lines.
+
+## Open questions
+
+The pilot answers one question and raises better ones. Each is testable with this repository and a modest compute budget:
+
+1. **Does looking drop when it costs something?** In a small repo the pilot model read the library every time. Bury the probes in a large repository, cap the number of reads, and measure the prior-locked rate as the budget shrinks.
+2. **Docs or source?** Agents read the library source, never the CHANGELOG. Strip docstrings from the source (keep only the changelog) and see whether they adapt or fall back on memory.
+3. **Habit or knowledge?** On `default_flip` probes, always passing arguments explicitly is enough. Compare `default_flip` against `value_remap`, where only reading helps, across models.
+4. **Do synthetic scores predict real ones?** Inject the same kinds of silent change into forks of real libraries (or use post-cutoff releases) and correlate with the synthetic results.
+5. **Can RL teach looking?** Train a small open model on the agentic condition and test transfer to held-out archetypes and to real-library drift, without regressing on general coding.
+
 ## Roadmap
 
 What the reviewers asked for that is still open, in the order they ranked it:
@@ -221,6 +249,9 @@ What the reviewers asked for that is still open, in the order they ranked it:
 | [VersiCode](https://arxiv.org/abs/2406.07411) | version-specific completion and migration | an agentic condition and a reward, not only a score |
 | [LibEvoBench](https://arxiv.org/abs/2606.25402) | version-obliviousness on real libraries; docs help, stating the version does not | whether the agent *fetches* the docs itself |
 | [CodeUpdateArena](https://arxiv.org/abs/2407.06249) | whether a model can use a synthetic API update it is given | the update is not given: it sits in the repo, and the agent must notice it |
+| [When LLMs Lag Behind](https://arxiv.org/abs/2604.09515) | 270 real API updates as context-memory conflicts; even with docs, about two thirds of code runs | silent same-signature changes, and whether the agent fetches the docs at all |
+| [SWE-Chain](https://arxiv.org/abs/2605.14415), [RoadmapBench](https://arxiv.org/abs/2605.15846) | agents performing real release-level upgrades, given the release notes as the spec | nobody tells the agent there is anything to upgrade for |
+| [Tool-Memory Conflict](https://arxiv.org/abs/2601.09760) | tool outputs contradicting parametric knowledge | a verifiable, attack-resistant reward for following the environment |
 | [Knowledge conflicts](https://arxiv.org/abs/2305.13300) (Xie et al.) | when LLMs follow context that contradicts memory | a coding-agent instance, graded on the calls the code made |
 | [Embers of Autoregression](https://arxiv.org/abs/2309.13638) | models default to high-probability answers on low-probability variants | the mechanism the familiar rung is built around |
 | [Terminal-Bench](https://arxiv.org/abs/2601.11868) | agents on hard terminal tasks (Harbor) | the probes ride along on its tasks without re-authoring |
@@ -269,7 +300,6 @@ tablixdemo/           reference authored domain (also wrapped)
 results/              bench runs and receipts
 priorlock/docs/       design docs
 priorlock/papers/     literature notes
-website/              project site
 ```
 
 ## Author

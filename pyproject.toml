@@ -39,8 +39,8 @@ priorlock = "priorlock.cli:main"
 priorlock = "priorlock.env:load_environment"
 
 [project.urls]
-Homepage = "https://prior-lock-rl-env.vercel.app"
-Documentation = "https://prior-lock-rl-env.vercel.app"
+Homepage = "https://github.com/phoenixlibbi/PriorLock-RL-env"
+Documentation = "https://github.com/phoenixlibbi/PriorLock-RL-env#readme"
 Repository = "https://github.com/phoenixlibbi/PriorLock-RL-env"
 Issues = "https://github.com/phoenixlibbi/PriorLock-RL-env/issues"
 
