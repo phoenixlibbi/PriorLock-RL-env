@@ -16,20 +16,20 @@ Coding agents work in repositories whose dependencies are pinned to versions the
 
 PriorLock builds tasks around synthetic, contamination-free libraries whose behaviour changed silently, and grades the library calls the agent's code actually made, with an isolated, red-teamed verifier, on a three-rung ladder: never called the library (0), called it the memorized way (0.40), called it the documented way (1.0). In **bench v2**, 36 behaviour changes sit inside realistic repositories where the change is written in exactly one place (a CHANGELOG, a migration guide, API reference pages, a type stub or a README).
 
-Across the free models tested so far, models apply the change almost perfectly when the documentation is in the prompt (93–100% right calls), but **when they must find it themselves, right calls fall to 8–33%**. The failure is in looking, not in understanding: when a model found the note it made the right call 87% of the time, and when it did not, 26%. Telling a model that the library was upgraded does not help; telling it to check the documentation, or letting it run code, helps the model that looks, and does nothing for models that answer without looking. Looking is a habit, which makes it a training target; PriorLock packages the tasks, the verifier and the reward as an open building block for that.
+Across the free models tested so far, models apply the change almost perfectly when the documentation is in the prompt (89–100% right calls), but **when they must find it themselves, right calls fall to 8–29%**. The failure is in looking, not in understanding: when a model found the note it made the right call 79–87% of the time, and when it did not, 12–26%. Telling a model that the library was upgraded does not help; telling it to check the documentation, or letting it run code, helps the model that looks, and does nothing for models that answer without looking. Looking is a habit, which makes it a training target; PriorLock packages the tasks, the verifier and the reward as an open building block for that.
 
 <!-- V2_FINDINGS_START -->
 ## Key findings so far
 
-Free models only, temperature 0. Bench v2 is still running (see the timestamp on the tables); cells hold about 3–9 tasks, so read these as directions with wide intervals, not estimates.
+Free models only, temperature 0. Bench v2 is still running (see the timestamp on the tables): Gemini 3.1 Flash-Lite has completed the first task set (all 36 changes) on 4 conditions; Gemini 3.5 Flash-Lite and gpt-oss-120b are partway through and resume when their free daily quotas reset. Cells hold about 5–12 tasks, so read these as directions with wide intervals, not estimates.
 
-1. **The tasks are solvable; the information is the bottleneck.** With the docs in the prompt: Gemini 3.5 Flash-Lite 100%, gpt-oss-120b 100%, Gemini 3.1 Flash-Lite 93% right calls.
-2. **When the agent must find the docs, it mostly does not.** Library compiled, no hint: Gemini 3.5 Flash-Lite 29%, Gemini 3.1 Flash-Lite 33%, gpt-oss-120b 8%. The same drop appeared in the v1 pilot on four models from three vendors (12–27%).
-3. **Two different failures.** The Gemini models look, but at the library's code: with readable source Gemini 3.5 Flash-Lite reached 78%; with the source compiled it went on opening the library and rarely the docs. gpt-oss-120b does not look at all: it answered on its first turn in every compiled-library task, even when told to check the documentation.
-4. **Finding the note is what matters.** Gemini 3.5 Flash-Lite made the right call 87% of the time when it found the note describing the change, and 26% when it did not.
-5. **Telling the version does not help; telling what to do does, for a model that looks.** For Gemini 3.5 Flash-Lite: "upgraded to 2.0" 28%, "check the documentation" 38%, "defaults changed; the docs describe it" 61%, consistent with [LibEvoBench](https://arxiv.org/abs/2606.25402)'s finding that stating the target version gives no benefit. The same "check the documentation" hint did not move gpt-oss-120b (8% → 7%) or Gemini 3.1 Flash-Lite (33% → 33%).
-6. **Running the code is the strongest lever so far.** With a RUN tool and no hint, Gemini 3.5 Flash-Lite tested the library directly and reached 72% (Gemini 3.1 Flash-Lite 42%).
-7. **Agents look next to the code, not in the docs folder.** Changes written in the CHANGELOG or a migration guide were never found without a hint; changes written in the type stub inside the library folder were found most often.
+1. **The tasks are solvable; the information is the bottleneck.** With the docs in the prompt: Gemini 3.5 Flash-Lite 100%, gpt-oss-120b 100%, Gemini 3.1 Flash-Lite 89% right calls.
+2. **When the agent must find the docs, it mostly does not.** Library compiled, no hint: Gemini 3.5 Flash-Lite 29%, Gemini 3.1 Flash-Lite 22%, gpt-oss-120b 8%. The same drop appeared in the v1 pilot on four models from three vendors (12–27%).
+3. **Finding the note is what matters.** When the agent found the note describing the change it made the right call 79–87% of the time (Gemini 3.1: 79% vs 12% when it did not; Gemini 3.5: 87% vs 26%).
+4. **Two different failures.** The Gemini models look, but mostly at the library's code: with readable source Gemini 3.5 Flash-Lite reached 78%. gpt-oss-120b does not look at all: it answered on its first turn in every compiled-library task, even when told to check the documentation.
+5. **Telling the version does not help; telling what to do helps only a model that looks.** For Gemini 3.5 Flash-Lite: "upgraded to 2.0" 28%, "check the documentation" 38%, "defaults changed; the docs describe it" 61%, consistent with [LibEvoBench](https://arxiv.org/abs/2606.25402)'s finding that stating the target version gives no benefit. "Check the documentation" did not move Gemini 3.1 Flash-Lite (22% → 22%) or gpt-oss-120b (8% → 7%).
+6. **Running the code is the strongest lever so far.** With a RUN tool and no hint, Gemini 3.5 Flash-Lite tested the library directly and reached 72%; Gemini 3.1 Flash-Lite 39%.
+7. **Agents look next to the code, not in the docs folder.** Without a hint, a change written in the type stub inside the library folder was found in 3 of 4 tasks (75% right calls); one written in the CHANGELOG or a migration guide was found in 0 of 14 (0–14% right calls).
 <!-- V2_FINDINGS_END -->
 
 ## Contents
@@ -163,13 +163,13 @@ The core conditions are `repo_open`, `repo_docs`, `repo_docs_h2` and `repo_run`.
 ### 4.1 Bench v2
 
 <!-- V2_TABLES_START -->
-_Last updated 2026-10-29 04:12 · 84 runs · gemini-3.1-flash-lite (17 runs), gemini-3.5-flash-lite (45 runs), openai/gpt-oss-120b (22 runs)._
+_Last updated 2026-10-29 04:30 · 114 runs · gemini-3.1-flash-lite (47 runs), gemini-3.5-flash-lite (45 runs), openai/gpt-oss-120b (22 runs)._
 
 ### Right calls by condition (the hint ladder)
 
 | Model | repo_open | repo_source | repo_docs | repo_docs_h1 | repo_docs_h2 | repo_docs_h3 | repo_run |
 |---|---|---|---|---|---|---|---|
-| gemini-3.1-flash-lite | 93% | – | 33% | – | 33% | – | 42% |
+| gemini-3.1-flash-lite | 89% | – | 22% | – | 22% | – | 39% |
 | gemini-3.5-flash-lite | 100% | 78% | 29% | 28% | 38% | 61% | 72% |
 | openai/gpt-oss-120b | 100% | – | 8% | – | 7% | – | – |
 
@@ -177,25 +177,25 @@ _Last updated 2026-10-29 04:12 · 84 runs · gemini-3.1-flash-lite (17 runs), ge
 
 | Channel | Open book: right call | Compiled, no hint: right call | Compiled, no hint: found the change |
 |---|---|---|---|
-| changelog | 100% (15/15) | 20% (3/15) | 0% (0/5) |
-| migration | 93% (14/15) | 0% (0/15) | 0% (0/5) |
-| api_reference | 100% (12/12) | 8% (1/12) | 25% (1/4) |
-| stub | 100% (12/12) | 67% (6/9) | 67% (2/3) |
-| readme | 100% (9/9) | 33% (2/6) | 0% (0/2) |
+| changelog | 100% (21/21) | 14% (3/21) | 0% (0/7) |
+| migration | 95% (20/21) | 0% (0/21) | 0% (0/7) |
+| api_reference | 100% (15/15) | 7% (1/15) | 20% (1/5) |
+| stub | 100% (15/15) | 75% (9/12) | 75% (3/4) |
+| readme | 75% (9/12) | 25% (3/12) | 25% (1/4) |
 
 ### By probe family (compiled library, all hints and RUN pooled)
 
 | Family | Right call | Prior-locked |
 |---|---|---|
-| default_flip | 32% (31/96) | 47% (45/96) |
-| value_remap | 16% (8/49) | 45% (22/49) |
-| result_shape | 77% (20/26) | 0% (0/26) |
+| default_flip | 28% (40/141) | 44% (62/141) |
+| value_remap | 17% (12/70) | 46% (32/70) |
+| result_shape | 79% (23/29) | 0% (0/29) |
 
 ### Did finding the change help? (compiled library, all hints and RUN pooled)
 
 | Model | Right call when it found the change | Right call when it did not |
 |---|---|---|
-| gemini-3.1-flash-lite | 100% (9/9) | 15% (4/27) |
+| gemini-3.1-flash-lite | 79% (19/24) | 12% (10/81) |
 | gemini-3.5-flash-lite | 87% (26/30) | 26% (17/66) |
 | openai/gpt-oss-120b | – | 8% (3/39) |
 
@@ -205,10 +205,10 @@ _Last updated 2026-10-29 04:12 · 84 runs · gemini-3.1-flash-lite (17 runs), ge
 
 | Model | Condition | Tasks | Right call [95% CI] | Prior-locked | Found the change | Looked at the library | Used GREP | Used RUN | Mean turns |
 |---|---|---|---|---|---|---|---|---|---|
-| gemini-3.1-flash-lite | repo_open | 5 | **93%** [80%, 100%] | 7% (1/15) | 100% (5/5) | 0% (0/5) | 0% (0/5) | 0% (0/5) | 1.0 |
-| gemini-3.1-flash-lite | repo_docs | 4 | **33%** [8%, 58%] | 33% (4/12) | 25% (1/4) | 75% (3/4) | 25% (1/4) | 0% (0/4) | 6.8 |
-| gemini-3.1-flash-lite | repo_docs_h2 | 4 | **33%** [8%, 58%] | 17% (2/12) | 25% (1/4) | 100% (4/4) | 75% (3/4) | 0% (0/4) | 10.5 |
-| gemini-3.1-flash-lite | repo_run | 4 | **42%** [17%, 67%] | 33% (4/12) | 25% (1/4) | 100% (4/4) | 0% (0/4) | 75% (3/4) | 8.0 |
+| gemini-3.1-flash-lite | repo_open | 12 | **89%** [78%, 97%] | 3% (1/36) | 100% (12/12) | 0% (0/12) | 0% (0/12) | 0% (0/12) | 1.0 |
+| gemini-3.1-flash-lite | repo_docs | 12 | **22%** [8%, 36%] | 36% (13/36) | 25% (3/12) | 92% (11/12) | 42% (5/12) | 0% (0/12) | 7.4 |
+| gemini-3.1-flash-lite | repo_docs_h2 | 12 | **22%** [8%, 36%] | 25% (9/36) | 25% (3/12) | 100% (12/12) | 67% (8/12) | 0% (0/12) | 10.2 |
+| gemini-3.1-flash-lite | repo_run | 11 | **39%** [24%, 58%] | 45% (15/33) | 18% (2/11) | 100% (11/11) | 0% (0/11) | 82% (9/11) | 7.8 |
 | gemini-3.5-flash-lite | repo_open | 7 | **100%** [100%, 100%] | 0% (0/21) | 100% (7/7) | 0% (0/7) | 0% (0/7) | 0% (0/7) | 1.0 |
 | gemini-3.5-flash-lite | repo_source | 6 | **78%** [56%, 94%] | 6% (1/18) | 0% (0/6) | 100% (6/6) | 0% (0/6) | 0% (0/6) | 4.3 |
 | gemini-3.5-flash-lite | repo_docs | 7 | **29%** [10%, 48%] | 48% (10/21) | 29% (2/7) | 86% (6/7) | 14% (1/7) | 0% (0/7) | 5.1 |
