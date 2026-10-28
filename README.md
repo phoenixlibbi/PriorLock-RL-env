@@ -13,7 +13,7 @@
 | | |
 |---|---|
 | **Solid** (tested, in CI) | An isolated grader that scores the library calls the code actually made · 12 offline integrity gates · a 12-class cheat battery built from an outside red-team (0 of 156 cheat runs beat the do-nothing baseline) · per-seed tasks whose answers cannot be reused · non-destructive wrapping of Harbor / Terminal-Bench tasks · a four-condition model benchmark |
-| **Preliminary** | A small pilot on four free models from three vendors. Every model applies the change when the docs are in the prompt (96–100%, except a 7B model at 62%), but when it has to find them, right calls fall to 12–27%: some models read only the code, one never looks (see Results) |
+| **Preliminary** | Bench v2 in realistic repositories is running on the free models (results below, updated as each finishes). A pilot on four free models from three vendors: Every model applies the change when the docs are in the prompt (96–100%, except a 7B model at 62%), but when it has to find them, right calls fall to 12–27%: some models read only the code, one never looks (see Results) |
 | **Open, for you to build** | A multi-turn tool environment · a trained policy · tasks on real libraries · other languages. See [Build on it](#build-on-it) and [Open questions](#open-questions) |
 
 **Start here:** [Quickstart](#quickstart-no-model-one-minute) (one minute, no model) · [Starter recipes](#starter-recipes) (your own behaviour change, your own agent, your own RL loop) · [Open questions](#open-questions)
@@ -45,6 +45,78 @@ Prior work measured the knowledge side of this. [LibEvoBench](https://arxiv.org/
 ---
 
 ## Results
+
+### Bench v2: realistic repositories (running now, updated as each model finishes)
+
+The pilot below uses small task folders with the change written in a CHANGELOG. Bench v2 asks the same question in a setting a skeptic would accept:
+
+- **36 behaviour changes** (the original 13 plus 23 new everyday ones: time units, percentiles, page numbering, CSV headers, slugs, week starts, log levels, version ordering, config parsing, …) in **24 tasks**, two task sets that each cover all 36.
+- **Each task is a small, realistic project**: application code, tests, CI, a runbook, ADRs and a vendored library with its own docs, so finding the right note takes real searching.
+- **The change is written in exactly one place**, the task's *channel*: the library's CHANGELOG, a migration guide, API reference pages, the type stub (`.pyi`) or an "Upgrading" section of its README. A check (`check_channel_isolation`) proves it appears nowhere else.
+- **Conditions**: docs pasted in the prompt (ceiling) · library source readable · library compiled with no hint · three hints ("upgraded to 2.0" / "check the documentation" / "defaults changed, the docs describe it") · compiled plus a **RUN** tool that executes Python in a sandbox. The agent also has **GREP**.
+- **Verified before any model ran**: on all 24 tasks the Docker grader gives the reference solutions exactly 1.0 / 0.40 / 0 / 0 (gold, memorized, bypass, empty); 53 tests pass; every model reply is kept in the results.
+
+Run it yourself: `priorlock bench --suite v2 --model <model> …`, report with `priorlock bench --report results/bench_v2/*.jsonl`. Full tables: [results/bench_v2/REPORT.md](results/bench_v2/REPORT.md); logs: [results/bench_v2/logs](results/bench_v2/logs).
+
+<!-- V2_FINDINGS_START -->
+**What it shows so far** (Gemini 3.5 Flash-Lite on the first task set; other free models are queued; each cell is about six tasks, so treat these as directions, not estimates):
+
+1. **The v1 result holds in realistic repos.** Docs in the prompt: 100% right calls. Library compiled, no hint: 29%.
+2. **The failure is not looking, not misunderstanding.** When the model found the note describing the change it made the right call 87% of the time; when it did not, 26%.
+3. **Saying the version changed does not help; saying what to do does.** "Upgraded to 2.0" left it at 28%, in line with [LibEvoBench](https://arxiv.org/abs/2606.25402)'s finding that stating the target version gives no benefit. Pointing at the documentation, and saying defaults changed, raised it to 38% and 61%. A behaviour a sentence can shift is a behaviour a reward can shift.
+4. **Running the code beats reading it.** With the RUN tool and no hint, it tested the library's behaviour directly and reached 72%.
+5. **Agents look next to the code, not in the docs folder.** A change written in the type stub inside the library was found in every task; one written in the CHANGELOG or migration guide was not found in any.
+<!-- V2_FINDINGS_END -->
+
+<!-- V2_TABLES_START -->
+_Last updated 2026-10-29 03:42 · 45 runs · gemini-3.5-flash-lite (45 runs)._
+
+### Right calls by condition (the hint ladder)
+
+| Model | repo_open | repo_source | repo_docs | repo_docs_h1 | repo_docs_h2 | repo_docs_h3 | repo_run |
+|---|---|---|---|---|---|---|---|
+| gemini-3.5-flash-lite | 100% | 78% | 29% | 28% | 38% | 61% | 72% |
+
+### Where the change was written (all models pooled)
+
+| Channel | Open book: right call | Compiled, no hint: right call | Compiled, no hint: found the change |
+|---|---|---|---|
+| changelog | 100% (6/6) | 17% (1/6) | 0% (0/2) |
+| migration | 100% (6/6) | 0% (0/6) | 0% (0/2) |
+| api_reference | 100% (3/3) | 33% (1/3) | 100% (1/1) |
+| stub | 100% (3/3) | 100% (3/3) | 100% (1/1) |
+| readme | 100% (3/3) | 33% (1/3) | 0% (0/1) |
+
+### By probe family (compiled library, all hints and RUN pooled)
+
+| Family | Right call | Prior-locked |
+|---|---|---|
+| default_flip | 41% (22/54) | 48% (26/54) |
+| value_remap | 30% (8/27) | 41% (11/27) |
+| result_shape | 87% (13/15) | 0% (0/15) |
+
+### Did finding the change help? (compiled library, all hints and RUN pooled)
+
+| Model | Right call when it found the change | Right call when it did not |
+|---|---|---|
+| gemini-3.5-flash-lite | 87% (26/30) | 26% (17/66) |
+
+<details><summary>Every model and condition (found / looked / GREP / RUN / turns)</summary>
+
+### Every model and condition
+
+| Model | Condition | Tasks | Right call [95% CI] | Prior-locked | Found the change | Looked at the library | Used GREP | Used RUN | Mean turns |
+|---|---|---|---|---|---|---|---|---|---|
+| gemini-3.5-flash-lite | repo_open | 7 | **100%** [100%, 100%] | 0% (0/21) | 100% (7/7) | 0% (0/7) | 0% (0/7) | 0% (0/7) | 1.0 |
+| gemini-3.5-flash-lite | repo_source | 6 | **78%** [56%, 94%] | 6% (1/18) | 0% (0/6) | 100% (6/6) | 0% (0/6) | 0% (0/6) | 4.3 |
+| gemini-3.5-flash-lite | repo_docs | 7 | **29%** [10%, 48%] | 48% (10/21) | 29% (2/7) | 86% (6/7) | 14% (1/7) | 0% (0/7) | 5.1 |
+| gemini-3.5-flash-lite | repo_docs_h1 | 6 | **28%** [11%, 50%] | 44% (8/18) | 17% (1/6) | 100% (6/6) | 17% (1/6) | 0% (0/6) | 5.0 |
+| gemini-3.5-flash-lite | repo_docs_h2 | 7 | **38%** [19%, 62%] | 52% (11/21) | 43% (3/7) | 100% (7/7) | 43% (3/7) | 0% (0/7) | 9.3 |
+| gemini-3.5-flash-lite | repo_docs_h3 | 6 | **61%** [39%, 83%] | 17% (3/18) | 50% (3/6) | 100% (6/6) | 50% (3/6) | 0% (0/6) | 9.3 |
+| gemini-3.5-flash-lite | repo_run | 6 | **72%** [50%, 89%] | 28% (5/18) | 17% (1/6) | 83% (5/6) | 0% (0/6) | 100% (6/6) | 8.7 |
+
+</details>
+<!-- V2_TABLES_END -->
 
 ### 1. The instrument, before any model runs
 

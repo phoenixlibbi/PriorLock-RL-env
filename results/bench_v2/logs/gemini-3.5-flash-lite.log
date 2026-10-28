@@ -39,3 +39,10 @@
   gemini-3.5-flash-lite    v2-r0-g05 repo_docs gap=0.27  incorrect prior_locked  [read source]
   gemini-3.5-flash-lite    v2-r0-g05 repo_docs_h2 gap=0.27  incorrect prior_locked  [read source]
 [1mPriorLock bench[0m · gemini-3.5-flash-lite via gemini · 12 tasks × 7 conditions · sandbox=docker
+  gemini-3.5-flash-lite    v2-r0-g05 repo_run gap=0.40  prior_locked  [read source]
+  gemini-3.5-flash-lite    v2-r0-g05 repo_docs_h1 gap=1.00  override  [read docs]  [read source]
+  gemini-3.5-flash-lite    v2-r0-g05 repo_docs_h3 gap=1.00  override  [read docs]  [read source]
+  gemini-3.5-flash-lite    v2-r0-g06 repo_open gap=1.00  override  [read docs]
+  gemini-3.5-flash-lite    v2-r0-g06 repo_docs gap=0.27  incorrect prior_locked  [read source]
+  gemini-3.5-flash-lite    v2-r0-g06 repo_docs_h2 gap=0.27  incorrect prior_locked  [read source]
+  gemini-3.5-flash-lite    v2-r0-g06 repo_run skipped: 429 from https://generativelanguage.googleapis.com/v1beta/openai/chat/completions: b'[{\n  "error": {\n    "code": 429,\
