@@ -16,19 +16,19 @@ Coding agents work in repositories whose dependencies are pinned to versions the
 
 PriorLock builds tasks around synthetic, contamination-free libraries whose behaviour changed silently, and grades the library calls the agent's code actually made, with an isolated, red-teamed verifier, on a three-rung ladder: never called the library (0), called it the memorized way (0.40), called it the documented way (1.0). In **bench v2**, 36 behaviour changes sit inside realistic repositories where the change is written in exactly one place (a CHANGELOG, a migration guide, API reference pages, a type stub or a README).
 
-Across the free models tested so far, models apply the change almost perfectly when the documentation is in the prompt (89–100% right calls), but **when they must find it themselves, right calls fall to 8–29%**. The failure is in looking, not in understanding: when a model found the note it made the right call 87% of the time, and when it did not, 26%. Telling a model that the library was upgraded does not help; telling it to check the documentation, or letting it run code, helps the model that looks, and does nothing for models that answer without looking. Looking is a habit, which makes it a training target; PriorLock packages the tasks, the verifier and the reward as an open building block for that.
+Across the free models tested so far, models apply the change almost perfectly when the documentation is in the prompt (93–100% right calls), but **when they must find it themselves, right calls fall to 8–33%**. The failure is in looking, not in understanding: when a model found the note it made the right call 87% of the time, and when it did not, 26%. Telling a model that the library was upgraded does not help; telling it to check the documentation, or letting it run code, helps the model that looks, and does nothing for models that answer without looking. Looking is a habit, which makes it a training target; PriorLock packages the tasks, the verifier and the reward as an open building block for that.
 
 <!-- V2_FINDINGS_START -->
 ## Key findings so far
 
 Free models only, temperature 0. Bench v2 is still running (see the timestamp on the tables); cells hold about 3–9 tasks, so read these as directions with wide intervals, not estimates.
 
-1. **The tasks are solvable; the information is the bottleneck.** With the docs in the prompt: Gemini 3.5 Flash-Lite 100%, gpt-oss-120b 100%, Gemini 3.1 Flash-Lite 89% right calls.
-2. **When the agent must find the docs, it mostly does not.** Library compiled, no hint: Gemini 3.5 Flash-Lite 29%, Gemini 3.1 Flash-Lite 11%, gpt-oss-120b 8%. The same drop appeared in the v1 pilot on four models from three vendors (12–27%).
+1. **The tasks are solvable; the information is the bottleneck.** With the docs in the prompt: Gemini 3.5 Flash-Lite 100%, gpt-oss-120b 100%, Gemini 3.1 Flash-Lite 93% right calls.
+2. **When the agent must find the docs, it mostly does not.** Library compiled, no hint: Gemini 3.5 Flash-Lite 29%, Gemini 3.1 Flash-Lite 33%, gpt-oss-120b 8%. The same drop appeared in the v1 pilot on four models from three vendors (12–27%).
 3. **Two different failures.** The Gemini models look, but at the library's code: with readable source Gemini 3.5 Flash-Lite reached 78%; with the source compiled it went on opening the library and rarely the docs. gpt-oss-120b does not look at all: it answered on its first turn in every compiled-library task, even when told to check the documentation.
 4. **Finding the note is what matters.** Gemini 3.5 Flash-Lite made the right call 87% of the time when it found the note describing the change, and 26% when it did not.
-5. **Telling the version does not help; telling what to do does, for a model that looks.** For Gemini 3.5 Flash-Lite: "upgraded to 2.0" 28%, "check the documentation" 38%, "defaults changed; the docs describe it" 61%, consistent with [LibEvoBench](https://arxiv.org/abs/2606.25402)'s finding that stating the target version gives no benefit. The same "check the documentation" hint did not move gpt-oss-120b (7%) or Gemini 3.1 Flash-Lite (17%).
-6. **Running the code is the strongest lever so far.** With a RUN tool and no hint, Gemini 3.5 Flash-Lite tested the library directly and reached 72% (Gemini 3.1 Flash-Lite 33%).
+5. **Telling the version does not help; telling what to do does, for a model that looks.** For Gemini 3.5 Flash-Lite: "upgraded to 2.0" 28%, "check the documentation" 38%, "defaults changed; the docs describe it" 61%, consistent with [LibEvoBench](https://arxiv.org/abs/2606.25402)'s finding that stating the target version gives no benefit. The same "check the documentation" hint did not move gpt-oss-120b (8% → 7%) or Gemini 3.1 Flash-Lite (33% → 33%).
+6. **Running the code is the strongest lever so far.** With a RUN tool and no hint, Gemini 3.5 Flash-Lite tested the library directly and reached 72% (Gemini 3.1 Flash-Lite 42%).
 7. **Agents look next to the code, not in the docs folder.** Changes written in the CHANGELOG or a migration guide were never found without a hint; changes written in the type stub inside the library folder were found most often.
 <!-- V2_FINDINGS_END -->
 
@@ -284,7 +284,7 @@ The cheat receipt pools 156 runs for a Wilson upper bound of 2.4% on false accep
 
 ## 5. Discussion
 
-**Not knowing versus not looking.** Every model that was handed the documentation applied it. The gap opens only when the agent has to decide to look, and it is large: 70–90 points. The cause shows up in the logs as two distinct behaviours. Some models look, but at the library's code, and fall back on memory when the code is unreadable. Others write their answer before opening anything.
+**Not knowing versus not looking.** Every model that was handed the documentation applied it. The gap opens only when the agent has to decide to look, and it is large: 60–90 points. The cause shows up in the logs as two distinct behaviours. Some models look, but at the library's code, and fall back on memory when the code is unreadable. Others write their answer before opening anything.
 
 **A habit, so a training target.** A one-sentence hint ("check the documentation") or a tool (RUN) moved the model that already explores by up to 30–40 points; knowing the version did not. That is the signature of a missing habit rather than missing knowledge, which is exactly what RL changes. It also says what such an environment must reward: the *call the code made*, because tests that cannot tell the two behaviours apart reward memory. PriorLock's verifier is built for that, and is tested against the obvious ways to game it.
 
