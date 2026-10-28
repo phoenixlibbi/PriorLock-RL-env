@@ -4,3 +4,18 @@
   openai/gpt-oss-120b      v2-r0-g00 repo_docs_h2 gap=0.47  bypassed override prior_locked
   openai/gpt-oss-120b      v2-r0-g00 repo_run skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
   openai/gpt-oss-120b      v2-r0-g01 repo_open gap=1.00  override  [read docs]
+  openai/gpt-oss-120b      v2-r0-g01 repo_docs skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g01 repo_docs_h2 gap=0.00  absent bypassed
+  openai/gpt-oss-120b      v2-r0-g01 repo_run skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g02 repo_open gap=1.00  override  [read docs]
+  openai/gpt-oss-120b      v2-r0-g02 repo_docs skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g02 repo_docs_h2 skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g02 repo_run skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g03 repo_open gap=1.00  override  [read docs]
+  openai/gpt-oss-120b      v2-r0-g03 repo_docs skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g03 repo_docs_h2 gap=0.40  prior_locked
+  openai/gpt-oss-120b      v2-r0-g03 repo_run skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+  openai/gpt-oss-120b      v2-r0-g04 repo_open skipped: 400 from https://api.groq.com/openai/v1/chat/completions: b'{"error":{"message":"property \'error\' is unsupported","typ
+[1mPriorLock bench[0m · openai/gpt-oss-120b via openai · 12 tasks × 4 conditions · sandbox=docker
+  openai/gpt-oss-120b      v2-r0-g00 repo_run gap=0.00  no_answer
+  openai/gpt-oss-120b      v2-r0-g01 repo_docs gap=0.00  absent bypassed
