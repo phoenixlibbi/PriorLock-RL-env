@@ -613,7 +613,7 @@ def report_v2(records: list[dict], tasks_dir: Path) -> str:
         by.setdefault((r["model"], r["condition"]), []).append(r)
     out = ["### Every model and condition", "",
            "| Model | Condition | Tasks | Right call [95% CI] | Prior-locked | Found the change "
-           "| Read library code | Used GREP | Used RUN | Mean turns |",
+           "| Looked at the library | Used GREP | Used RUN | Mean turns |",
            "|---|---|---|---|---|---|---|---|---|---|"]
     for m in models:
         for c in conds:
