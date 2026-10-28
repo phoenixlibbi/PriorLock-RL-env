@@ -189,3 +189,11 @@ def test_daily_quota_stops_the_model(monkeypatch):
 ])
 def test_recover_action_from_native_tool_calls(text, want):
     assert B.recover_action(text) == want
+
+
+def test_inline_reasoning_is_not_read_as_the_reply():
+    gemma = "<thought>*   `LIST .` covers both.\n    *   READ docs/x.md maybe</thought>LIST ."
+    assert B.strip_thoughts(gemma) == "LIST ."
+    assert B.strip_thoughts("<think>READ a.md</think>\n```python\nx = 1\n```") == "```python\nx = 1\n```"
+    assert B.strip_thoughts("<think>still thinking, READ a") == ""
+    assert B.strip_thoughts("plain READ a.md") == "plain READ a.md"

@@ -146,6 +146,22 @@ def recover_action(text: str) -> str | None:
     return None
 
 
+_THOUGHT = re.compile(r"<(thought|think)>.*?</\1>", re.S)
+
+
+def strip_thoughts(text: str) -> str:
+    """Remove reasoning a model writes inline (Gemma `<thought>`, Qwen `<think>`).
+
+    Only the text after the reasoning is the model's reply; an action named
+    while it was thinking must not be taken as one. An unclosed block means
+    the reply was cut off inside the reasoning, so nothing is left.
+    """
+    text = _THOUGHT.sub("", text or "")
+    if re.match(r"\s*<(thought|think)>", text):
+        return ""
+    return text.strip()
+
+
 class QuotaExhausted(RuntimeError):
     """The endpoint's daily quota is used up; retrying today is pointless."""
 
@@ -185,7 +201,7 @@ class Model:
                 with urllib.request.urlopen(req, timeout=600) as resp:
                     data = json.load(resp)
                 msg = data["choices"][0]["message"]
-                content = msg.get("content") or ""
+                content = strip_thoughts(msg.get("content") or "")
                 if not content.strip():
                     action = recover_action(msg.get("reasoning") or "")
                     if action:
