@@ -135,3 +135,44 @@ def test_docs_only_hides_the_library_code_but_not_the_docs(tasks):
     changelog = next((task / "docs").glob("*CHANGELOG.md"))
     obs, _ = B._act(task, f"READ docs/{changelog.name}", compiled=True)
     assert obs == changelog.read_text()
+
+
+def test_retry_after_rate_limit_resends_the_same_request(monkeypatch):
+    """A 429 must be retried with the original request, not the error body."""
+    import io
+    import json
+    import urllib.error
+    sent = []
+
+    class Resp(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=0):
+        sent.append(json.loads(req.data))
+        if len(sent) == 1:
+            raise urllib.error.HTTPError(req.full_url, 429, "slow down", {},
+                                         io.BytesIO(b'{"error": {"message": "tokens per minute"}}'))
+        return Resp(json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode())
+
+    monkeypatch.setattr(B.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(B.time, "sleep", lambda s: None)
+    m = B.Model(name="m", base_url="http://x")
+    assert m.chat([{"role": "user", "content": "hi"}]) == "ok"
+    assert sent[0] == sent[1] and sent[1]["messages"][0]["content"] == "hi"
+
+
+def test_daily_quota_stops_the_model(monkeypatch):
+    import io
+    import urllib.error
+
+    def fake_urlopen(req, timeout=0):
+        raise urllib.error.HTTPError(req.full_url, 429, "quota", {},
+                                     io.BytesIO(b"Generate content requests per day limit exceeded"))
+
+    monkeypatch.setattr(B.urllib.request, "urlopen", fake_urlopen)
+    with pytest.raises(B.QuotaExhausted):
+        B.Model(name="m", base_url="http://x").chat([{"role": "user", "content": "hi"}])

@@ -133,13 +133,13 @@ class Model:
                     data = json.load(resp)
                 return data["choices"][0]["message"].get("content") or ""
             except urllib.error.HTTPError as exc:
-                body = exc.read()
-                if exc.code == 429 and re.search(rb"per[ -]?day|PerDay", body, re.I):
+                err = exc.read()
+                if exc.code == 429 and re.search(rb"per[ -]?day|PerDay", err, re.I):
                     raise QuotaExhausted(f"daily quota exhausted for {self.name}") from exc
                 if exc.code in (429, 500, 502, 503) and attempt < 5:
                     time.sleep(min(60, 5 * 2 ** attempt))
                     continue
-                raise RuntimeError(f"{exc.code} from {url}: {body[:300]!r}") from exc
+                raise RuntimeError(f"{exc.code} from {url}: {err[:300]!r}") from exc
         raise RuntimeError("unreachable")
 
 
