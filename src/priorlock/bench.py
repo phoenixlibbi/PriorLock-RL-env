@@ -94,6 +94,10 @@ HIDDEN = (".priorlock",)
 
 # ── model client ────────────────────────────────────────────────────────────
 
+class QuotaExhausted(RuntimeError):
+    """The endpoint's daily quota is used up; retrying today is pointless."""
+
+
 @dataclass
 class Model:
     """An OpenAI-compatible chat endpoint."""
@@ -129,10 +133,13 @@ class Model:
                     data = json.load(resp)
                 return data["choices"][0]["message"].get("content") or ""
             except urllib.error.HTTPError as exc:
+                body = exc.read()
+                if exc.code == 429 and re.search(rb"per[ -]?day|PerDay", body, re.I):
+                    raise QuotaExhausted(f"daily quota exhausted for {self.name}") from exc
                 if exc.code in (429, 500, 502, 503) and attempt < 5:
                     time.sleep(min(60, 5 * 2 ** attempt))
                     continue
-                raise RuntimeError(f"{exc.code} from {url}: {exc.read()[:300]!r}") from exc
+                raise RuntimeError(f"{exc.code} from {url}: {body[:300]!r}") from exc
         raise RuntimeError("unreachable")
 
 
@@ -407,6 +414,9 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                 try:
                     out = solve(model, task, cond, steps)
                     error = None
+                except QuotaExhausted as exc:
+                    log(f"  {model.name}: {exc}; stopping this model, unfinished cells retry later")
+                    return
                 except Exception as exc:
                     # An endpoint failure (quota, missing model, network) says
                     # nothing about the model's behaviour: record nothing, so a
