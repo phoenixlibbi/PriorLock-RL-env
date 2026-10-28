@@ -197,3 +197,9 @@ def test_inline_reasoning_is_not_read_as_the_reply():
     assert B.strip_thoughts("<think>READ a.md</think>\n```python\nx = 1\n```") == "```python\nx = 1\n```"
     assert B.strip_thoughts("<think>still thinking, READ a") == ""
     assert B.strip_thoughts("plain READ a.md") == "plain READ a.md"
+
+
+def test_probes_after_a_crash_are_crashed_not_bypassed():
+    v = {"a": "override", "b": "bypassed", "c": "absent"}
+    assert B.relabel_crash(v, ["solution_crashed"]) == {"a": "override", "b": "crashed", "c": "crashed"}
+    assert B.relabel_crash(v, []) == v

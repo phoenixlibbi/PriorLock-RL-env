@@ -517,6 +517,7 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                     verdicts = {p["id"]: p["verdict"] for p in report.get("probes", [])}
                     for pid in _probe_ids(task):
                         verdicts.setdefault(pid, "crashed")
+                    verdicts = relabel_crash(verdicts, report.get("flags", []))
                 lib = _lib_dir(task)
                 rec = {
                     "model": model.name, "task": task.name, "condition": cond,
@@ -530,6 +531,7 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                     "seconds": round(time.time() - t0, 1),
                 }
                 rec["recovered_calls"] = model.recovered - recovered_before
+                rec["flags"] = report.get("flags", [])
                 for extra in ("greps", "runs", "actions", "replies"):
                     if extra in out:
                         rec[extra] = out[extra]
@@ -540,6 +542,18 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                     + " ".join(sorted(set(verdicts.values())))
                     + ("  [read docs]" if rec["read_docs"] else "")
                     + ("  [read source]" if rec["read_source"] else ""))
+
+
+def relabel_crash(verdicts: dict, flags: list) -> dict:
+    """Name probes left uncalled by a crash as crashed, not bypassed.
+
+    When the solution raises partway, the probes after the crash were never
+    reached; the grader reports them as not called. They score 0 either way,
+    but "bypassed" means "chose not to use the library", which they did not.
+    """
+    if "solution_crashed" not in flags:
+        return verdicts
+    return {pid: ("crashed" if v in ("bypassed", "absent") else v) for pid, v in verdicts.items()}
 
 
 def _probe_ids(task: Path) -> list[str]:
