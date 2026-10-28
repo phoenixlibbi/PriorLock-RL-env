@@ -372,7 +372,7 @@ Everything above ran on free tiers. The pipeline is complete; these are the expe
 | A standard agent scaffold (Terminus-2 via Harbor, mini-swe-agent) on a v2 subset | is the gap an artifact of the minimal harness? | the same models, about 5–20× more calls per task | v2 tasks export to Harbor via `wrap` |
 | Multi-turn `verifiers` / OpenEnv environment with LIST / READ / GREP / RUN | a trainable version of "decide to look" | engineering only | next |
 | Small GRPO run on an open model, held-out archetypes and channels | can RL teach looking, and does it transfer? | a few GPU-days | open, [#5](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/5) |
-| Real-library track: patched forks of permissively licensed libraries, and releases after model cutoffs | do synthetic results predict real ones? | engineering, per-library review | open, [#4](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/4) |
+| Study 2: counterfactual dependency changes inside real repositories (SWE-bench Pro public set), see §9.1 | does it happen in real software? | engineering, per-task review; free models for the pilot | planned, [#4](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/4) |
 | Read budgets in large repositories | does looking drop when it costs something? | engineering only | open, [#1](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/1) |
 
 Also open: docs or source ([#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)) and habit or knowledge ([#3](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/3)). If you can run any of these, or want the results on your models, open an issue or get in touch.
