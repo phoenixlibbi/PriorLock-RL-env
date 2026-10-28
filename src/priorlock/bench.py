@@ -345,9 +345,12 @@ def run_bench(model: Model, tasks: list[Path], conditions: list[str], out_file: 
                 try:
                     out = solve(model, task, cond, steps)
                     error = None
-                except Exception as exc:          # network/model failures are data
-                    out = {"reply": "", "code": None, "turns": 0, "read": []}
-                    error = str(exc)[:300]
+                except Exception as exc:
+                    # An endpoint failure (quota, missing model, network) says
+                    # nothing about the model's behaviour: record nothing, so a
+                    # later run retries the cell.
+                    log(f"  {model.name:<24} {task.name:<7} {cond:<8} skipped: {str(exc)[:120]}")
+                    continue
                 if out["code"] is None:
                     report = {"gap_score": 0.0, "probes": []}
                     verdicts = {pid: "no_answer" for pid in _probe_ids(task)}
