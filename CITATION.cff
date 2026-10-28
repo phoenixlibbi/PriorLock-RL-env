@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use or build on PriorLock, please cite it as below."
-title: "PriorLock: an open building block for measuring and rewarding prior override in coding agents"
+title: "PriorLock: Do Coding Agents Read the Documentation, or Code from Memory?"
 abstract: >-
   An RL environment, benchmark and hardened verifier that measure whether
   coding agents act on the installed library's documentation when it
