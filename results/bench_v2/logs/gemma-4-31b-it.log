@@ -1,2 +1,3 @@
 [1mPriorLock bench[0m · gemma-4-31b-it via gemini · 12 tasks × 4 conditions · sandbox=docker
   gemma-4-31b-it           v2-r0-g00 repo_open skipped: 500 from https://generativelanguage.googleapis.com/v1beta/openai/chat/completions: b'[{\n  "error": {\n    "code": 500,\
+[1mPriorLock bench[0m · gemma-4-31b-it via gemini · 12 tasks × 4 conditions · sandbox=docker
