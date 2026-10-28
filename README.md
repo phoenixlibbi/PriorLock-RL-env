@@ -163,7 +163,7 @@ The core conditions are `repo_open`, `repo_docs`, `repo_docs_h2` and `repo_run`.
 ### 4.1 Bench v2
 
 <!-- V2_TABLES_START -->
-_Last updated 2026-10-29 04:31 · 115 runs · gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), openai/gpt-oss-120b (22 runs)._
+_Last updated 2026-10-29 04:43 · 115 runs · gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), openai/gpt-oss-120b (22 runs)._
 
 ### Right calls by condition (the hint ladder)
 
