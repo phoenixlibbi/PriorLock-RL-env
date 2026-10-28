@@ -386,6 +386,8 @@ def wrap_task(
         raise RuntimeError("no probes selected")
 
     lib = pick_library_name(layout.task_id + seed_suffix)
+    from .variation import vary
+    probes = vary(probes, lib, layout.task_id + seed_suffix)
 
     # An oracle-exclusive canary. Written ONLY into verifier-side
     # assets. If a leak probe finds it anywhere on the agent surface, something
@@ -446,7 +448,10 @@ def wrap_task(
            T.render_visible_test(lib, probes, SOLUTION_NAME, INPUT_REL), created, root)
 
     # ── context priming (1.x-style usage to reinforce model priors) ─────────
+    # Never touch a host task's own utils/: skip priming if it already exists.
     context_files = T.render_context_files(lib, probes)
+    if (layout.repo / "utils").exists():
+        context_files = {}
     for rel_path, content in context_files.items():
         _write(layout.repo / rel_path, content, created, root)
 
@@ -538,7 +543,8 @@ def wrap_task(
     # ── manifest ─────────────────────────────────────────────────────────────
     manifest = render_manifest(layout, lib, probes, lib_sha, w_task, w_gap,
                                original_name, original_sha, canary,
-                               information_sources=tuple(sorted(info_sources)))
+                               information_sources=tuple(sorted(info_sources)),
+                               context_files=tuple(sorted(context_files)))
     (root / MANIFEST).write_text(manifest, encoding="utf-8")
     created.append(MANIFEST)
 
@@ -554,7 +560,8 @@ def render_manifest(layout: TaskLayout, lib: str, probes: list[Probe],
                     lib_sha: str, w_task: float, w_gap: float,
                     original_verifier: str = "", original_sha: str = "",
                     canary: str = "",
-                    information_sources: tuple[str, ...] = SOURCES) -> str:
+                    information_sources: tuple[str, ...] = SOURCES,
+                    context_files: tuple[str, ...] = ()) -> str:
     from . import __version__
     sources_str = ", ".join(f'"{s}"' for s in information_sources)
     lines = [
@@ -575,6 +582,7 @@ def render_manifest(layout: TaskLayout, lib: str, probes: list[Probe],
         f'original_verifier_sha256 = "{original_sha}"',
         "familiar_baseline = 0.40",
         f'information_sources = [{sources_str}]',
+        "context_files = [" + ", ".join(f'"{p}"' for p in sorted(context_files)) + "]",
         "",
         "[weights]",
         f"task = {float(w_task)}",
@@ -681,8 +689,12 @@ def unwrap_task(task_dir: str | Path) -> list[str]:
     rm(layout.repo / INPUT_REL)
     rm(layout.repo / "tests" / "test_probe_visible.py")
     rm(layout.repo / SOLUTION_NAME)
-    # context priming files (utils/helpers.py, utils/transforms.py)
-    rm(layout.repo / "utils")
+    # context priming files: only the ones wrap wrote, never the host's own
+    for rel in meta.get("context_files", []):
+        rm(layout.repo / rel)
+    utils = layout.repo / "utils"
+    if utils.is_dir() and not any(p for p in utils.iterdir() if p.name != "__pycache__"):
+        rm(utils)
     rm(layout.tests / PRISTINE_DIR)
     rm(layout.tests / REFERENCE_DIR)
     rm(layout.tests / "probe_grade.py")

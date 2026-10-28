@@ -21,8 +21,8 @@ G11 oracle    the shipped oracle actually scores 1.0 on the probes
 G12 canary    the oracle-exclusive canary never reaches the agent surface
 ============  ==========================================================
 
-G7 and G8 are the anti-reward-hacking gates and are the reason a wrapped task
-cannot be farmed. G7 makes bypassing the library strictly worse than using it
+G7 and G8 are the anti-reward-hacking gates (the cheat battery covers the rest).
+G7 makes bypassing the library strictly worse than using it
 naively; G8 makes editing the library pointless because the verifier grades
 against its own pristine copy.
 """

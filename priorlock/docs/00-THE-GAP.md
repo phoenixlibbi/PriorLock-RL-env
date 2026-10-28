@@ -49,9 +49,10 @@ Researchers / labs: this is the knowledge-cutoff problem in agentic form. Labs a
 that override parametric memory when in-context evidence contradicts it (in-context override,
 environment grounding). RL is the tool of choice for instilling behaviors that generalize OOD
 (SFT memorizes; RL generalizes - see counterfactual-training results). But you can only train what
-you can score, and no reward machinery exists for this behavior.
+you can score, and published work on this gap (GitChameleon, VersiCode, LibEvoBench,
+CodeUpdateArena) offers benchmarks rather than a reward for an agent loop.
 
-## 4. Why existing benchmarks do NOT cover it
+## 4. How existing benchmarks relate
 
 - Terminal-Bench 2.0/2.1 pins versions in Docker ONLY for reproducibility - same exam room for every
   student. No task makes noticing the version the measured skill, and its visible checks are
@@ -65,8 +66,14 @@ you can score, and no reward machinery exists for this behavior.
 - TMax / Terminal-Lego (Prime Intellect, 365k+ envs): scale collections of ordinary terminal tasks;
   none makes prior-override the reward target.
 - tau-bench / tau2: user-interaction tool use; different axis.
+- CodeUpdateArena (arXiv:2407.06249): synthetic API updates, testing whether a model can use an
+  update it was given (knowledge editing). Closest prior work on synthetic changes; PriorLock's
+  difference is the agentic question of whether the agent looks, and a reward for a training loop.
+- Knowledge-conflict studies, e.g. "Adaptive Chameleon or Stubborn Sloth" (arXiv:2305.13300):
+  when do LLMs follow context that contradicts memory. PriorLock is a coding-agent instance of
+  that question.
 
-## 5. Why nobody built it yet
+## 5. Why it is uncommon
 
 1. The people who proved the weakness built evals, not gyms - no reward, no agent loop.
 2. Real-library material contaminates by construction; a sound version needs a never-published
@@ -74,12 +81,11 @@ you can score, and no reward machinery exists for this behavior.
 3. Building it soundly is sneaky-hard: deviations must be SILENT (a crash is feedback and hands the
    agent the answer), visible tests must all pass for the wrong solution (or the agent grinds
    feedback until green), and only hidden tests may discriminate. That is exactly the
-   non-discriminating-feedback design good RL environments need - few builders
-   work to that standard.
+   non-discriminating-feedback design good RL environments need.
 
 ## 6. The named failure mode we provoke
 
 "The model confidently applies the familiar API shape, which is wrong here." Predicted trace:
 complete, clean, plausible solution submitted with high confidence; visible suite green; hidden
-suite fails the trap checks. Confident-wrong, not step-exhaustion (verified by running 40- and
-80-step budgets and observing scores barely move).
+suite fails the trap checks. Confident-wrong, not step-exhaustion. (This is the predicted trace;
+the pilot in the README is the evidence collected so far.)

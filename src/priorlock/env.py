@@ -47,6 +47,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import dataclasses
+import random
 import re
 import subprocess
 import sys
@@ -55,11 +57,14 @@ import textwrap
 from pathlib import Path
 
 from . import templates as T
+from .variation import vary
 from .probes import ALL_PROBES, BY_ID, select_probes
 from .probes import all_probes_by_id, all_probes_list
 from .probes.base import FAMILIAR_BASELINE, Probe, gap_score
 
 DEFAULT_INSTANCES = 200
+# one archetype per family, never seen in training
+HOLDOUT_ARCHETYPES = ("chunk_remainder_policy", "casefold_mode_remap", "sentinel_on_empty")
 DEFAULT_PROBES = 3
 GRADE_TIMEOUT = 30
 
@@ -68,17 +73,11 @@ GRADE_TIMEOUT = 30
 #  Prompt construction
 # ═════════════════════════════════════════════════════════════════════════════
 
+# Deliberately neutral: it must not tell the model that defaults changed or
+# that the CHANGELOG matters. Noticing that is the skill being rewarded.
 SYSTEM_PROMPT = """\
 You are given a local Python library and its documentation, plus a small data \
-task. Write one function that solves the task using the bundled library.
-
-The library's documentation is authoritative. It is a 2.x release, and several \
-functions changed behaviour from the 1.x line without changing their \
-signatures — defaults were inverted, and some accepted values were given new \
-meanings. Code written against 1.x still runs and still returns the right \
-types; it simply returns different results.
-
-Read the CHANGELOG before you rely on any default.\
+task. Write one function that solves the task using the bundled library.\
 """
 
 
@@ -94,8 +93,7 @@ def _instance_prompt(lib: str, probes: list[Probe], payload: dict) -> str:
 # `{lib}` 2.0.0
 
 A local library bundled with this task. It is not published to any package \
-index — there is no newer release to fetch and no online documentation. The \
-documentation below is the only source of truth.
+index, so there is no newer release to fetch and no online documentation.
 
 ## API reference
 
@@ -108,7 +106,7 @@ documentation below is the only source of truth.
 ## Input data
 
 ```json
-{json.dumps(payload, indent=2, ensure_ascii=False)}
+{json.dumps(payload, indent=2, ensure_ascii=False, default=list)}
 ```
 
 ## What to write
@@ -172,15 +170,18 @@ def build_instances(num_instances: int = DEFAULT_INSTANCES,
         pool = None
 
     rows: list[dict] = []
+    if pool is None and not domains:
+        # rotate through every catalog archetype so instances differ in probe
+        # mix, not only in library name
+        pool = [p for p in ALL_PROBES if p.id not in exclude_set]
 
     for i in range(num_instances):
         task_id = f"{seed_prefix}-{i:05d}"
         if pool:
             # Deterministic rotation per task_id so pinned pools still vary
             # across instances when len(pool) > probes_per_instance.
-            start = int(hashlib.sha256(task_id.encode()).hexdigest()[:8], 16) % len(pool)
-            rotated = pool[start:] + pool[:start]
-            probes = rotated[:probes_per_instance]
+            rng = random.Random("mix:" + task_id)
+            probes = rng.sample(pool, min(probes_per_instance, len(pool)))
         elif domains:
             from .cartridges import select_probes_cross
             probes = select_probes_cross(
@@ -206,6 +207,7 @@ def build_instances(num_instances: int = DEFAULT_INSTANCES,
 
         idx = int(hashlib.sha256(("lib:" + task_id).encode()).hexdigest()[:8], 16)
         lib = T.LIB_NAMES[idx % len(T.LIB_NAMES)]
+        probes = vary(probes, lib, task_id)      # per-instance data and answers
 
         payload = {p.output_key: p.input_payload for p in probes}
         rows.append({
@@ -245,15 +247,14 @@ _RUNNER = r'''
 import inspect, json, sys
 
 LIB = __LIB__
-PROBES = json.loads(__PROBES__)
+FNS = json.loads(__PROBES__)          # probed function names only
 PAYLOAD = json.loads(__PAYLOAD__)
 
 import importlib
 lib = importlib.import_module(LIB)
 
 calls = {}
-for spec in PROBES:
-    name = spec["fn"]
+for name in FNS:
     original = getattr(lib, name)
     signature = inspect.signature(original)
 
@@ -302,7 +303,10 @@ def grade(completion: str, info: dict) -> dict:
     """
     extended = all_probes_by_id()
     merged = {**BY_ID, **extended}
-    probes = [merged[p["id"]] for p in info["probes"] if p["id"] in merged]
+    probes = [dataclasses.replace(merged[d["id"]], input_payload=info["payload"][d["output_key"]],
+                                  gold_output=d["gold_output"],
+                                  familiar_output=d["familiar_output"])
+              for d in info["probes"] if d["id"] in merged]
     lib = info["library"]
 
     tmp = Path(tempfile.mkdtemp(prefix="plx-env-"))
@@ -313,7 +317,8 @@ def grade(completion: str, info: dict) -> dict:
 
         runner = (_RUNNER
                   .replace("__LIB__", json.dumps(lib))
-                  .replace("__PROBES__", json.dumps(json.dumps(info["probes"])))
+                  .replace("__PROBES__", json.dumps(json.dumps(
+                      sorted({p["fn"] for p in info["probes"]}))))
                   .replace("__PAYLOAD__", json.dumps(json.dumps(info["payload"])))
                   .replace("__SOLUTION__", json.dumps(str(tmp / "solution.py"))))
         (tmp / "_runner.py").write_text(runner, encoding="utf-8")
@@ -334,18 +339,10 @@ def grade(completion: str, info: dict) -> dict:
         for p in probes:
             invocations = calls.get(p.fn, [])
             value = out.get(p.output_key) if isinstance(out, dict) else None
-            score, verdict = p.score(
-                invoked=bool(invocations),
-                supplied=invocations[0] if invocations else {},
+            score, verdict = p.score_calls(
+                invocations=invocations,
                 output=json.loads(json.dumps(value, default=str)) if value is not None else None,
             )
-            # credit the best call when a helper is used more than once
-            for sup in invocations[1:]:
-                s2, v2 = p.score(invoked=True, supplied=sup,
-                                 output=json.loads(json.dumps(value, default=str))
-                                 if value is not None else None)
-                if s2 > score:
-                    score, verdict = s2, v2
             scores.append(score)
             weights.append(p.weight)
             verdicts[p.id] = verdict
@@ -473,12 +470,25 @@ def load_environment(
         require_family_diversity=cfg.require_family_diversity,
         exclude=cfg.exclude_set(),
     )
-    train_rows = build_instances(
-        cfg.num_instances, seed_prefix=f"{cfg.seed_prefix}-train", **common,
-    )
-    eval_rows = build_instances(
-        n_eval, seed_prefix=f"{cfg.seed_prefix}-eval", **common,
-    )
+    if probe_ids is None and not cfg.domains:
+        # Hold out whole archetypes (one per family) for evaluation, so eval
+        # measures transfer to probes the policy never trained on.
+        held = set(HOLDOUT_ARCHETYPES) - cfg.exclude_set()
+        train_rows = build_instances(
+            cfg.num_instances, seed_prefix=f"{cfg.seed_prefix}-train",
+            **{**common, "exclude": cfg.exclude_set() | held},
+        )
+        eval_rows = build_instances(
+            n_eval, seed_prefix=f"{cfg.seed_prefix}-eval",
+            **{**common, "probe_ids": sorted(held)},
+        )
+    else:
+        train_rows = build_instances(
+            cfg.num_instances, seed_prefix=f"{cfg.seed_prefix}-train", **common,
+        )
+        eval_rows = build_instances(
+            n_eval, seed_prefix=f"{cfg.seed_prefix}-eval", **common,
+        )
 
     rubric = vf.Rubric(
         funcs=[prior_override_reward, called_library_reward],

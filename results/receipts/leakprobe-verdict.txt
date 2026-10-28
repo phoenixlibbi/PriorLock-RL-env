@@ -1,0 +1,15 @@
+leak probe: 49 attempts
+  positive control: PASS — the agent's own library imports, so absences are meaningful
+  oracle reachable from the agent: 0
+  runner surface (judged by content, not existence):
+    ok   /solution          present, contains only runner artefacts: probe.py, solve.sh
+    ok   /logs              present, contains only runner artefacts: agent, verifier
+    ok   /logs/verifier     present, contains only runner artefacts: (empty)
+    ok   /logs/agent        present, contains only runner artefacts: oracle.txt
+  canary not on the agent surface
+  network egress reachable: pypi.org:443, github.com:443, 1.1.1.1:53
+    NOTE: the host task declares allow_internet = true. This is the
+    task's own posture, inherited unchanged — not a containment
+    breach. Egress is measured and reported, not assumed shut.
+
+ISOLATION PROVEN AT RUNTIME

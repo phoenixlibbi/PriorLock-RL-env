@@ -2,7 +2,7 @@
 
 - arXiv: 2606.25402 (June 2026) | PDF: https://arxiv.org/pdf/2606.25402
 
-## Note on this receipt
+- Cipollone, Titov, Izadi, Bogomolov, van Deursen.
 
 ## Abstract (fetched 2026-10-28 from the arXiv API)
 
@@ -25,3 +25,7 @@ paradigms and motivate new approaches for temporally grounded knowledge in code 
 Recent (June 2026) work probing how code models' library knowledge stratifies by time - evidence
 that the stale-priors gap persists in CURRENT models, i.e. our gap is live, not a 2023-2024
 artifact. Use it as the recency anchor next to GitChameleon (2025) and VersiCode (2024).
+
+Most relevant line for PriorLock: stating the version gives no benefit, handing the model the
+relevant documentation does. PriorLock's `bench` asks the next question: does an agent go and
+read that documentation when nobody hands it over?

@@ -30,10 +30,9 @@ models fail this ~half the time even when told the version explicitly (GitChamel
     |- README.md                    <- you are here
     |- docs/
     |  |- 00-THE-GAP.md             <- the capability gap, evidence, why nobody covered it
-    |  |- 01-ARCHITECTURE.md        <- full technical design (library, tasks, verifier, generator)
-    |  |- 02-BUILD-SPEC.md          <- step-by-step implementation playbook (feed this to an AI agent)
     |  |- 04-PROBE-SPEC.md          <- probe architecture (domain-agnostic wrap path)
     |  |- 05-LIFECYCLE.md           <- build → validate → wrap → gate → doctor
+    |  |- 06-EVALUATORS.md          <- deterministic success-criteria reports
     |- papers/                      <- reference receipts for every cited paper (+ PDF links)
 
 ## Author
@@ -46,4 +45,4 @@ models fail this ~half the time even when told the version explicitly (GitChamel
 - Every soundness claim needs a receipt: a trace, a number with an interval, or a command that
   regenerates it.
 - Stage-0 offline gates pass before any paid rollout.
-- Pure ASCII in shipped files. One-command repro. No prior-client material anywhere.
+- Pure ASCII in shipped files. One-command repro.

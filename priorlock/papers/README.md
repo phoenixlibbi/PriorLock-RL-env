@@ -10,4 +10,6 @@ are verifiable offline).
 | gitchameleon-2507.12367.md | GitChameleon 2.0 | Core number: 48-51% on version-conditioned code, even told the version |
 | versicode-2406.07411.md | VersiCode | Independent confirmation; >50pt drops; CDC@1 metric |
 | embers-2309.13638.md | Embers of Autoregression (PNAS) | Mechanism: probability pressure makes familiar answers the default |
+| codeupdatearena-2407.06249.md | CodeUpdateArena | Closest prior work: synthetic API updates the model is handed |
+| knowledge-conflicts-2305.13300.md | Adaptive Chameleon or Stubborn Sloth | Memory vs. contradicting context, the general question |
 | libevobench-2606.25402.md | LibEvoBench (June 2026) | Recency: temporal knowledge stratification persists in current models |

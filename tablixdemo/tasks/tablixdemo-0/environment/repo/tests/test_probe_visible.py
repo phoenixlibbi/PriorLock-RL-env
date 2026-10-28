@@ -1,4 +1,4 @@
-"""Smoke tests for the datawright checks.
+"""Smoke tests for the datakit checks.
 
 These are SHAPE tests only — they assert that the solution runs, emits valid
 JSON, and produces the right container type under each key. They deliberately do
@@ -29,8 +29,8 @@ def _load():
 
 
 def test_library_importable():
-    import datawright
-    assert datawright.version()
+    import datakit
+    assert datakit.version()
 
 
 def test_input_data_present():

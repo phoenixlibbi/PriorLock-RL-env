@@ -5,7 +5,7 @@ Never shipped into the agent-visible environment.
 """
 import json
 
-import datawright
+import datakit
 
 
 def run(data_path, out_path):
@@ -15,18 +15,18 @@ def run(data_path, out_path):
 
     # tie_inclusive_topk — result_shape
     payload = data['topIds']
-    out['topIds'] = sorted(r['id'] for r in (datawright.top_k(payload['records'], payload['k'], payload['key']))[:payload['k']])
+    out['topIds'] = sorted(r['id'] for r in (datakit.top_k(payload['records'], payload['k'], payload['key']))[:payload['k']])
 
     # null_key_policy — default_flip
     payload = data['bucketCounts']
-    out['bucketCounts'] = {k: len(v) for k, v in (datawright.bucket(payload['records'], payload['key'])).items()}
+    out['bucketCounts'] = {k: len(v) for k, v in (datakit.bucket(payload['records'], payload['key'])).items()}
 
     # merge_precedence_remap — value_remap
     payload = data['merged']
-    out['merged'] = datawright.merge(payload['base'], payload['patch'], on_conflict='keep')
+    out['merged'] = datakit.merge(payload['base'], payload['patch'], on_conflict='keep')
 
     with open(out_path, "w") as f:
         json.dump(out, f, ensure_ascii=False)
     return out
 
-# oracle canary: PLXCANARY-868C0937A4E150B6E006EA41
+# oracle canary: PLXCANARY-8D38A2DB47E803441660F7C8

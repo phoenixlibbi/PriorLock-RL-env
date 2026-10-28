@@ -2,25 +2,26 @@
 # `priorlock wrap <task> --force` after changing the probe set.
 
 [priorlock]
-version = "0.1.0"
+version = "0.1.1"
 task_id = "tablixdemo-0"
-library = "datawright"
-library_sha256 = "98759068345a5a3ff1a9986cb0adbcb5b8441d864f1399c4f8a78603f0bd911a"
+library = "datakit"
+library_sha256 = "546aa2684043e3eff5171b9231712df12f1663a3f9082ff4427209ac6185d9c1"
 solution = "probe_solution.py"
 input = "data/probe_input.json"
 workdir = "/app/repo"
 container_repo = "/app/repo"
-canary = "PLXCANARY-868C0937A4E150B6E006EA41"
+canary = "PLXCANARY-8D38A2DB47E803441660F7C8"
 original_verifier = "task_verify.sh"
 original_verifier_sha256 = "91939ab6fa68f770dec110d286da23a154d497a9afbbad6be744a085b52f8d11"
 familiar_baseline = 0.40
+information_sources = ["api_doc", "changelog", "source_code"]
 
 [weights]
 task = 0.5
 gap = 0.5
 
 [categories]
-collection = 10.5
+collection = 9.5
 mapping = 6.5
 numeric = 1.5
 temporal = 1.5

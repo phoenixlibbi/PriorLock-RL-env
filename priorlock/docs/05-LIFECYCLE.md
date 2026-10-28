@@ -158,7 +158,7 @@ priorlock wrap tasks/my-task --baseline-from jobs/
 
 ```
 ✓ tablixdemo-0 wrapped
-  library  datawright
+  library  datakit
   probes   tie_inclusive_topk (result_shape), null_key_policy (default_flip),
            merge_precedence_remap (value_remap)
   weights  task=0.5 gap=0.5

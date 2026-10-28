@@ -14,8 +14,7 @@ Same shape as Harbor: `uv tool install harbor` → `harbor run …`.
 
 Only `src/priorlock/` (CLI, probes, cartridges, verifiers env).
 
-Not in the wheel: `website/`, `jobs/`, `harbortasks/`,
-`priorlock-env/` trial pack.
+Not in the wheel: `jobs/`, `harbortasks/`, `results/`.
 
 ## Local build & smoke (no PyPI account needed)
 

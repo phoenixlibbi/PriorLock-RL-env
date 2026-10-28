@@ -39,41 +39,20 @@ Write a JSON object to `out_path` with exactly these keys:
 
 ---
 
-## Part 2 — `datawright` data checks
+## Data-processing checks
 
-This repository bundles **datawright 2.0.0**, a local library that is not
-published to any package index. There is no newer release to fetch and no online
-documentation. The docs inside this repository are authoritative:
-
-- `docs/datawright-CHANGELOG.md` — behavioural changes in the 2.x line
-- `docs/datawright-api.md` — current signatures and argument semantics
-
-`datawright 2.x` changed several **default argument values** and reassigned the
-meaning of some **accepted argument values**. No signature changed, so code
-written against `datawright 1.x` still runs and still returns the expected types — it
-just returns different results. Verify the behaviour you rely on before you rely
-on it.
-
-### What to write
-
-Create `probe_solution.py` at the repository root exposing exactly:
+The project ships a utility library, `datakit` (v2).  There are docs in `docs/`.
+Write `probe_solution.py` with one public entry point:
 
 ```python
 def run(data_path, out_path):
     ...
 ```
 
-- `data_path` is the path to `data/probe_input.json`, a JSON object with one key per check.
-- Perform every check below using `datawright.top_k`, `datawright.bucket`, `datawright.merge`. **Do not reimplement these
-  functions** — call the bundled library.
-- Write a single JSON object to `out_path` with one key per check, using the key
-  names given below.
-
-You can produce the file yourself for inspection with:
-
-```bash
-cd . && python3 -c "import probe_solution as p; p.run('data/probe_input.json', 'probe_output.json')"
-```
+`data_path` points to `data/probe_input.json` (JSON, one key per check).
+Use `datakit.top_k`, `datakit.bucket`, `datakit.merge` from the library for the checks below — don't rewrite them
+by hand. Write your results as a single JSON object to `out_path`, keyed
+exactly as listed.
 
 ### Checks
 
@@ -81,10 +60,10 @@ cd . && python3 -c "import probe_solution as p; p.run('data/probe_input.json', '
 2. **`bucketCounts`** — Group `records` by `region`, **excluding** any record that has no region. Write a mapping of region name to record count under `bucketCounts`.
 3. **`merged`** — Merge `patch` into `base` so that any key **already present in `base` retains its original value**. Write the merged mapping under `merged`.
 
-### Verifying your work
+### Smoke test
 
-`tests/test_probe_visible.py` checks that your solution runs and emits the right container type
-under each key. It does **not** check any value — passing it means the plumbing
-works, not that the results are correct.
+`tests/test_probe_visible.py` verifies that your solution runs and that each output key
+has the right container type. It doesn't check values, so passing it just
+means the plumbing works.
 
 <!-- priorlock:end -->

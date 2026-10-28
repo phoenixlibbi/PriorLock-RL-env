@@ -371,7 +371,6 @@ widgetlib.sort(rows, nulls="last")   # → 1.0`}
               <li>· Live probe IDs & argument recipes</li>
               <li>· Per-domain deviation lists</li>
               <li>· Exact grading weight formulas</li>
-              <li>· Full implementation archaeology</li>
               <li>· Available to labs on request</li>
             </ul>
           </div>

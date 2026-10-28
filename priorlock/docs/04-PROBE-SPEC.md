@@ -1,8 +1,8 @@
 # PriorLock Probe Specification v1
 
 > **Status:** implemented and gate-verified.
-> Supersedes the per-domain authoring requirement described in `02-BUILD-SPEC.md`,
-> which remains supported as the "authored domain" path.
+> Supersedes the original per-domain authoring requirement, which remains
+> supported as the "authored domain" path (`priorlock new-domain`).
 
 ---
 

@@ -473,10 +473,15 @@ def render_instruction_block(lib: str, probes: Iterable[Probe], solution: str,
     has_docs = (SOURCE_CHANGELOG in information_sources
                 or SOURCE_API_DOC in information_sources)
 
-    if has_docs:
+    has_utils = bool(render_context_files(lib, probes))
+    if has_docs and has_utils:
         docs_note = f"  There are docs in `{docs_base}/` and usage examples in `utils/`."
-    else:
+    elif has_docs:
+        docs_note = f"  There are docs in `{docs_base}/`."
+    elif has_utils:
         docs_note = "  There are usage examples in `utils/`."
+    else:
+        docs_note = ""
 
     return f"""
 
@@ -525,18 +530,28 @@ Threat model and why this design resists reward hacking
    to the repo copy is irrelevant to the measurement; tampering is reported as a
    flag but cannot change which code runs.
 
-2. **Call arguments are observed, not self-reported.** Each probe function is
-   wrapped and the arguments the solution *explicitly supplied* are recovered via
-   ``inspect.Signature.bind``, which excludes defaults. There is no trace file to
-   forge and no log the agent can write to.
+2. **The solution never runs inside the grader.** It runs in a child process
+   (``python -I``, empty environment) that only records which arguments each
+   probed function received. The grader ignores everything the child prints and
+   reads its own report from memory. While the child runs, every answer-bearing
+   file (this grader, the reference solutions) is removed from disk, and when the
+   grader runs as root the child drops to ``nobody`` and the tests directory is
+   made private. A solution therefore cannot patch the scorer, print a report,
+   or read the expected answers.
+
+   Arguments the solution *explicitly supplied* are recovered via
+   ``inspect.Signature.bind``, which excludes defaults.
 
 3. **Bypass scores zero, not 0.40.** An agent that reimplements the function
    instead of calling it never reaches the prior-locked rung. Hand-rolling the
    familiar behaviour is strictly worse than calling the library naively.
 
-4. **Both signals must agree for full credit.** 1.0 requires the correct call
-   *and* the correct output. Guessing the expected output without making the
-   correct call does not score.
+4. **Both signals must agree for full credit.** 1.0 requires the correct call,
+   made *consistently* (every call to the probed function passes the same value
+   for the probed argument), *and* the correct output. Trying several values and
+   keeping whichever works is scored 0. A correct output reached some other way
+   earns the 0.40 baseline, never more, so hand-writing the answer is no better
+   than not reading the docs at all.
 '''  # continued below in _GRADER_BODY
 
 _GRADER_BODY = r'''
@@ -573,33 +588,142 @@ def canon(value):
     return json.loads(json.dumps(value, sort_keys=True, default=str))
 
 
-def instrument(module, probes, recorder):
-    """Wrap each probe function so explicitly-supplied arguments are recorded."""
-    for spec in probes:
-        name = spec["fn"]
-        original = getattr(module, name)
+CHILD_SOURCE = """
+import importlib, importlib.util, inspect, json, os, sys, traceback
+lib_dir, lib_name, sol_path, data_path, out_path, rec_path, fns = sys.argv[1:8]
+fns = json.loads(fns)
+sys.path.insert(0, lib_dir)
+calls, error = {}, None
+try:
+    lib = importlib.import_module(lib_name)
+    for name in fns:
+        original = getattr(lib, name)
         signature = inspect.signature(original)
-
         def make(name, original, signature):
             def wrapper(*args, **kwargs):
                 try:
-                    bound = signature.bind(*args, **kwargs)
-                    supplied = dict(bound.arguments)
+                    supplied = dict(signature.bind(*args, **kwargs).arguments)
                 except TypeError:
                     supplied = dict(kwargs)
-                # keep only JSON-safe scalars; container args are not discriminating
-                clean = {
+                calls.setdefault(name, []).append({
                     k: v for k, v in supplied.items()
-                    if isinstance(v, (str, int, float, bool, type(None)))
-                }
-                recorder.setdefault(name, []).append(clean)
+                    if isinstance(v, (str, int, float, bool, type(None)))})
                 return original(*args, **kwargs)
             wrapper.__name__ = name
             wrapper.__doc__ = original.__doc__
             wrapper.__signature__ = signature
             return wrapper
+        setattr(lib, name, make(name, original, signature))
+    sys.path.insert(1, os.path.dirname(sol_path))
+    spec = importlib.util.spec_from_file_location("_plx_solution", sol_path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["_plx_solution"] = mod
+    spec.loader.exec_module(mod)
+    mod.run(data_path, out_path)
+except BaseException:
+    error = traceback.format_exc()[-1500:]
+finally:
+    with open(rec_path, "w") as f:
+        json.dump({"calls": calls, "error": error}, f, default=str)
+"""
 
-        setattr(module, name, make(name, original, signature))
+
+ANSWER_FILES = ("probe_grade.py", "_plx_reference")
+CHILD_TIMEOUT = float(os.environ.get("PLX_CHILD_TIMEOUT", "60"))
+
+
+def hide_answers(tests_dir):
+    # Read every answer-bearing file into memory and remove it from disk.
+    hidden = []
+    for name in ANSWER_FILES:
+        root = os.path.join(tests_dir, name)
+        paths = [root] if os.path.isfile(root) else [
+            os.path.join(d, f) for d, _s, fs in os.walk(root) for f in fs]
+        for path in paths:
+            try:
+                with open(path, "rb") as f:
+                    data = f.read()
+                mode = os.stat(path).st_mode
+                os.remove(path)
+                hidden.append((path, data, mode))
+            except OSError:
+                pass
+    return hidden
+
+
+def restore_answers(hidden):
+    for path, data, mode in hidden:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(data)
+        os.chmod(path, mode & 0o7777)
+
+
+def run_isolated(tests_dir, submission, solution_path, data_path, flags, notes):
+    # Run the solution in a child process; return (output, calls).
+    import shutil, subprocess, tempfile
+    work = tempfile.mkdtemp(prefix="plx-run-")
+    os.chmod(work, 0o777)
+    lib_dir = os.path.join(work, "lib")
+    shutil.copytree(os.path.join(tests_dir, "_plx_lib"), lib_dir)
+    child = os.path.join(work, "child.py")
+    with open(child, "w") as f:
+        f.write(CHILD_SOURCE)
+    sol_copy = os.path.join(work, "sol", os.path.basename(solution_path))
+    os.makedirs(os.path.dirname(sol_copy))
+    shutil.copy2(solution_path, sol_copy)
+    out_path = os.path.join(work, "out", "observed.json")
+    rec_path = os.path.join(work, "out", "record.json")
+    os.makedirs(os.path.dirname(out_path))
+    for d, ds, fs in os.walk(work):
+        for x in ds:
+            os.chmod(os.path.join(d, x), 0o777)
+        for x in fs:
+            os.chmod(os.path.join(d, x), 0o666)
+
+    as_root = hasattr(os, "geteuid") and os.geteuid() == 0
+    tests_mode = os.stat(tests_dir).st_mode
+    preexec = None
+    if as_root:
+        os.chmod(tests_dir, 0o700)
+        def preexec():
+            os.setgid(65534)
+            os.setuid(65534)
+    else:
+        notes.append("unprivileged_grading: answers hidden from disk, child runs as the same user")
+    hidden = hide_answers(tests_dir)
+    try:
+        subprocess.run(
+            [sys.executable, "-I", child, lib_dir, LIB, sol_copy, data_path,
+             out_path, rec_path, json.dumps(sorted({p["fn"] for p in PROBES}))],
+            cwd=submission, env={"PATH": "/usr/bin:/bin", "PYTHONHASHSEED": "0"},
+            stdout=subprocess.DEVNULL,       # never part of the report
+            timeout=CHILD_TIMEOUT, preexec_fn=preexec)
+    except subprocess.TimeoutExpired:
+        flags.append("solution_timeout")
+    finally:
+        restore_answers(hidden)
+        if as_root:
+            os.chmod(tests_dir, tests_mode & 0o7777)
+
+    calls, produced = {}, None
+    try:
+        with open(rec_path) as f:
+            rec = json.load(f)
+        calls = rec.get("calls") or {}
+        if rec.get("error"):
+            flags.append("solution_crashed")
+    except (OSError, ValueError):
+        flags.append("no_record")
+    try:
+        with open(out_path) as f:
+            produced = json.load(f)
+    except (OSError, ValueError):
+        pass
+    shutil.rmtree(work, ignore_errors=True)
+    if not isinstance(calls, dict):
+        calls = {}
+    return produced, calls
 
 
 def call_is_gold(spec, supplied):
@@ -622,22 +746,30 @@ def score_probe(spec, calls, output_present, output):
     familiar = canon(spec["familiar_output"])
     got = canon(output)
 
-    # A solution may call a helper more than once; credit the best call.
-    any_gold_call = any(call_is_gold(spec, s) for s in invocations)
-
+    # Every call must agree on the probed argument: trying several values and
+    # keeping whichever works is not reading the docs.
+    gold_call = all(call_is_gold(spec, s) for s in invocations)
     detail = {
         "calls": len(invocations),
         "supplied": invocations,
-        "gold_call": any_gold_call,
+        "gold_call": gold_call,
         "output_matches": ("gold" if got == gold else
                            "familiar" if got == familiar else "neither"),
     }
+    if spec["family"] != "result_shape":
+        values = {json.dumps(s.get(spec["param"], "<default>"), sort_keys=True)
+                  for s in invocations}
+        if len(values) > 1:
+            return 0.0, "inconsistent_calls", detail
 
-    if got == gold and any_gold_call:
+    if got == gold and gold_call:
         return 1.0, "override", detail
     if got == familiar:
         return FAMILIAR_BASELINE, "prior_locked", detail
-    if any_gold_call:
+    if got == gold:
+        # correct output by another route: never below the baseline, never above
+        return FAMILIAR_BASELINE, "correct_output_other_call", detail
+    if gold_call:
         return 0.0, "correct_call_bad_output", detail
     return 0.0, "incorrect", detail
 
@@ -657,6 +789,7 @@ def main():
         "gap_score": 0.0,
         "probes": [],
         "flags": [],
+        "notes": [],
         "lib": LIB,
     }
 
@@ -668,25 +801,10 @@ def main():
     elif VISIBLE_LIB_SHA256 and observed != VISIBLE_LIB_SHA256:
         report["flags"].append("library_modified")
 
-    # 2. pristine library wins sys.path
+    # 2. the pristine library must import cleanly (the child imports it again)
     pristine = os.path.join(tests_dir, "_plx_lib")
-    sys.path.insert(0, pristine)
-    for stale in [m for m in sys.modules if m == LIB or m.startswith(LIB + ".")]:
-        del sys.modules[stale]
-    try:
-        lib_module = importlib.import_module(LIB)
-    except Exception as exc:                                    # pragma: no cover
-        report["flags"].append("pristine_import_failed:%s" % exc)
-        emit(report)
-        return 0
-    lib_file = getattr(lib_module, "__file__", "") or ""
-    if not os.path.abspath(lib_file).startswith(pristine):
-        report["flags"].append("shadowed_library_import")
-
-    # 3. instrument, then load the agent's solution (patch first so that
-    #    `from LIB import fn` at solution-import time still resolves to the wrapper)
-    calls = {}
-    instrument(lib_module, PROBES, calls)
+    if not os.path.isfile(os.path.join(pristine, LIB, "__init__.py")):
+        report["flags"].append("pristine_library_missing")
 
     solution_path = os.path.join(submission, SOLUTION_NAME)
     data_path = os.path.join(submission, INPUT_NAME)
@@ -703,23 +821,9 @@ def main():
         finish(report)
         return 0
 
-    sys.path.insert(1, submission)
-    out_path = os.path.join(tests_dir, "_plx_observed_output.json")
-    produced = None
-    try:
-        spec_obj = importlib.util.spec_from_file_location("_plx_solution", solution_path)
-        mod = importlib.util.module_from_spec(spec_obj)
-        sys.modules["_plx_solution"] = mod
-        spec_obj.loader.exec_module(mod)
-        if not callable(getattr(mod, "run", None)):
-            report["flags"].append("solution_has_no_run")
-        else:
-            mod.run(data_path, out_path)
-            with open(out_path) as f:
-                produced = json.load(f)
-    except Exception:
-        report["flags"].append("solution_crashed")
-        report["traceback"] = traceback.format_exc()[-1500:]
+    # 3. run the solution in an isolated child process
+    produced, calls = run_isolated(tests_dir, submission, solution_path,
+                                   data_path, report["flags"], report["notes"])
 
     # 4. score
     for spec in PROBES:

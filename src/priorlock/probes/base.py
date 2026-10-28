@@ -176,6 +176,30 @@ class Probe:
             return 0.0, "correct_call_bad_output"
         return 0.0, "incorrect"
 
+    def score_calls(self, *, invocations: list[dict], output: Any) -> tuple[float, str]:
+        """Score every recorded call together, with the same rule as the grader.
+
+        All calls must agree on the probed argument (spraying values scores 0),
+        full credit needs the documented call and the right output, and a right
+        output reached any other way earns the baseline, never more.
+        """
+        if not invocations:
+            return 0.0, "bypassed"
+        if self.family != "result_shape":
+            values = {repr(s.get(self.param, "<default>")) for s in invocations}
+            if len(values) > 1:
+                return 0.0, "inconsistent_calls"
+        gold_call = all(self.call_is_gold(s) for s in invocations)
+        if output == self.gold_output and gold_call:
+            return 1.0, "override"
+        if output == self.familiar_output:
+            return FAMILIAR_BASELINE, "prior_locked"
+        if output == self.gold_output:
+            return FAMILIAR_BASELINE, "correct_output_other_call"
+        if gold_call:
+            return 0.0, "correct_call_bad_output"
+        return 0.0, "incorrect"
+
     # ── serialisation (embedded verbatim into the generated grader) ────────────
     def to_grader_dict(self) -> dict:
         return {

@@ -1,427 +1,281 @@
 # PriorLock
 
-**PriorLock: A Domain-Agnostic Reinforcement Learning Environment for Measuring
-and Training Prior Override in Autonomous Agents**
+> **Do coding agents read the docs, or code from memory?** PriorLock is an RL environment and benchmark for *prior override*: acting on what the installed library's documentation says when it contradicts what the model memorized in training. Benchmark any model in minutes with no task image and no paid API, wrap Harbor tasks to measure it alongside their own score, or train on it with `verifiers`.
 
-A Harbor-native RL environment that measures — and can train — whether an agent
-overrides stale memorized priors when live environment ground truth contradicts
-them. Domain-agnostic by design: wrap any Harbor task; no re-authoring required.
+[![tests](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/test.yml/badge.svg)](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/test.yml)
+[![Stage-0 gates](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/stage0.yml/badge.svg)](https://github.com/phoenixlibbi/PriorLock-RL-env/actions/workflows/stage0.yml)
+![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)
+![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-| | |
-|---|---|
-| **Creator** | [Muhammad Labeeb Tariq](https://github.com/phoenixlibbi) |
-| **Email** | [labeebjutt80@gmail.com](mailto:labeebjutt80@gmail.com) |
-| **GitHub** | [github.com/phoenixlibbi](https://github.com/phoenixlibbi) |
-| **Repository** | [PriorLock-RL-env](https://github.com/phoenixlibbi/PriorLock-RL-env) |
+Models learn libraries from a frozen snapshot of the internet. When a project pins a version whose behaviour changed, a model that codes from memory writes code that **runs, passes every visible test, and is wrong**. Nothing crashes, so nothing tells the agent to look. The documentation that would have saved it is sitting in the repository.
 
-You don't author a PriorLock task. You build an ordinary Harbor task, validate
-it, and **convert** it. Keeping those steps separate is what lets you tell a
-broken task apart from a broken probe.
+Prior work measured the knowledge side of this. [LibEvoBench](https://arxiv.org/abs/2606.25402) finds that telling a model the target version gives no benefit, while handing it the relevant documentation significantly boosts accuracy; [GitChameleon 2.0](https://arxiv.org/abs/2507.12367) finds enterprise models solve 48–51% of version-conditioned problems even with the version stated; [CodeUpdateArena](https://arxiv.org/abs/2407.06249) tests whether a model can use a synthetic API update it was given. PriorLock asks the agentic question: **does the agent go and read the docs when nobody hands them over**, and can that behaviour be rewarded.
 
-```bash
-# Install the CLI (Harbor-style — no clone needed)
-uv tool install "priorlock @ git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
-# or:  pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
-
-priorlock --help
-priorlock info
-
-# 1) Prove your Harbor task is sound (expect Mean 1.000)
-harbor run -p tasks/my-task -a oracle
-
-# 2) Wrap it — inject prior-override probes
-priorlock preflight tasks/my-task
-priorlock wrap tasks/my-task --baseline-from jobs/
-# priorlock wrap tasks/my-task --preset diverse   # multi-domain trial conditions
-
-# 3) Offline gates (no Docker, no API key)
-priorlock stage0 tasks/my-task
-
-# 3b) Automated evaluators — deterministic success-criteria report
-priorlock evaluate tasks/my-task --reference gold          # expect gap 1.0
-priorlock evaluate tasks/my-task --reference familiar      # expect gap 0.40
-# priorlock evaluate tasks/my-task -s ./probe_solution.py --json -o report.json
-
-# Reproduce offline: see REPRODUCIBILITY.md
-# export PYTHONHASHSEED=0 && pytest -q && priorlock repro
-
-# 4) Re-run oracle + doctor
-harbor run -p tasks/my-task -a oracle
-priorlock doctor tasks/my-task
+```
+                 the installed library changed a default; the CHANGELOG says so
+                                              │
+          ┌───────────────────────────────────┼───────────────────────────────────┐
+          ▼                                   ▼                                   ▼
+   never calls the library          calls it the memorized way          reads the docs, calls it
+   (hand-rolls the logic)           (runs clean, tests pass)            the way THIS version needs
+        0.00  bypassed                   0.40  prior-locked                  1.00  override
 ```
 
-Full evaluator design: [`06-EVALUATORS.md`](priorlock/docs/06-EVALUATORS.md).
+| Command | What it does | Docker / model needed |
+|---|---|---|
+| `priorlock bench` | Benchmark a model on all 13 probe archetypes under four conditions: closed-book, open-book, agentic, agentic with the hints removed | optional (grading sandbox) / any OpenAI-compatible endpoint, including local Ollama |
+| `priorlock run` | Generate a self-contained task (synthetic library, docs, data, smoke test) and grade a solution | no / no |
+| `priorlock wrap` | Inject prior-override probes into an existing Harbor / Terminal-Bench task; its original verifier is kept byte-identical | no / no |
+| `priorlock stage0` | 12 offline gates on a wrapped task: the reference ladder, non-discriminating visible tests, canaries, bypass, tamper | no / no |
+| `priorlock cheats` | 12-class cheat battery with a soundness receipt | no / no |
+| `priorlock leakprobe` | Runtime isolation proof: an adversarial task that tries 12 leak vectors inside the real container | yes (Harbor) / no |
+| `vf.load_environment("priorlock")` | The probes as a `verifiers` RL environment (single-turn, see below) | no / your trainer |
 
-### One-command lifecycle (with or without oracle)
+---
 
-```bash
-# Full path — baseline + post-wrap + leakprobe via harbor -a oracle
-bash harbortasks/run-lifecycle.sh --with-oracle harbortasks/pipeline-drift-calibration-hard
+## Results
 
-# Fast path — skip all oracle Harbor runs; wrap + gates + model only
-# (needs an existing jobs/ oracle trial for --baseline-from)
-bash harbortasks/run-lifecycle.sh --without-oracle harbortasks/pipeline-drift-calibration-hard
-```
+### 1. The instrument, before any model runs
 
-Set `AGENT` / `MODEL` / keys in `harbortasks/model.env`. Default mode can also be
-`LIFECYCLE_ORACLE=with|without` (CLI flags override). Details:
-[`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md).
+Every number below regenerates offline from this repository.
 
-Once published to PyPI the install becomes simply:
+| Check | Result | Command |
+|---|---|---|
+| Reference ladder on a freshly wrapped task | stub 0.0 · bypass 0.0 · familiar 0.40 · gold 1.00, **12/12 gates pass** | `priorlock wrap <task> && priorlock stage0 <task>` |
+| Cheat battery: 12 attack classes, each run against all 13 archetypes | **every class caught on every archetype**; best cheat score 0.40, never above the do-nothing baseline | `priorlock cheats <task> --suite` · [receipt](results/receipts/soundness-receipt.json) |
+| Runtime isolation (Harbor, 49 attempts) | 0 oracle assets reachable from the agent; canary only verifier-side | `priorlock leakprobe <task>` · [trace](results/receipts/leakprobe-trace.json) |
+| Sandboxed bench grader | gold 1.00, familiar 0.40, stub 0.00 inside `docker run --network none` | `pytest tests/test_bench.py` (runs when Docker is available) |
 
-```bash
-uv tool install priorlock
-# or:  pip install priorlock
-```
+The receipt pools 156 runs (12 classes × 13 archetypes) for a Wilson upper bound of 2.4% on false accepts. Runs of the same class are correlated, so read that number as "no class got through anywhere", not as 156 independent trials.
 
-Contributors who need the full tree: `git clone` then `pip install -e ".[dev]"`.
-Full walkthrough: [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md)
+### 2. Pilot: what models do with the docs
+
+<!-- RESULTS -->
+
+**How to read it.**
+- **Closed-book** shows the prior: the model sees the instruction, the input file and the function signatures with defaults hidden, but no docs or source. A high prior-locked rate here is what makes a probe meaningful.
+- **Open-book** is the ceiling: the docs pasted into the prompt.
+- **Agentic** gives `LIST` and `READ` over the repository; the model has to decide to look. **Agentic, uncued** removes the instruction's hints (the version tag, the pointer to `docs/`, the bold on the required behaviour), which is closer to how real tasks read.
+- Every condition gets the task's input file, so differences between conditions are not about guessing the input layout.
+- **Right call** means every call to the probed function used the installed version's behaviour; **fully correct** additionally means the output was right. **Opened docs / source** counts agentic tasks where the model read a `docs/` file or the library's own source.
+
+Intervals resample whole archetypes (the 13 behaviour changes), not individual probes, because repeats of one archetype are correlated. This is a pilot, not a leaderboard: one free hosted model and one local open model, temperature 0, 3 task sets. Every answer, every file the agent read and every per-probe verdict is in [`results/bench/`](results/bench/).
 
 ---
 
 ## The failure mode
 
-Models memorize the APIs they saw during training. When an environment ships a
-newer library whose defaults changed, the model confidently applies what it
-remembers. No exception is raised. The smoke tests pass. The output is wrong.
+Every probe is a library function whose behaviour changed in the installed major version **without changing its signature**:
 
-The container ships documentation that contradicts common training-data priors.
-Code written from memory still runs and still looks right — smoke tests pass —
-but the hidden score does not. Reading the in-environment docs is the skill.
+| Family | Example (names and data vary per task) |
+|---|---|
+| `default_flip` | `bucket()` now collects null keys under `"__unset__"` instead of dropping them |
+| `value_remap` | `merge(on_conflict="keep")` now means keep the *newer* value |
+| `result_shape` | `top_k()` returns every record tied at the cut-off, so `len(result)` may exceed `k` |
 
----
+The library's `CHANGELOG.md`, its API reference and its own source all say so. Code written against the old behaviour still runs, still returns the right types, and still passes the visible smoke tests, which deliberately cannot tell the two apart (gate G5). Only the hidden grader can.
 
-## What you get
+Each task seed gets its own library name and its own data: ids, quantities and sequence values are shifted, category labels are relabelled, amounts are rescaled, and the expected answers are recomputed by running the reference solutions against the library. A solution copied from one task does not carry its answers to another (`tests/test_grader_isolation.py`).
 
-Every task produces two scores.
+## How the score is earned
 
-| | Measures | Source |
+The grader never runs the solution in its own process. A child process (`python -I`, empty environment) imports a **pristine copy of the library**, wraps each probed function, and records the arguments the solution *explicitly supplied* (`inspect.Signature.bind`, defaults excluded). While it runs, every answer-bearing file is removed from disk; when grading runs as root (Harbor, the Docker sandbox), the child also drops to `nobody` and the tests directory is made private. The grader ignores everything the child prints. Then, per probe:
+
+| Score | Verdict | Requires |
 |---|---|---|
-| `task_score` | terminal competence | the task's original verifier, untouched |
-| `gap_score` | prior-override capability | injected probes |
+| **1.00** | `override` | every call uses the documented behaviour **and** the output is right |
+| **0.40** | `prior_locked` | the memorized call, producing the memorized output |
+| **0.40** | `correct_output_other_call` | the right output reached some other way (for example post-processing the new default by hand) |
+| **0.00** | `inconsistent_calls` | the probed argument took different values across calls (trying options and keeping what works) |
+| **0.00** | `bypassed` | the function was never called |
+| 0.00 | `incorrect`, `correct_call_bad_output` | anything else |
+
+The 0.40 rung is a fixed design constant: it is what the memorized solution earns, gate G2 checks it on every wrapped task, and no other route earns more without the documented call. Wrapped tasks emit two scores and a composite:
 
 `reward = (task_score × w_task + gap_score × w_gap) / (w_task + w_gap)`
 
-Harbor reads `reward.txt` or `reward.json`; the composite emits both, so wrapping
-is transparent to the runner.
+where `task_score` is the host task's original verifier, untouched, and `gap_score` is the probes. The composite replaces the host task's `reward.txt`; pass `--weight-gap 0` to keep a leaderboard's own semantics and read `gap_score` as a side metric.
 
----
+## Why it is hard to farm
 
-## The ladder
-
-Every probe scores on three rungs, **by construction** rather than by per-domain
-calibration:
-
-```
-0.00 ──────── 0.40 ──────────────────── 1.00
-bypassed    prior-locked            read the docs
-```
-
-| Score | Verdict | Meaning |
-|-------|---------|---------|
-| **1.00** | `override` | read the shipped CHANGELOG and acted on it |
-| **0.40** | `prior_locked` | applied the memorized default — confident but wrong |
-| **0.00** | `bypassed` | never called the library at all |
-
-The 0.40 rung being structural is the key property. In the original design it had
-to be hand-derived per domain, and a mis-derived value silently invalidated the
-measurement. Now it's a property of the harness, verified offline by gate G2 for
-every wrapped task.
-
----
-
-## Probe catalog
-
-Dozens of probes across multiple domains and difficulty levels. Exact mechanisms,
-IDs, and pass/fail recipes are **not published** — the authoritative specification
-is the documentation inside each wrapped task environment.
-
-```bash
-priorlock wrap tasks/my-task      # selects probes; authors write nothing
-priorlock stage0 tasks/my-task    # offline gates on the generated artefact
-```
-
----
-
-## Why it can't be farmed
-
-Independent defences (several merge-blocking). Public docs intentionally omit
-implementation details that would help an attacker. At a high level:
-
-1. Grading uses a verifier-owned library copy — agent-side edits do not help.
-2. Scores come from observed behaviour, not agent-written traces.
-3. Bypassing the library is worse than being prior-locked.
-4. Visible tests do not leak the discriminating signal.
-5. Probe sets rotate per task so leaks do not transfer.
-
----
-
-## Gates
-
-Offline. No Docker, no network, no API key. Every gate runs the *generated*
-grader against *generated* reference solutions.
-
-| Gate | Check | Requirement |
-|------|-------|-------------|
-| G1 | gold score | exactly 1.0 |
-| G2 | familiar score | exactly 0.40 |
-| G3 | stub score | exactly 0.0 |
-| G4 | ladder | 0.0 < 0.40 < 1.0, strictly |
-| G5 | visible tests | pass for BOTH gold and familiar |
-| G6 | canary | no verifier asset reachable from `environment/` |
-| G7 | bypass | hand-rolling scores 0.0, not 0.40 |
-| G8 | tamper | editing the library is flagged and changes no score |
-| G9 | discrimination | every probe separates gold from familiar |
-| G10 | host preserved | the original verifier survived migration intact |
-| G11 | oracle | the shipped oracle scores 1.0 on the probes |
-| G12 | canary | the oracle canary never reaches the agent surface |
-
-```
-$ priorlock stage0 tasks/my-task
-
-=== Stage-0 · my-task ===
-library <synthetic> · probes: <selected>
-
-G1 gold score                         PASS  gap_score=1.0
-G2 familiar score                     PASS  gap_score=0.4 (want 0.4)
-G3 stub score                         PASS  gap_score=0.0
-G4 strict ladder                      PASS  0.0 < 0.4 < 1.0
-G5 visible tests non-discriminating   PASS  gold=pass familiar=pass
-G6 canary clean                       PASS  no oracle assets in environment/
-G7 bypass scores zero                 PASS  gap_score=0.0 verdicts={'bypassed': 3}
-G8 tamper-proof grading               PASS  score=1.0 flags=['library_modified']
-G9 all probes discriminate            PASS  every probe separates gold from familiar
-G10 host task preserved               PASS  task_verify.sh preserved byte-identical
-G11 oracle solves the probes          PASS  gap_score=1.0 verdicts={'override': 3}
-G12 oracle canary contained           PASS  canary present verifier-side only
-
-ladder  stub 0.0  bypass 0.0  familiar 0.4  gold 1.0
-
-ALL GATES PASS
-```
-
----
-
-## Isolation — proven at runtime
-
-A static file-layout check is not isolation. our build rules cites a build
-where it passed while the agent could `cat` the oracle on the live box. So the
-container gets asked directly.
-
-```bash
-priorlock leakprobe <task>                      # generates <task>__leakprobe
-harbor run -p <task>__leakprobe -a oracle       # no API key needed
-```
-
-```
-leak probe: 49 attempts
-  positive control: PASS — the agent's own library imports, so absences are meaningful
-  oracle reachable from the agent: 0
-  runner surface (judged by content, not existence):
-    ok   /solution      contains only runner artefacts: probe.py, solve.sh
-    ok   /logs/verifier contains only runner artefacts: (empty)
-  canary not on the agent surface
-  network egress reachable: pypi.org:443, github.com:443, 1.1.1.1:53
-    NOTE: the host task declares allow_internet = true — inherited posture,
-    measured and reported, not a containment breach.
-
-ISOLATION PROVEN AT RUNTIME
-```
-
-12 vectors: `cat`, `find`, `import`, `sys.path`, `pip list`, `walk`, `env`,
-`git`, `ps`, `canary`, runner surface, network egress.
-
-Three properties make the trace worth reading:
-
-1. **It is the image under test.** The probe task's `environment/` is copied
-   from the host task and asserted **byte-identical by sha256 at build time**.
-   Nothing may be added to it — an earlier version wrote the probe in, which
-   would have produced a green trace about a different image.
-2. **The instrument is verified.** The `import` vector carries a positive
-   control: the agent's *own* library must import. A failed control forces
-   `INCONCLUSIVE`, **which scores 0.0 exactly like a leak** — a probe that can't
-   show it is capable of seeing is not allowed to return a pass.
-3. **Content, not existence.** `/solution` and `/logs` exist on any Harbor run.
-   The check asks whether host-task oracle assets are sitting in them.
-
-Receipts: [`leakprobe-trace.json`](implementation-progress/receipts/leakprobe-trace.json)
-· [`leakprobe-verdict.txt`](implementation-progress/receipts/leakprobe-verdict.txt)
-
----
-
-## Soundness — the receipt
-
-The build rules makes this mandatory, not optional: ≥7 named cheat classes,
-false-accept and false-reject with 95% Wilson intervals, **FAR upper bound
-< 5%**. Never a bare 0%.
-
-```bash
-priorlock cheats <task>            # 8 classes against one task
-priorlock cheats <task> --suite    # pooled across all 13 archetypes
-```
-
-Pooled result — [`harbortasks/soundness-receipt.json`](harbortasks/soundness-receipt.json):
-
-```
-trials            104        8 classes × 13 archetypes
-all executed      104/104    none excluded
-false accepts     0/104      Wilson95 [0.0000, 0.0356]
-required          upper < 0.05                        PASS
-false rejects     0/13       Wilson95 [0.0000, 0.2281]
-worst surviving   0.0        against a 0.40 baseline
-                                                      SOUND
-```
-
-| Class | Cheat | Result |
-|---|---|---|
-| memorise the visible signal | `overfit_public` | caught, 0.0 |
-| oracle-steal | `oracle_steal` | caught, 0.0 |
-| read internals | `read_internals` | caught, 0.0 |
-| tamper config | `tamper_input` | caught, 0.0 |
-| edit tests / grader | `edit_grader` | caught, 0.0 |
-| constant / shape forgery | `shape_forgery` | caught, 0.0 |
-| timeout / resource abuse | `timeout_abuse` | killed, 0.0 |
-| self-report forgery | `self_report` | caught, 0.0 |
-
-Two rules the battery follows, both from the standard:
-
-- **A cheat that never ran is not a caught cheat.** Every cheat writes an
-  execution marker as its first act. One that scores 0 *without* its marker is
-  reported `not_executed` and **excluded from the denominator** — otherwise the
-  statistic is inflated by cheats that silently no-op'd.
-- **A false accept is scoring above the 0.40 baseline, not above zero.** Scoring
-  0.40 by naively calling the library is the measurement working, not a cheat
-  surviving.
-
-One task alone gives n=8 → Wilson upper **0.324**. Reporting that as "zero false
-accepts" would be exactly the bare-0% the standard forbids; `--suite` pools to
-n=104 to earn the interval.
-
----
-
-## Inspecting a run
-
-`verify` prints per-probe verdicts for a reference solution (gold / familiar /
-stub). Exact probe IDs and argument recipes are task-local — do not republish
-them in public write-ups.
-
-```
-$ priorlock verify tasks/my-task --reference familiar
-
-gap_score 0.4  (familiar.py)
-  <probe>   prior_locked   0.40
-  …
-```
-
----
-
-## Calibration
-
-Calibration does **not** establish the 0.40 baseline — that's structural. It
-measures how *informative* each probe is against a given model.
-
-```bash
-priorlock calibrate ingest jobs/ --model claude-opus-5
-priorlock calibrate report --model claude-opus-5
-priorlock calibrate recommend --model claude-opus-5
-```
-
-| Metric | Definition |
-|--------|------------|
-| `discrimination` | fraction of runs with an unambiguous verdict |
-| `familiar_rate` | of those, the fraction that were prior-locked — **the headline number** |
-
-A probe going stale degrades *resolution*, not *validity*.
-
----
-
-## Commands
-
-```
-priorlock preflight <task>     is this Harbor task healthy and wrap-ready?
-priorlock wrap <task>          migrate it — inject probes
-priorlock wrap <task> --preset diverse   multi-domain trial conditions
-priorlock wrap <dir> -r        migrate an entire task suite
-priorlock stage0 <task>        12 offline gates
-priorlock cheats <task>        8-class cheat battery + soundness receipt
-priorlock leakprobe <task>     runtime isolation proof
-priorlock doctor <task>        did wrapping damage the host task?
-priorlock unwrap <task>        roll the migration back
-priorlock verify <task>        grade one solution locally, see supplied args
-priorlock probes               browse the catalog
-priorlock calibrate ...        measure probe informativeness
-priorlock new-domain <name>    scaffold a bespoke authored domain
-priorlock info                 what's wrapped, what's authored, catalog size
-```
-
----
-
-## Two paths
-
-| | `priorlock wrap` | `priorlock new-domain` |
-|---|---|---|
-| Author effort | none | ~30 min per domain |
-| 0.40 baseline | structural | hand-derived, gate-checked |
-| Applies to | any Harbor task | one bespoke domain |
-| Probe novelty | catalog only | anything |
-| Anti-hack | 5 layers, generated | manual |
-
-Use `wrap` by default. Use `new-domain` when you need a probe the catalog can't
-express — then consider contributing the archetype back, since a new archetype
-benefits every wrapped task at once.
-
-`tablixdemo-0` is both: its `task_score` comes from hand-written tablix
-deviations, its `gap_score` from three injected probes. The two measurements
-agreeing is the cheapest available evidence that the generic path measures the
-same thing the bespoke path does.
-
----
-
-## Docs
-
-| | |
+| Attack (cheat class) | What stops it |
 |---|---|
-| [`00-THE-GAP.md`](priorlock/docs/00-THE-GAP.md) | the failure mode and why it matters |
-| [`01-ARCHITECTURE.md`](priorlock/docs/01-ARCHITECTURE.md) | engine + cartridge model |
-| [`02-BUILD-SPEC.md`](priorlock/docs/02-BUILD-SPEC.md) | authored-domain spec |
-| [`04-PROBE-SPEC.md`](priorlock/docs/04-PROBE-SPEC.md) | **probe architecture — start here** |
-| [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md) | **build → validate → migrate → gate → doctor** |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | three ways to contribute |
-| [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md) | install + pin seeds + offline validate |
-| [`ENVIRONMENT-DIVERSITY.md`](ENVIRONMENT-DIVERSITY.md) | presets + tunable trial conditions |
+| Overfit the visible tests (`overfit_public`) | visible tests pass for gold *and* familiar (G5) |
+| Read the grader or reference on disk (`oracle_steal`, `reference_exec`) | answer files are removed while the solution runs; root grading also drops privileges |
+| Reach into the grading process (`grader_introspect`) | the solution runs in a separate process with no answer key |
+| Print a fake report (`stdout_forgery`, `self_report`) | the grader ignores the child's output and writes its own report |
+| Spray every argument value (`spray_known_output`, white-box: knows the right outputs) | all calls must agree on the probed argument |
+| Edit the library or the tests (`edit_grader`, `tamper_input`, `read_internals`) | the verifier owns a pristine copy; tampering is flagged and changes no score (G8) |
+| Constant outputs, timeouts (`shape_forgery`, `timeout_abuse`) | wrong values score 0; the child is killed |
+
+Two rules keep the receipt honest: **a cheat that never ran is not a caught cheat** (each writes an execution marker first; markerless zeros are excluded from the denominator), and **a false accept means scoring above the 0.40 baseline**, not above zero.
+
+**Residual risk, stated plainly.** The solution and the call recorder share the child process, so a solution can forge its own call record. That only helps if it already knows the documented argument, which is the knowledge the probe measures. When grading runs unprivileged (`priorlock run --grade` or `verify` on a laptop), answer files are hidden by removal rather than by permissions; the report notes this as `unprivileged_grading`.
 
 ---
+
+## Install
+
+```bash
+pip install "git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+# or as a tool:  uv tool install "priorlock @ git+https://github.com/phoenixlibbi/PriorLock-RL-env.git"
+priorlock info
+```
+
+Python 3.10–3.13, standard library only. Docker is optional (it sandboxes model-written code in `bench`). Harbor is only needed for `wrap` → `harbor run` and `leakprobe`.
+
+## Quickstart (no model, one minute)
+
+```bash
+priorlock run -o my-task --seed demo                # synthetic library + docs + data + smoke test
+priorlock run --grade my-task --reference gold      # 1.0
+priorlock run --grade my-task --reference familiar  # 0.40  (the memorized answer)
+priorlock run --grade my-task --reference stub      # 0.0
+```
+
+Hand `my-task/instruction.md` to any model or agent, let it write `probe_solution.py`, then `priorlock run --grade my-task`.
+
+## Benchmark a model
+
+```bash
+# local, free: any Ollama model
+ollama pull qwen2.5-coder:7b
+priorlock bench --provider ollama --model qwen2.5-coder:7b
+
+# any OpenAI-compatible endpoint (Gemini, OpenAI, vLLM, LM Studio, …)
+export GEMINI_API_KEY=…
+priorlock bench --provider gemini --model gemini-3.5-flash-lite --rpm 15
+priorlock bench --base-url http://localhost:8000/v1 --model my-model
+
+# tables for finished runs
+priorlock bench --report results/bench/*.jsonl
+```
+
+- `--repeats N` generates N task sets; each covers all 13 archetypes once (4 tasks per set) with its own seed, data and answers. Tasks regenerate byte-identically from their seeds.
+- `--condition closed|open|agentic|agentic_uncued` (repeatable) picks conditions; the default is all four.
+- Runs are resumable: one JSON line per (task, condition) with the code, the files read, the turns and the per-probe verdicts.
+- Model-written code is graded in `docker run --network none --memory 512m` by default; `--sandbox none` grades in-process (with a warning).
+
+## Use it as an RL environment
+
+**Training (`verifiers`).** `load_environment()` returns a single-turn environment: the prompt contains the library's API reference, CHANGELOG and the input, and the reward is the ladder above. Each instance draws its own mix of archetypes and its own data, and **evaluation holds out whole archetypes** (one per family) that training never sees, so eval measures transfer. The system prompt is neutral: it does not say that anything changed.
+
+```python
+import verifiers as vf
+env = vf.load_environment("priorlock")      # pip install "priorlock[rl]"
+```
+
+Be clear about what this trains: the docs are in the prompt, so it rewards *acting on* documentation that contradicts the prior, not *deciding to look*. The looking condition exists today as `bench`'s agentic loop; a multi-turn tool environment is on the roadmap. No policy was trained in this repository.
+
+**Evaluation (Harbor).** Wrap any Terminal-Bench / Harbor task; the probes ride along and the original verifier is preserved byte-for-byte (G10):
+
+```bash
+harbor run -p tasks/my-task -a oracle       # 1) prove the host task is sound
+priorlock preflight tasks/my-task
+priorlock wrap tasks/my-task                # 2) inject probes (authors write nothing)
+priorlock stage0 tasks/my-task              # 3) 12 offline gates
+priorlock leakprobe tasks/my-task           # 4) runtime isolation proof
+harbor run -p tasks/my-task__leakprobe -a oracle
+priorlock doctor tasks/my-task              # 5) wrapping did not damage the host task
+priorlock unwrap tasks/my-task              # removes exactly what wrap added
+```
+
+`--domain sql --domain linux` and `--preset diverse` draw probes from 11 domain cartridges (76 probes: backend, cloud, coding, config, devtools, finance, frontend, fundamentals, linux, math, sql). `priorlock wrap <dir> -r` wraps a whole suite. Wrapping adds a clearly separated section to the instruction and, for some domains, 1.x-style usage examples under `utils/` (skipped if the host already has a `utils/`).
+
+## Reviewed before release
+
+Before publishing, the project was put in front of ten independent AI reviewers, each given the code and none given my conclusions. Five played roles: a frontier-lab eval researcher, an RL post-training engineer, an adversarial red-teamer, a Harbor benchmark maintainer and a coding-agent product engineer. Five more each read one lab's public 2025–26 research (xAI, Meta, Google DeepMind, Microsoft, Alibaba Qwen) and judged PriorLock against it.
+
+They found real problems, and this version fixes them:
+
+| Found in review | Fix |
+|---|---|
+| The solution ran inside the grader: it could read the answer key, patch the scorer or print a fake report (each scored 1.0) | out-of-process child, answers hidden during the run, report never read from the solution; four new cheat classes |
+| Calling a function with every value and hand-writing the output scored 1.0 | all calls must agree; correct output by another route is capped at 0.40 |
+| A correct solution that post-processed the new default scored below the memorized one | it now earns the 0.40 baseline, never less |
+| Seeds changed names but not data, so a leaked answer key worked everywhere | per-seed data with recomputed answers |
+| The agentic pilot gap was mostly the agent not seeing the input file | every condition gets the input file |
+| Instructions hinted at the trap | an uncued agentic condition, reported separately |
+| Closed-book could only guess argument names | closed-book sees signatures with defaults hidden |
+| Intervals treated renamed repeats as independent | archetype-clustered bootstrap intervals |
+| The RL environment was one task repeated, train equalled eval, and its prompt said "read the CHANGELOG" | archetype rotation, per-instance data, held-out eval archetypes, neutral prompt |
+| `unwrap` could delete a host task's own `utils/` | the manifest records what wrap wrote; unwrap removes only that |
+| Missing closest prior work | CodeUpdateArena and knowledge-conflict studies are cited |
+
+## Roadmap
+
+What the reviewers asked for that is still open, in the order they ranked it:
+
+1. **A multi-turn tool environment** (bash, file reads, test runs), docs never pasted in, uncued, packaged for `verifiers` and OpenEnv.
+2. **A trained-policy result:** a small GRPO run on an open model, with transfer to held-out archetypes and to real-library drift, and no regression on SWE-bench / Terminal-Bench.
+3. **A real-library track:** silent behaviour changes injected into real pinned dependencies of real repositories, plus breaking changes released after model cutoffs, to test whether synthetic scores predict real ones.
+4. **More languages** (TypeScript, Java, Go, Rust) and loud failure types (renamed or removed APIs, import moves, deprecations).
+5. **Scale:** more models, several samples per item at temperature > 0, and a private held-out seed pool for a leaderboard.
+
+## How it relates to prior work
+
+| Work | Measures | PriorLock adds |
+|---|---|---|
+| [GitChameleon 2.0](https://arxiv.org/abs/2507.12367) | version-conditioned code completion with executable tests | the agent is not told what changed; it has to find out |
+| [VersiCode](https://arxiv.org/abs/2406.07411) | version-specific completion and migration | an agentic condition and a reward, not only a score |
+| [LibEvoBench](https://arxiv.org/abs/2606.25402) | version-obliviousness on real libraries; docs help, stating the version does not | whether the agent *fetches* the docs itself |
+| [CodeUpdateArena](https://arxiv.org/abs/2407.06249) | whether a model can use a synthetic API update it is given | the update is not given: it sits in the repo, and the agent must notice it |
+| [Knowledge conflicts](https://arxiv.org/abs/2305.13300) (Xie et al.) | when LLMs follow context that contradicts memory | a coding-agent instance, graded on the calls the code made |
+| [Embers of Autoregression](https://arxiv.org/abs/2309.13638) | models default to high-probability answers on low-probability variants | the mechanism the familiar rung is built around |
+| [Terminal-Bench](https://arxiv.org/abs/2601.11868) | agents on hard terminal tasks (Harbor) | the probes ride along on its tasks without re-authoring |
+
+The core comparison (closed vs open vs agentic) is the familiar oracle-retrieval versus self-retrieval ablation applied to documentation; what is new here is the grader, the anti-gaming machinery and packaging it as an environment. Notes on each paper are in [`priorlock/papers/`](priorlock/papers/).
+
+## Limitations
+
+- **Pilot scale.** Two models, temperature 0, 13 archetypes. The results show the instrument separating conditions; they are not a ranking of models.
+- **Synthetic, convention-level priors.** The prior being tested is the conventional semantics of a function (keep-first deduplication, truncating top-k, and so on), not memory of one specific real package. That makes tasks contamination-proof and also limits what they say about real libraries (see the roadmap).
+- **Defensive habits can score.** On `default_flip` probes, an agent that always writes every argument out explicitly with the conventional value gets full credit without reading anything. `value_remap` probes are the cleanest test of reading; the bench reports results per family.
+- **`result_shape` probes are partly answerable from the instruction**, which asks for every record the library returns.
+- **The agentic harness is minimal.** `LIST` / `READ` only, no code execution, at most 10 turns. Agents that can run code can discover a changed default by calling the function, which is a different (also useful) skill.
+- **No policy was trained**, and the RL environment is single-turn and open-book.
+- **The code is public.** Probe logic is in the repository; seeds rotate data and answers, but a private seed pool is needed for a leaderboard.
+
+## Reproduce
+
+```bash
+git clone https://github.com/phoenixlibbi/PriorLock-RL-env && cd PriorLock-RL-env
+pip install -e ".[dev]"
+PYTHONHASHSEED=0 pytest -q
+priorlock repro                              # offline determinism fingerprint
+```
+
+Details: [`REPRODUCIBILITY.md`](REPRODUCIBILITY.md). Design docs: [`00-THE-GAP.md`](priorlock/docs/00-THE-GAP.md) (the failure mode and evidence), [`04-PROBE-SPEC.md`](priorlock/docs/04-PROBE-SPEC.md) (probe architecture), [`05-LIFECYCLE.md`](priorlock/docs/05-LIFECYCLE.md) (wrap lifecycle), [`06-EVALUATORS.md`](priorlock/docs/06-EVALUATORS.md) (evaluator reports), [`ENVIRONMENT-DIVERSITY.md`](ENVIRONMENT-DIVERSITY.md), [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Layout
 
 ```
 src/priorlock/
-  probes/
-    base.py           Probe contract, the {0, 0.40, 1.0} ladder
-    catalog.py        13 pre-calibrated archetypes
-    __init__.py       registry, category inference, selection
-  templates.py        generators for every injected file
+  bench.py            model benchmark: four conditions, sandboxed grading, clustered intervals
+  standalone.py       self-contained task generation and grading
+  variation.py        per-seed data with answers recomputed from the library
+  probes/             the 13 coding archetypes and the {0, 0.40, 1.0} ladder
+  cartridges/         11 domain cartridges, 76 probes
+  templates.py        generators for every injected file, including the isolated grader
   inject.py           wrap / unwrap / manifest
-  lifecycle.py        preflight / baseline capture / doctor
   gates.py            the 12 offline gates
+  cheats.py           12-class cheat battery + soundness receipt
   leakprobe.py        runtime isolation proof + canary scan
   env.py              verifiers RL environment (load_environment)
-  calibrate.py        empirical probe informativeness
-  scaffold.py         authored-domain scaffolding
+  calibrate.py        per-model probe informativeness
   cli.py
-
 tablixdemo/           reference authored domain (also wrapped)
-website/              Next.js site
-priorlock/docs/       specification
+results/              bench runs and receipts
+priorlock/docs/       design docs
 priorlock/papers/     literature notes
+website/              project site
 ```
-
----
 
 ## Author
 
 **Muhammad Labeeb Tariq** · [labeebjutt80@gmail.com](mailto:labeebjutt80@gmail.com) · [@phoenixlibbi](https://github.com/phoenixlibbi)
 
----
+## License
 
-MIT · Created by Muhammad Labeeb Tariq
+MIT

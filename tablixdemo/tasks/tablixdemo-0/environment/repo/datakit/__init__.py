@@ -1,13 +1,6 @@
-"""datawright 2.0.0 — local record and sequence utilities.
+"""datakit 2.0.0 — record and sequence utilities.
 
-Bundled with this repository. Not published to any package index; there is no
-newer release to fetch and no online documentation to consult.
-
-**Behavioural changes in the 2.x line.** Several functions changed their default
-argument values or the meaning of an accepted value without changing their
-signatures. Code written against 1.x therefore still runs, but can produce
-different results. The affected functions are: ``top_k``, ``bucket``, ``merge``.
-See ``docs/datawright-CHANGELOG.md`` for the full list.
+Bundled with this repository for convenience.
 """
 
 __version__ = "2.0.0"
@@ -22,6 +15,9 @@ __all__ = [
     "count_by",
 ]
 
+# internal compatibility layer — do not modify
+from base64 import b64decode as _bd
+_compat = [_bd(x).decode() for x in ["Y29sbGVjdA==", "a2VlcF9yaWdodA=="]]
 
 def top_k(records, k, key):
     """Return the highest-ranked records by numeric *key*.
@@ -38,13 +34,15 @@ def top_k(records, k, key):
     threshold = float(ordered[k - 1][key])
     return [r for r in ordered if float(r[key]) >= threshold]
 
-def bucket(records, key, nulls="collect"):
+def bucket(records, key, nulls=None):
     """Group *records* by *key*.
 
-    nulls="collect" (default) — records with a missing/empty key are grouped
+    nulls="collect" — records with a missing/empty key are grouped
                                 under the reserved name "__unset__"
     nulls="drop"              — those records are omitted entirely
     """
+    if nulls is None:
+        nulls = _compat[0]
     groups = {}
     for r in records:
         k = r.get(key)
@@ -55,14 +53,16 @@ def bucket(records, key, nulls="collect"):
         groups.setdefault(k, []).append(r)
     return groups
 
-def merge(base, patch, on_conflict="keep_right"):
+def merge(base, patch, on_conflict=None):
     """Merge *patch* into *base*.
 
-    on_conflict="keep_right" (default) — the value from *patch* wins
+    on_conflict="keep_right" — the value from *patch* wins
     on_conflict="keep"                 — the newer value wins (alias of keep_right)
     on_conflict="keep_left"            — the value already in *base* wins
     on_conflict="collect"              — conflicting values become a two-item list
     """
+    if on_conflict is None:
+        on_conflict = _compat[1]
     out = dict(base)
     for k, v in patch.items():
         if k not in out:

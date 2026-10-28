@@ -38,6 +38,7 @@ from .cartridges import (
 )
 from .inject import pick_library_name, SOLUTION_NAME, INPUT_REL, OUTPUT_REL
 from .probes.base import Probe
+from .variation import vary
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -120,6 +121,7 @@ def generate(
         raise RuntimeError("no probes selected")
 
     lib = pick_library_name(task_id)
+    probes = vary(probes, lib, task_id)          # per-task data and answers
 
     # ── resolve information sources ─────────────────────────────────────────
     probe_domains = {p.domain for p in probes}

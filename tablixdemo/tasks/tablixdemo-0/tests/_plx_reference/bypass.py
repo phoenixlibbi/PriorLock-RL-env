@@ -2,23 +2,28 @@
 importing the library at all. Must score 0.0 (verdict: bypassed)."""
 import json
 
+# JSON literal aliases
+null = None
+true = True
+false = False
+
 
 def run(data_path, out_path):
     out = {
         "topIds": [
-                3,
-                4,
-                5
+                403,
+                404,
+                405
         ],
         "bucketCounts": {
-                "eu": 2,
+                "renvo": 2,
                 "__unset__": 2,
-                "us": 1
+                "miren": 1
         },
         "merged": {
-                "a": 1,
-                "b": 99,
-                "c": 3
+                "a": 401,
+                "b": 499,
+                "c": 403
         }
 }
     with open(out_path, "w") as f:

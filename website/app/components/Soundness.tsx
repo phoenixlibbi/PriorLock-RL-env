@@ -9,15 +9,19 @@ const cheats = [
   ["constant / shape forgery", "shape_forgery", "caught", "0.0"],
   ["timeout / resource abuse", "timeout_abuse", "killed", "0.0"],
   ["self-report forgery", "self_report", "caught", "0.0"],
+  ["reach into the grader process", "grader_introspect", "caught", "0.0"],
+  ["print a fake report", "stdout_forgery", "caught", "0.0"],
+  ["run the reference solution", "reference_exec", "caught", "0.0"],
+  ["spray every argument (white-box)", "spray_known_output", "caught", "≤ 0.4"],
 ];
 
 const receipt = [
-  { k: "trials", v: "104", note: "8 classes × 13 archetypes" },
-  { k: "all executed", v: "104/104", note: "none excluded from the denominator" },
-  { k: "false accepts", v: "0/104", note: "Wilson95 [0.0000, 0.0356]" },
+  { k: "runs", v: "156", note: "12 classes × 13 archetypes (correlated within a class)" },
+  { k: "all executed", v: "156/156", note: "none excluded from the denominator" },
+  { k: "false accepts", v: "0/156", note: "Wilson95 [0.0000, 0.0240]" },
   { k: "required", v: "< 0.05", note: "upper bound — PASS" },
   { k: "false rejects", v: "0/13", note: "Wilson95 [0.0000, 0.2281]" },
-  { k: "worst surviving", v: "0.0", note: "against a 0.40 baseline" },
+  { k: "best cheat score", v: "0.40", note: "never above the 0.40 baseline" },
 ];
 
 const vectors = [

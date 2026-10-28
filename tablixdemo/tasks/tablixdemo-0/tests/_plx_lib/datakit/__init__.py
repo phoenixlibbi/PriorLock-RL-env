@@ -1,13 +1,6 @@
-"""datawright 2.0.0 — local record and sequence utilities.
+"""datakit 2.0.0 — record and sequence utilities.
 
-Bundled with this repository. Not published to any package index; there is no
-newer release to fetch and no online documentation to consult.
-
-**Behavioural changes in the 2.x line.** Several functions changed their default
-argument values or the meaning of an accepted value without changing their
-signatures. Code written against 1.x therefore still runs, but can produce
-different results. The affected functions are: ``top_k``, ``bucket``, ``merge``.
-See ``docs/datawright-CHANGELOG.md`` for the full list.
+Bundled with this repository for convenience.
 """
 
 __version__ = "2.0.0"

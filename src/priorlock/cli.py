@@ -606,7 +606,7 @@ def cmd_leakprobe(args, root: str) -> int:
 
 
 def cmd_cheats(args, root: str) -> int:
-    """Run the 8-class cheat battery and emit the soundness receipt."""
+    """Run the cheat battery and emit the soundness receipt."""
     from priorlock.cheats import run_battery
 
     task = Path(args.task).resolve()
@@ -839,6 +839,40 @@ def _repo_root() -> str:
     return os.getcwd()
 
 
+def cmd_bench(args, root: str) -> int:
+    from . import bench as B
+
+    if args.report:
+        records = B.load_records([Path(p) for p in args.report])
+        print(B.report_markdown(records))
+        if args.json:
+            print(json.dumps(B.summarise(records), indent=2))
+        return 0
+
+    if not args.model:
+        print(f"{RED}error: --model is required (or --report FILES){RESET}", file=sys.stderr)
+        return 2
+    model = B.make_model(args.provider, args.model, base_url=args.base_url,
+                         api_key_env=args.api_key_env, rpm=args.rpm)
+    conditions = args.condition or list(B.CONDITIONS)
+    out_dir = Path(args.out)
+    tasks = B.build_tasks(out_dir / "tasks", args.repeats)
+    sandbox = args.sandbox
+    if sandbox == "auto":
+        sandbox = "docker" if B.docker_available() else "none"
+    if sandbox == "none":
+        print(f"{YELLOW}warning: grading model-written code without a sandbox{RESET}")
+    out_file = out_dir / f"{args.model.replace('/', '_').replace(':', '_')}.jsonl"
+    print(f"{BOLD}PriorLock bench{RESET} · {args.model} via {args.provider} · "
+          f"{len(tasks)} tasks × {len(conditions)} conditions · sandbox={sandbox}")
+    B.run_bench(model, tasks, conditions, out_file,
+                sandbox=sandbox, image=args.image, steps=args.steps)
+    print()
+    print(B.report_markdown(B.load_records([out_file])))
+    print(f"\n{DIM}results: {out_file}{RESET}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="priorlock",
@@ -1042,6 +1076,35 @@ other:
     p_run_grade.add_argument("--json", action="store_true",
                              help="output JSON report")
 
+    # ── bench ───────────────────────────────────────────────────────────────
+    p_bench = sub.add_parser(
+        "bench", help="measure a model on the probes: closed / open / agentic (cued and uncued) "
+                      "(any OpenAI-compatible endpoint, no Harbor)")
+    p_bench.add_argument("--model", help="model name, e.g. qwen2.5-coder:7b")
+    p_bench.add_argument("--provider", default="ollama",
+                         choices=["ollama", "gemini", "openai"],
+                         help="endpoint preset (default ollama on localhost)")
+    p_bench.add_argument("--base-url", help="override the endpoint base URL")
+    p_bench.add_argument("--api-key-env", help="env var holding the API key")
+    p_bench.add_argument("--condition", action="append",
+                         choices=["closed", "open", "agentic", "agentic_uncued"],
+                         help="repeatable; default all four")
+    p_bench.add_argument("--repeats", type=int, default=2,
+                         help="task sets to generate (each covers all 13 archetypes)")
+    p_bench.add_argument("--steps", type=int, default=10,
+                         help="max turns in the agentic condition")
+    p_bench.add_argument("--rpm", type=float, default=0.0,
+                         help="requests-per-minute cap (for free tiers)")
+    p_bench.add_argument("--sandbox", default="auto", choices=["auto", "docker", "none"],
+                         help="where model-written code is graded (default: docker if available)")
+    p_bench.add_argument("--image", default="python:3.11-bookworm",
+                         help="Docker image for the sandboxed grader")
+    p_bench.add_argument("-o", "--out", default="bench-results",
+                         help="output directory (tasks + one JSONL per model)")
+    p_bench.add_argument("--report", nargs="+", metavar="JSONL",
+                         help="print the results table for existing runs")
+    p_bench.add_argument("--json", action="store_true", help="with --report: also print JSON")
+
     # ── cartridge management ────────────────────────────────────────────────
     p_cart = sub.add_parser("cartridge", help="manage domain cartridges")
     cart_sub = p_cart.add_subparsers(dest="cartridge_action", metavar="<action>")
@@ -1070,6 +1133,7 @@ DISPATCH = {
     "new-domain": cmd_new_domain,
     "repro": cmd_repro,
     "cartridge": cmd_cartridge,
+    "bench": cmd_bench,
 }
 
 

@@ -33,7 +33,7 @@ pip install -e ".[dev]"
 
 priorlock wrap tasks/my-task          # inject 3 pre-calibrated probes
 priorlock stage0 tasks/my-task        # 12 offline gates — no Docker, no API key
-priorlock cheats tasks/my-task        # 8-class cheat battery
+priorlock cheats tasks/my-task        # 12-class cheat battery
 ```
 
 That's the whole workflow. `wrap` picks probes from the catalog based on your
@@ -228,13 +228,15 @@ bought without doing the work:
 priorlock cheats tasks/my-task --suite -o receipt.json
 ```
 
-Eight classes — memorise-visible, oracle-steal, read-internals, tamper-config,
-edit-tests, constant-stub, timeout-abuse, self-report. Every cheat carries an
+Twelve classes: memorise-visible, oracle-steal, read-internals, tamper-config,
+edit-tests, constant-stub, timeout-abuse, self-report, grader-introspect,
+report-forgery, reference-exec and a white-box enum-spray. Every cheat carries an
 execution marker; one that scores 0 without reaching its exploit path is
 excluded from the false-accept denominator rather than counted as caught.
 
-Current pooled receipt: **FAR 0/104, Wilson95 [0.0000, 0.0356]**, worst
-surviving cheat 0.0 against a 0.40 baseline.
+Current pooled receipt: **0 false accepts in 156 runs** (12 classes x 13
+archetypes; Wilson95 upper 0.024, though runs of one class are correlated), best
+cheat score 0.40, never above the 0.40 baseline.
 
 G7 and G8 are the anti-reward-hacking gates. G7 makes bypassing the library
 strictly worse than using it naively; G8 makes editing it pointless because the

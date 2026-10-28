@@ -310,12 +310,13 @@ def springboot_config(beans, classpath, mode="auto"):
     """Simulate Spring Boot auto-configuration.
 
     beans       — list of {"name": str, "requires": list[str]} bean definitions
-    classpath   — set of available class names
+    classpath   — available class names (list or set)
 
     mode="unconditional" — register all beans regardless of classpath
     mode="conditional"   — only register beans whose requires are all in classpath
     mode="auto" (default) — conditional-on-class (same as "conditional")
     """
+    classpath = set(classpath)
     registered = []
     for bean in beans:
         if mode == "unconditional":
@@ -354,7 +355,7 @@ def springboot_config(beans, classpath, mode="auto"):
             {"name": "WebServer", "requires": ["javax.servlet.Servlet"]},
             {"name": "CacheManager", "requires": ["org.cache.Cache"]},
         ],
-        "classpath": {"javax.servlet.Servlet", "javax.sql.DataSource"},
+        "classpath": ["javax.servlet.Servlet", "javax.sql.DataSource"],
     },
     gold_output=[
         {"name": "DataSource", "status": "registered"},

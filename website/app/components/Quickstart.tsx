@@ -76,11 +76,11 @@ priorlock evaluate tasks/my-task -s ./probe_solution.py \\
   },
   {
     n: 6,
-    label: "Attack it — 8 cheat classes, pooled FAR receipt",
+    label: "Attack it — 12 cheat classes, pooled receipt",
     code: `priorlock cheats tasks/my-task --suite
 
-# trials          104     8 classes x 13 archetypes
-# false accepts   0/104   Wilson95 [0.0000, 0.0356]
+# runs            156     12 classes x 13 archetypes
+# false accepts   0/156   Wilson95 [0.0000, 0.0240]
 # SOUND`,
   },
   {

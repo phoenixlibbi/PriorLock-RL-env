@@ -1,0 +1,42 @@
+{
+  "task": "pipeline-drift-calibration-hard",
+  "captured_at": "2026-07-26T01:39:03Z",
+  "runner": "harbor run -p <task>__leakprobe -a oracle",
+  "image": "byte-identical to the task under test (asserted at build time)",
+  "verdict": "ISOLATION PROVEN AT RUNTIME",
+  "reward": 1.0,
+  "attempts": 49,
+  "vectors": {
+    "cat": 13,
+    "harness": 4,
+    "find": 9,
+    "import": 8,
+    "sys.path": 1,
+    "pip list": 1,
+    "walk": 6,
+    "env": 1,
+    "git": 1,
+    "ps": 1,
+    "canary": 1,
+    "network": 3
+  },
+  "oracle_reachable": 0,
+  "positive_control": "PASS \u2014 the agent's own library imports, so the negative results are meaningful",
+  "canary_on_agent_surface": false,
+  "reached_and_allowed": [
+    "import:recordkit (positive control)",
+    "network:pypi.org:443",
+    "network:github.com:443",
+    "network:1.1.1.1:53"
+  ],
+  "network_posture": "allow_internet = true, inherited from the host task; egress reachable and recorded, not treated as a breach",
+  "qa": {
+    "A1": "MET",
+    "A2": "MET",
+    "A3": "MET",
+    "A4": "MET",
+    "A5": "PARTIAL \u2014 env swept; agent-visible logs/tool output not systematically swept",
+    "A6": "MET",
+    "A7": "MET (measured)"
+  }
+}

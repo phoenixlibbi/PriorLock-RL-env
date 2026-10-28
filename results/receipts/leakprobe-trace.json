@@ -1,0 +1,300 @@
+{
+  "canary_sha256": "2d8d09d238048030",
+  "library": "recordkit",
+  "attempts": [
+    {
+      "vector": "cat",
+      "target": "/tests",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/probe_grade.py",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/probe_input.json",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/task_verify.sh",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/test.sh",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/_plx_lib/recordkit/__init__.py",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/_plx_reference/gold.py",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/_plx_reference/familiar.py",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/_plx_reference/solve.orig",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/tests/_plx_reference/instruction.orig",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/priorlock.toml",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/app/priorlock.toml",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "cat",
+      "target": "/app/solution/solve.sh",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "harness",
+      "target": "/solution",
+      "reached": false,
+      "detail": "present, contains only runner artefacts: probe.py, solve.sh"
+    },
+    {
+      "vector": "harness",
+      "target": "/logs",
+      "reached": false,
+      "detail": "present, contains only runner artefacts: agent, verifier"
+    },
+    {
+      "vector": "harness",
+      "target": "/logs/verifier",
+      "reached": false,
+      "detail": "present, contains only runner artefacts: (empty)"
+    },
+    {
+      "vector": "harness",
+      "target": "/logs/agent",
+      "reached": false,
+      "detail": "present, contains only runner artefacts: oracle.txt"
+    },
+    {
+      "vector": "find",
+      "target": "probe_grade.py",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "gold.py",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "familiar.py",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "expected.json",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "solve.orig",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "instruction.orig",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "priorlock.toml",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "task_verify.sh",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "find",
+      "target": "_plx_*",
+      "reached": false,
+      "detail": "no hits"
+    },
+    {
+      "vector": "import",
+      "target": "probe_grade",
+      "reached": false,
+      "detail": "ModuleNotFoundError"
+    },
+    {
+      "vector": "import",
+      "target": "gold",
+      "reached": false,
+      "detail": "ModuleNotFoundError"
+    },
+    {
+      "vector": "import",
+      "target": "familiar",
+      "reached": false,
+      "detail": "ModuleNotFoundError"
+    },
+    {
+      "vector": "import",
+      "target": "priorlock",
+      "reached": false,
+      "detail": "ModuleNotFoundError"
+    },
+    {
+      "vector": "import",
+      "target": "priorlock.probes",
+      "reached": false,
+      "detail": "ModuleNotFoundError"
+    },
+    {
+      "vector": "import",
+      "target": "priorlock.probes.catalog",
+      "reached": false,
+      "detail": "ModuleNotFoundError"
+    },
+    {
+      "vector": "import",
+      "target": "priorlock.env",
+      "reached": false,
+      "detail": "ModuleNotFoundError"
+    },
+    {
+      "vector": "import",
+      "target": "recordkit (positive control)",
+      "reached": true,
+      "detail": "the agent's own library imports \u2014 the negative results above are meaningful"
+    },
+    {
+      "vector": "sys.path",
+      "target": "entries",
+      "reached": false,
+      "detail": "/app | /app/src | /tmp | /usr/local/lib/python313.zip | /usr/local/lib/python3.13 | /usr/local/lib/python3.13/lib-dynload | /usr/local/lib/python3.13/site-packages"
+    },
+    {
+      "vector": "pip list",
+      "target": "priorlock installed?",
+      "reached": false,
+      "detail": "absent"
+    },
+    {
+      "vector": "walk",
+      "target": "/app",
+      "reached": false,
+      "detail": "scanned 30 files; no oracle assets"
+    },
+    {
+      "vector": "walk",
+      "target": "/app/src",
+      "reached": false,
+      "detail": "scanned 20 files; no oracle assets"
+    },
+    {
+      "vector": "walk",
+      "target": "/",
+      "reached": false,
+      "detail": "scanned 17202 files; no oracle assets"
+    },
+    {
+      "vector": "walk",
+      "target": "/tmp",
+      "reached": false,
+      "detail": "scanned 1 files; no oracle assets"
+    },
+    {
+      "vector": "walk",
+      "target": "/root",
+      "reached": false,
+      "detail": "scanned 4 files; no oracle assets"
+    },
+    {
+      "vector": "walk",
+      "target": "/home",
+      "reached": false,
+      "detail": "scanned 0 files; no oracle assets"
+    },
+    {
+      "vector": "env",
+      "target": "answer-bearing variables",
+      "reached": false,
+      "detail": "none"
+    },
+    {
+      "vector": "git",
+      "target": "history in workdir",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "ps",
+      "target": "oracle in process table",
+      "reached": false,
+      "detail": "FileNotFoundError"
+    },
+    {
+      "vector": "canary",
+      "target": "oracle-exclusive string",
+      "reached": false,
+      "detail": "not present on the agent surface"
+    },
+    {
+      "vector": "network",
+      "target": "pypi.org:443",
+      "reached": true,
+      "detail": "connected"
+    },
+    {
+      "vector": "network",
+      "target": "github.com:443",
+      "reached": true,
+      "detail": "connected"
+    },
+    {
+      "vector": "network",
+      "target": "1.1.1.1:53",
+      "reached": true,
+      "detail": "connected"
+    }
+  ]
+}
