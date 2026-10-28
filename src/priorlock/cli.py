@@ -854,6 +854,7 @@ def cmd_bench(args, root: str) -> int:
         return 2
     model = B.make_model(args.provider, args.model, base_url=args.base_url,
                          api_key_env=args.api_key_env, rpm=args.rpm)
+    model.max_tokens = args.max_tokens
     conditions = args.condition or list(B.CONDITIONS)
     out_dir = Path(args.out)
     tasks = B.build_tasks(out_dir / "tasks", args.repeats)
@@ -1093,6 +1094,8 @@ other:
                          help="task sets to generate (each covers all 13 archetypes)")
     p_bench.add_argument("--steps", type=int, default=10,
                          help="max turns in the agentic condition")
+    p_bench.add_argument("--max-tokens", type=int, default=2048,
+                         help="answer token cap; raise it for thinking models")
     p_bench.add_argument("--rpm", type=float, default=0.0,
                          help="requests-per-minute cap (for free tiers)")
     p_bench.add_argument("--sandbox", default="auto", choices=["auto", "docker", "none"],

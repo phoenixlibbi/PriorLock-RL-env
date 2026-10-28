@@ -243,13 +243,13 @@ To extend it:
 
 ## Open questions
 
-The pilot answers one question and raises better ones. Each is testable with this repository and a modest compute budget:
+The pilot answers one question and raises better ones. Each is testable with this repository and a modest compute budget, and each has an open issue to discuss or pick up:
 
-1. **Does looking drop when it costs something?** In a small repo the pilot model read the library every time. Bury the probes in a large repository, cap the number of reads, and measure the prior-locked rate as the budget shrinks.
-2. **Docs or source?** Agents read the library source, never the CHANGELOG. Strip docstrings from the source (keep only the changelog) and see whether they adapt or fall back on memory.
-3. **Habit or knowledge?** On `default_flip` probes, always passing arguments explicitly is enough. Compare `default_flip` against `value_remap`, where only reading helps, across models.
-4. **Do synthetic scores predict real ones?** Inject the same kinds of silent change into forks of real libraries (or use post-cutoff releases) and correlate with the synthetic results.
-5. **Can RL teach looking?** Train a small open model on the agentic condition and test transfer to held-out archetypes and to real-library drift, without regressing on general coding.
+1. **Does looking drop when it costs something?** ([#1](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/1)) In a small repo the pilot model read the library every time. Bury the probes in a large repository, cap the number of reads, and measure the prior-locked rate as the budget shrinks.
+2. **Docs or source?** ([#2](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/2)) Agents read the library source, never the CHANGELOG. Strip docstrings from the source (keep only the changelog) and see whether they adapt or fall back on memory.
+3. **Habit or knowledge?** ([#3](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/3)) On `default_flip` probes, always passing arguments explicitly is enough. Compare `default_flip` against `value_remap`, where only reading helps, across models.
+4. **Do synthetic scores predict real ones?** ([#4](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/4)) Inject the same kinds of silent change into forks of real libraries (or use post-cutoff releases) and correlate with the synthetic results.
+5. **Can RL teach looking?** ([#5](https://github.com/phoenixlibbi/PriorLock-RL-env/issues/5)) Train a small open model on the agentic condition and test transfer to held-out archetypes and to real-library drift, without regressing on general coding.
 
 ## Roadmap
 
