@@ -8,7 +8,7 @@
 ![Dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Status:** research in progress. Every experiment so far ran on free-tier or local models. The tables below are generated from the logged runs and refresh as runs finish; every model reply, file read and verdict is in [`results/`](results/).
+**Status:** research in progress. Study 1's first round is complete on free-tier models; Study 2 is planned (§9.1). The tables below are generated from the logged runs; every model reply, file read and verdict is in [`results/`](results/).
 
 ## Abstract
 
@@ -16,20 +16,22 @@ Coding agents work in repositories whose dependencies are pinned to versions the
 
 PriorLock builds tasks around synthetic, contamination-free libraries whose behaviour changed silently, and grades the library calls the agent's code actually made, with an isolated, red-teamed verifier, on a three-rung ladder: never called the library (0), called it the memorized way (0.40), called it the documented way (1.0). In **bench v2**, 36 behaviour changes sit inside realistic repositories where the change is written in exactly one place (a CHANGELOG, a migration guide, API reference pages, a type stub or a README).
 
-Across the free models tested so far, models apply the change almost perfectly when the documentation is in the prompt (89–100% right calls), but **when they must find it themselves, right calls fall to 8–29%**. The failure is in looking, not in understanding: when a model found the note it made the right call 79–87% of the time, and when it did not, 12–26%. Telling a model that the library was upgraded does not help; telling it to check the documentation, or letting it run code, helps the model that looks, and does nothing for models that answer without looking. Looking is a habit, which makes it a training target; PriorLock packages the tasks, the verifier and the reward as an open building block for that.
+Across the free models tested so far, models apply the change almost perfectly when the documentation is in the prompt (89–100% right calls), but **when they must find it themselves, right calls fall to 8–33%**. The failure is in looking, not in understanding: when a model found the note it made the right call 79–100% of the time, and when it did not, 12–33%. Telling a model that the library was upgraded does not help; telling it to check the documentation, or letting it run code, helps models that look, and does nothing for a model that answers without looking. Looking is a habit, which makes it a training target; PriorLock packages the tasks, the verifier and the reward as an open building block for that.
 
 <!-- V2_FINDINGS_START -->
-## Key findings so far
+## Key findings (Study 1, final for this round)
 
-Free models only, temperature 0. Bench v2 is still running (see the timestamp on the tables): Gemini 3.1 Flash-Lite has completed the first task set (all 36 changes) on 4 conditions; Gemini 3.5 Flash-Lite and gpt-oss-120b are partway through and resume when their free daily quotas reset. Cells hold about 5–12 tasks, so read these as directions with wide intervals, not estimates.
+Free models only, temperature 0, first task set (all 36 changes) on the four core conditions; 131 runs from four models. Gemini 3.1 Flash-Lite completed the set; Gemini 3.5 Flash-Lite and gpt-oss-120b stopped at their free daily quotas and Gemma 4 31B at a network outage, so their cells hold 3–9 tasks. Read these as consistent directions with wide intervals, not estimates. Every run was regraded from its stored code and reproduced its score exactly (131 of 131); the audit of every model's actions is in [`results/bench_v2/AUDIT.md`](results/bench_v2/AUDIT.md).
 
-1. **The tasks are solvable; the information is the bottleneck.** With the docs in the prompt: Gemini 3.5 Flash-Lite 100%, gpt-oss-120b 100%, Gemini 3.1 Flash-Lite 89% right calls.
-2. **When the agent must find the docs, it mostly does not.** Library compiled, no hint: Gemini 3.5 Flash-Lite 29%, Gemini 3.1 Flash-Lite 22%, gpt-oss-120b 8%. The same drop appeared in the v1 pilot on four models from three vendors (12–27%).
-3. **Finding the note is what matters.** When the agent found the note describing the change it made the right call 79–87% of the time (Gemini 3.1: 79% vs 12% when it did not; Gemini 3.5: 87% vs 26%).
-4. **Two different failures.** The Gemini models look, but mostly at the library's code: with readable source Gemini 3.5 Flash-Lite reached 78%. gpt-oss-120b does not look at all: it answered on its first turn in every compiled-library task, even when told to check the documentation.
-5. **Telling the version does not help; telling what to do helps only a model that looks.** For Gemini 3.5 Flash-Lite: "upgraded to 2.0" 28%, "check the documentation" 38%, "defaults changed; the docs describe it" 61%, consistent with [LibEvoBench](https://arxiv.org/abs/2606.25402)'s finding that stating the target version gives no benefit. "Check the documentation" did not move Gemini 3.1 Flash-Lite (22% → 22%) or gpt-oss-120b (8% → 7%).
-6. **Running the code is the strongest lever so far.** With a RUN tool and no hint, Gemini 3.5 Flash-Lite tested the library directly and reached 72%; Gemini 3.1 Flash-Lite 39%.
-7. **Agents look next to the code, not in the docs folder.** Without a hint, a change written in the type stub inside the library folder was found in 3 of 4 tasks (75% right calls); one written in the CHANGELOG or a migration guide was found in 0 of 14 (0–14% right calls).
+1. **The tasks are solvable; the information is the bottleneck.** With the docs in the prompt: Gemini 3.5 Flash-Lite, gpt-oss-120b and Gemma 4 100%, Gemini 3.1 Flash-Lite 89% right calls.
+2. **When the agent must find the docs, it mostly does not.** Library compiled, no hint: Gemma 4 33%, Gemini 3.5 Flash-Lite 29%, Gemini 3.1 Flash-Lite 22%, gpt-oss-120b 8%. The v1 pilot showed the same drop on four models from three vendors (12–27%).
+3. **Finding the note is what matters.** Right calls when the agent had found the note describing the change, versus when it had not: Gemma 4 100% vs 33%, Gemini 3.5 Flash-Lite 87% vs 26%, Gemini 3.1 Flash-Lite 79% vs 12%.
+4. **Two different failures.** The Gemini models look, but at the code: they opened the library's own folder in 94–95% of agentic runs and the note describing the change in 17–24%. gpt-oss-120b does not look at all: it answered on its first turn in every agentic run (13 of 13), even when told to check the documentation.
+5. **Telling the version does not help; telling what to do helps a model that looks.** Gemini 3.5 Flash-Lite: no hint 29%, "upgraded to 2.0" 28%, "check the documentation" 38%, "defaults changed; the docs describe it" 61%, in line with [LibEvoBench](https://arxiv.org/abs/2606.25402)'s finding that stating the target version gives no benefit. "Check the documentation" took Gemma 4 from 33% to 100% (3 tasks), and did not move Gemini 3.1 Flash-Lite (22% → 22%) or gpt-oss-120b (8% → 7%).
+6. **Running the code is a strong lever.** With a RUN tool and no hint: Gemini 3.5 Flash-Lite 72%, Gemma 4 78%, Gemini 3.1 Flash-Lite 36%. The models called the library to test it more often than they read its docstrings.
+7. **Agents look next to the code, not in the docs folder.** Without a hint, a change written in the type stub inside the library folder was found in 4 of 5 tasks (80% right calls); one written in the CHANGELOG or a migration guide was found in 0 of 16 (0–17% right calls).
+
+**Does the idea hold?** Yes, as far as free models can show it. Every model applied the change when handed the docs and mostly missed it when it had to look; the gap is in *looking*, it is shifted by a one-line nudge or a tool, and it is measured by a verifier whose scores reproduce exactly. What this round cannot show: frontier models, a standard agent scaffold, real repositories and real libraries. Those are §9 and Study 2.
 <!-- V2_FINDINGS_END -->
 
 ## Contents
@@ -146,24 +148,24 @@ A deliberately minimal, model-agnostic agent: one action per turn (`LIST`, `READ
 
 | Model | Access (free) | v1 pilot | Bench v2 |
 |---|---|---|---|
-| Gemini 3.5 Flash-Lite | Google AI Studio free tier (500 requests/day) | 5 conditions | all 7 conditions |
-| Gemini 3.1 Flash-Lite | Google AI Studio free tier | 3 conditions | 4 core conditions |
-| Gemma 4 31B | Google AI Studio free tier | partial | 4 core conditions (queued) |
-| gpt-oss-120b | Groq free tier (8,000 tokens/min) | 3 conditions | 4 core conditions |
-| Qwen3.8 27B | Groq free tier | partial | 4 core conditions (queued) |
-| Nemotron 3 Ultra | OpenRouter `:free` (50 requests/day) | — | small slice (queued) |
-| Qwen2.5-Coder 7B | local, Ollama | 4 conditions | 4 core conditions (queued) |
+| Gemini 3.5 Flash-Lite | Google AI Studio free tier (500 requests/day) | 5 conditions | all 7 conditions, about 7 of 12 tasks (daily quota) |
+| Gemini 3.1 Flash-Lite | Google AI Studio free tier | 3 conditions | 4 core conditions, complete (12 of 12 tasks) |
+| Gemma 4 31B | Google AI Studio free tier | partial | 4 core conditions, 3–5 tasks each (network outage) |
+| gpt-oss-120b | Groq free tier (8,000 tokens/min) | 3 conditions | 3 core conditions, about 5–9 tasks (daily quota); RUN runs removed ([§7](#7-corrections-log)) |
+| Qwen3.8 27B | Groq free tier | partial | not run: each v2 request exceeds the free tier's 8,000-token request limit |
+| Nemotron 3 Ultra | OpenRouter `:free` (50 requests/day) | — | not run this round |
+| Qwen2.5-Coder 7B | local, Ollama | 4 conditions | not run this round |
 
-The core conditions are `repo_open`, `repo_docs`, `repo_docs_h2` and `repo_run`. One model runs at a time; a model stops when its provider reports the daily quota is used up, and unfinished cells resume the next day (a failed call is never recorded as a result). Models that could not be run (Gemini 3.5 Flash: quota; Gemini 2.5 Flash: retired) are not reported.
+The core conditions are `repo_open`, `repo_docs`, `repo_docs_h2` and `repo_run`, on the first task set (12 tasks, all 36 changes). Models that ran out of quota are held for the next round rather than rerun. One model runs at a time; a model stops when its provider reports the daily quota is used up, and unfinished cells resume the next day (a failed call is never recorded as a result). Models that could not be run (Gemini 3.5 Flash: quota; Gemini 2.5 Flash: retired) are not reported.
 
-**Validation before any model ran.** On all 24 v2 tasks, the Docker grader gives the reference solutions exactly gold 1.00 · memorized 0.40 · bypass 0.00 · empty 0.00 (96 of 96). The test suite (62 tests, CI on Python 3.10–3.13) covers scripted agents with known behaviour (a reading agent scores 1.0 and is recorded as having found the change; a memory agent scores 0.40 and is not), channel isolation for every channel, the RUN sandbox (it runs the library but cannot show its source) and the action parser.
+**Validation before any model ran.** On all 24 v2 tasks, the Docker grader gives the reference solutions exactly gold 1.00 · memorized 0.40 · bypass 0.00 · empty 0.00 (96 of 96). The test suite (65 tests, CI on Python 3.10–3.13) covers scripted agents with known behaviour (a reading agent scores 1.0 and is recorded as having found the change; a memory agent scores 0.40 and is not), channel isolation for every channel, the RUN sandbox (it runs the library but cannot show its source) and the action parser.
 
 ## 4. Results
 
 ### 4.1 Bench v2
 
 <!-- V2_TABLES_START -->
-_Last updated 2026-10-29 11:52 · 131 runs · gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), gemma-4-31b-it (16 runs), openai/gpt-oss-120b (22 runs)._
+_Last updated 2026-10-29 11:59 · 131 runs · gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), gemma-4-31b-it (16 runs), openai/gpt-oss-120b (22 runs)._
 
 ### Right calls by condition (the hint ladder)
 
@@ -229,7 +231,7 @@ _Last updated 2026-10-29 11:52 · 131 runs · gemini-3.1-flash-lite (48 runs), g
 </details>
 <!-- V2_TABLES_END -->
 
-Full tables: [`results/bench_v2/REPORT.md`](results/bench_v2/REPORT.md) · raw runs with every reply: [`results/bench_v2/*.jsonl`](results/bench_v2/) · logs: [`results/bench_v2/logs/`](results/bench_v2/logs/).
+Full tables: [`results/bench_v2/REPORT.md`](results/bench_v2/REPORT.md) · audit of every model's actions: [`results/bench_v2/AUDIT.md`](results/bench_v2/AUDIT.md) · raw runs with every reply: [`results/bench_v2/*.jsonl`](results/bench_v2/) · logs: [`results/bench_v2/logs/`](results/bench_v2/logs/).
 
 ### 4.2 Pilot (v1): agents that seem to read the docs are reading the code
 
@@ -319,6 +321,9 @@ Problems found during the study, and what was done. None changed a reported numb
 | After a rate-limit (429) retry, the request body was replaced by the error text | the retried calls failed; failed calls are never recorded, so no result was affected | fixed, with regression tests |
 | gpt-oss on Groq emits some actions as native tool calls, which reached the harness as empty replies | its v2 RUN runs lost actions; 9 such runs were removed before analysis and are rerun | `recover_action` reads the call back; each run records how many it recovered |
 | The v1 write-up said gpt-oss "never opened a file" | too strong: 2 of its 20 agentic tasks are uncertain for the reason above | wording corrected |
+| Gemma and Qwen3 write their reasoning inside the reply (`<thought>`, `<think>`) | an action named while thinking could be read as the action; found before either model recorded a v2 result | reasoning is stripped before the reply is read (`strip_thoughts`) |
+| Probes left uncalled because the solution crashed were labelled `bypassed` | scores were right (0) but the label suggested the model chose not to use the library | labelled `crashed`; all 131 runs regraded from their stored code, every score reproduced exactly, 54 labels corrected |
+| `GREP` took grep-style input (`GREP "def" lib/__init__.py`) as literal text | 37 of 49 searches found nothing. Most looked for `def` in the compiled library, which has none anyway; 3 of Gemma's (searching `.` for a function name) would likely have reached the docs, so its "found the change" rate may be slightly understated | `GREP` now accepts a quoted pattern, flags and a path |
 
 ## 8. Use it: an open building block
 
@@ -496,7 +501,7 @@ The core comparison (open-book versus self-retrieval) is a familiar ablation app
 ```bash
 git clone https://github.com/phoenixlibbi/PriorLock-RL-env && cd PriorLock-RL-env
 pip install -e ".[dev]"
-PYTHONHASHSEED=0 pytest -q                       # 62 tests; Docker tests run when Docker is available
+PYTHONHASHSEED=0 pytest -q                       # 65 tests; Docker tests run when Docker is available
 priorlock bench --report results/bench_v2/*.jsonl # regenerate the v2 tables from the logged runs
 priorlock repro                                   # offline determinism fingerprint
 ```
