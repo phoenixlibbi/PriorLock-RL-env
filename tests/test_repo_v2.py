@@ -144,3 +144,16 @@ def test_run_tool_executes_the_compiled_library_without_its_source(tasks):
     box = task / ".priorlock" / "v2_sandbox" / lib
     assert sorted(p.name for p in box.iterdir()) == ["__init__.py", R.NATIVE_V2]
     shutil.rmtree(task / ".priorlock" / "v2_sandbox")
+
+
+def test_grep_accepts_grep_style_arguments(tasks):
+    task = tasks["migration"]
+    lib = R._manifest(task)["lib"]
+    view = R.RepoView(task, compiled=True)
+    guide = f"docs/third_party/{lib}/MIGRATION-2.0.md"
+    assert view.grep('"fill_gaps" .')[1] >= {guide}
+    assert view.grep("-rn fill_gaps docs/")[1] >= {guide}
+    assert view.grep(f'"fill_gaps" app/')[1] == set()
+    assert view.grep("fill_gaps")[1] >= {guide}
+    assert R.RepoView._grep_args('"def" lib/__init__.py') == ("def", "lib/__init__.py")
+    assert R.RepoView._grep_args("check the docs") == ("check the docs", "")

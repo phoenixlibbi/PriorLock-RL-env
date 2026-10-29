@@ -89,8 +89,8 @@ def main(files: list[str]) -> str:
         for r in ag:
             mt = meta.get(r["task"], {})
             lib, info = mt.get("lib", ""), set(mt.get("info_files", []))
-            for p in set(r.get("read", [])):
-                opened[kind(p, lib, info)] += 1
+            for k in {kind(p, lib, info) for p in r.get("read", [])}:
+                opened[k] += 1
         greps = collections.Counter(a[1].lower() for r in ag for a in r.get("actions", [])
                                     if a[0] == "GREP")
         runs_with_run = [r for r in ag if r.get("runs")]

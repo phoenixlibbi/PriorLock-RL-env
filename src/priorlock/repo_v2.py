@@ -382,13 +382,34 @@ class RepoView:
             text = text[:READ_LIMIT] + "\n… (truncated)"
         return (text, rel)
 
+    @staticmethod
+    def _grep_args(arg: str) -> tuple[str, str]:
+        """Split a GREP argument into (text, path), accepting grep-style input.
+
+        Models often write `GREP "def" lib/__init__.py` or `GREP -rn foo .`;
+        the quoted text is the pattern and a trailing path limits the search.
+        """
+        arg = arg.strip().strip("`")
+        arg = re.sub(r"^(-[A-Za-z]+\s+)+", "", arg)
+        m = re.match(r"""^(["'])(.*?)\1\s*(\S*)$""", arg)
+        if m:
+            return m.group(2), m.group(3)
+        parts = arg.rsplit(None, 1)
+        if len(parts) == 2 and (parts[1] == "." or "/" in parts[1] or
+                                re.search(r"\.(py|pyi|md|txt|toml|json|yml)$", parts[1])):
+            return parts[0].strip("'\""), parts[1]
+        return arg.strip("'\""), ""
+
     def grep(self, needle: str) -> tuple[str, set[str]]:
-        needle = needle.strip().strip("`'\"")
+        needle, where = self._grep_args(needle)
+        where = self._norm(where)
         if not needle:
             return ("GREP needs some text to search for.", set())
         hits, files = [], set()
         for rel, text in self.files.items():
             if text is None:
+                continue
+            if where and rel != where and not rel.startswith(where + "/"):
                 continue
             for i, line in enumerate(text.splitlines(), 1):
                 if needle.lower() in line.lower():
