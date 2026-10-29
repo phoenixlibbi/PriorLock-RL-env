@@ -1,6 +1,6 @@
 # Bench v2 report
 
-Generated 2026-10-29 07:02 from 131 runs: gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), gemma-4-31b-it (16 runs), openai/gpt-oss-120b (22 runs).
+Generated 2026-10-29 07:13 from 131 runs: gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), gemma-4-31b-it (16 runs), openai/gpt-oss-120b (22 runs).
 Regenerate with `priorlock bench --report results/bench_v2/*.jsonl`.
 
 ### Every model and condition

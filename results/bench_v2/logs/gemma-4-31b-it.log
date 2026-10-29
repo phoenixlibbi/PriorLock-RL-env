@@ -21,3 +21,43 @@
   gemma-4-31b-it           v2-r0-g03 repo_run gap=1.00  override  [read docs]  [read source]
   gemma-4-31b-it           v2-r0-g04 repo_open gap=1.00  override  [read docs]
   gemma-4-31b-it           v2-r0-g04 repo_docs gap=0.60  override prior_locked  [read source]
+  gemma-4-31b-it           v2-r0-g04 repo_docs_h2 skipped: <urlopen error [Errno 51] Network is unreachable>
+  gemma-4-31b-it           v2-r0-g04 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g05 repo_open skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g05 repo_docs skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g05 repo_docs_h2 skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g05 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g06 repo_open skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g06 repo_docs skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g06 repo_docs_h2 skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g06 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g07 repo_open skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g07 repo_docs skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g07 repo_docs_h2 skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g07 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g08 repo_open skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g08 repo_docs skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g08 repo_docs_h2 skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g08 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g09 repo_open skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g09 repo_docs skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g09 repo_docs_h2 skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g09 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g10 repo_open skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g10 repo_docs skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g10 repo_docs_h2 skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g10 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g11 repo_open skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g11 repo_docs skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g11 repo_docs_h2 skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+  gemma-4-31b-it           v2-r0-g11 repo_run skipped: <urlopen error [Errno 8] nodename nor servname provided, or not known>
+
+| Model | Condition | Probes | Opened docs / source | Prior-locked (memorized behaviour) | Right call (installed behaviour) | Fully correct | Other |
+|---|---|---|---|---|---|---|---|
+
+Right call by probe family (prior-locked in brackets):
+
+| Model | Condition | default_flip | value_remap | result_shape |
+|---|---|---|---|---|
+
+[2mresults: results/bench_v2/gemma-4-31b-it.jsonl[0m
