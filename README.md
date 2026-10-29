@@ -163,7 +163,7 @@ The core conditions are `repo_open`, `repo_docs`, `repo_docs_h2` and `repo_run`.
 ### 4.1 Bench v2
 
 <!-- V2_TABLES_START -->
-_Last updated 2026-10-29 06:32 · 125 runs · gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), gemma-4-31b-it (10 runs), openai/gpt-oss-120b (22 runs)._
+_Last updated 2026-10-29 07:02 · 131 runs · gemini-3.1-flash-lite (48 runs), gemini-3.5-flash-lite (45 runs), gemma-4-31b-it (16 runs), openai/gpt-oss-120b (22 runs)._
 
 ### Right calls by condition (the hint ladder)
 
@@ -171,7 +171,7 @@ _Last updated 2026-10-29 06:32 · 125 runs · gemini-3.1-flash-lite (48 runs), g
 |---|---|---|---|---|---|---|---|
 | gemini-3.1-flash-lite | 89% | – | 22% | – | 22% | – | 36% |
 | gemini-3.5-flash-lite | 100% | 78% | 29% | 28% | 38% | 61% | 72% |
-| gemma-4-31b-it | 100% | – | 11% | – | 100% | – | 67% |
+| gemma-4-31b-it | 100% | – | 33% | – | 100% | – | 78% |
 | openai/gpt-oss-120b | 100% | – | 8% | – | 7% | – | – |
 
 ### Where the change was written (all models pooled)
@@ -181,16 +181,16 @@ _Last updated 2026-10-29 06:32 · 125 runs · gemini-3.1-flash-lite (48 runs), g
 | changelog | 100% (24/24) | 17% (4/24) | 0% (0/8) |
 | migration | 96% (23/24) | 0% (0/24) | 0% (0/8) |
 | api_reference | 100% (18/18) | 6% (1/18) | 17% (1/6) |
-| stub | 100% (15/15) | 75% (9/12) | 75% (3/4) |
-| readme | 75% (9/12) | 25% (3/12) | 25% (1/4) |
+| stub | 100% (18/18) | 80% (12/15) | 80% (4/5) |
+| readme | 80% (12/15) | 27% (4/15) | 20% (1/5) |
 
 ### By probe family (compiled library, all hints and RUN pooled)
 
 | Family | Right call | Prior-locked |
 |---|---|---|
-| default_flip | 28% (42/152) | 45% (69/152) |
-| value_remap | 21% (16/77) | 44% (34/77) |
-| result_shape | 80% (28/35) | 0% (0/35) |
+| default_flip | 31% (51/162) | 43% (70/162) |
+| value_remap | 21% (16/78) | 45% (35/78) |
+| result_shape | 81% (29/36) | 0% (0/36) |
 
 ### Did finding the change help? (compiled library, all hints and RUN pooled)
 
@@ -198,7 +198,7 @@ _Last updated 2026-10-29 06:32 · 125 runs · gemini-3.1-flash-lite (48 runs), g
 |---|---|---|
 | gemini-3.1-flash-lite | 79% (19/24) | 12% (10/84) |
 | gemini-3.5-flash-lite | 87% (26/30) | 26% (17/66) |
-| gemma-4-31b-it | 100% (6/6) | 33% (5/15) |
+| gemma-4-31b-it | 100% (15/15) | 33% (6/18) |
 | openai/gpt-oss-120b | – | 8% (3/39) |
 
 <details><summary>Every model and condition (found / looked / GREP / RUN / turns)</summary>
@@ -218,10 +218,10 @@ _Last updated 2026-10-29 06:32 · 125 runs · gemini-3.1-flash-lite (48 runs), g
 | gemini-3.5-flash-lite | repo_docs_h2 | 7 | **38%** [19%, 62%] | 52% (11/21) | 43% (3/7) | 100% (7/7) | 43% (3/7) | 0% (0/7) | 9.3 |
 | gemini-3.5-flash-lite | repo_docs_h3 | 6 | **61%** [39%, 83%] | 17% (3/18) | 50% (3/6) | 100% (6/6) | 50% (3/6) | 0% (0/6) | 9.3 |
 | gemini-3.5-flash-lite | repo_run | 6 | **72%** [50%, 89%] | 28% (5/18) | 17% (1/6) | 83% (5/6) | 0% (0/6) | 100% (6/6) | 8.7 |
-| gemma-4-31b-it | repo_open | 3 | **100%** [100%, 100%] | 0% (0/9) | 100% (3/3) | 0% (0/3) | 0% (0/3) | 0% (0/3) | 1.0 |
-| gemma-4-31b-it | repo_docs | 3 | **11%** [0%, 33%] | 44% (4/9) | 0% (0/3) | 100% (3/3) | 67% (2/3) | 0% (0/3) | 6.3 |
-| gemma-4-31b-it | repo_docs_h2 | 2 | **100%** [100%, 100%] | 0% (0/6) | 100% (2/2) | 100% (2/2) | 0% (0/2) | 0% (0/2) | 9.5 |
-| gemma-4-31b-it | repo_run | 2 | **67%** [33%, 100%] | 33% (2/6) | 0% (0/2) | 100% (2/2) | 0% (0/2) | 100% (2/2) | 8.0 |
+| gemma-4-31b-it | repo_open | 5 | **100%** [100%, 100%] | 0% (0/15) | 100% (5/5) | 0% (0/5) | 0% (0/5) | 0% (0/5) | 1.0 |
+| gemma-4-31b-it | repo_docs | 5 | **33%** [13%, 60%] | 40% (6/15) | 20% (1/5) | 100% (5/5) | 40% (2/5) | 0% (0/5) | 5.4 |
+| gemma-4-31b-it | repo_docs_h2 | 3 | **100%** [100%, 100%] | 0% (0/9) | 100% (3/3) | 100% (3/3) | 0% (0/3) | 0% (0/3) | 7.7 |
+| gemma-4-31b-it | repo_run | 3 | **78%** [44%, 100%] | 22% (2/9) | 33% (1/3) | 100% (3/3) | 0% (0/3) | 67% (2/3) | 6.7 |
 | openai/gpt-oss-120b | repo_open | 9 | **100%** [100%, 100%] | 0% (0/27) | 100% (9/9) | 0% (0/9) | 0% (0/9) | 0% (0/9) | 1.0 |
 | openai/gpt-oss-120b | repo_docs | 8 | **8%** [0%, 21%] | 58% (14/24) | 0% (0/8) | 0% (0/8) | 0% (0/8) | 0% (0/8) | 1.0 |
 | openai/gpt-oss-120b | repo_docs_h2 | 5 | **7%** [0%, 20%] | 40% (6/15) | 0% (0/5) | 0% (0/5) | 0% (0/5) | 0% (0/5) | 1.0 |
