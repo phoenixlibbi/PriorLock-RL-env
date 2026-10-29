@@ -11,3 +11,6 @@
   gemma-4-31b-it           v2-r0-g01 repo_docs gap=0.00  crashed  [read source]
   gemma-4-31b-it           v2-r0-g01 repo_docs_h2 gap=1.00  override  [read docs]  [read source]
   gemma-4-31b-it           v2-r0-g01 repo_run gap=0.60  override prior_locked  [read source]
+  gemma-4-31b-it           v2-r0-g02 repo_open gap=1.00  override  [read docs]
+  gemma-4-31b-it           v2-r0-g02 repo_docs gap=0.27  incorrect prior_locked  [read source]
+  gemma-4-31b-it           v2-r0-g02 repo_docs_h2 skipped: 500 from https://generativelanguage.googleapis.com/v1beta/openai/chat/completions: b'[{\n  "error": {\n    "code": 500,\
