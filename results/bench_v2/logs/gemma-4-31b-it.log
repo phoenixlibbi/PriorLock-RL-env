@@ -9,3 +9,5 @@
   gemma-4-31b-it           v2-r0-g00 repo_run gap=1.00  override  [read source]
   gemma-4-31b-it           v2-r0-g01 repo_open gap=1.00  override  [read docs]
   gemma-4-31b-it           v2-r0-g01 repo_docs gap=0.00  crashed  [read source]
+  gemma-4-31b-it           v2-r0-g01 repo_docs_h2 gap=1.00  override  [read docs]  [read source]
+  gemma-4-31b-it           v2-r0-g01 repo_run gap=0.60  override prior_locked  [read source]
